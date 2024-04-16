@@ -1,0 +1,150 @@
+classDiagram
+class Server {
+  <<singleton>>
+  +Server()
+  +start()
+  +acceptConnection(): ConnectionHandler
+  -config: ConfigLoader
+  -connections: List~ConnectionHandler~
+  -errorHandler: ErrorHandler
+}
+
+class ConnectionHandler {
+  +ConnectionHandler(Server, Socket)
+  +process()
+  +sendResponse()
+  -socket: Socket
+  -request: HTTPRequest
+  -response: HTTPResponse
+  -protocol: HTTPProtocol
+  -router: Router
+  -fileManager: FileManager
+  -errorHandler: ErrorHandler
+}
+
+class HTTPProtocol {
+  <<abstract>>
+  +HTTPProtocol()
+  +parseRequest(String): HTTPRequest
+  +createResponse(): HTTPResponse
+  +processRequest(HTTPRequest): HTTPResponse
+}
+
+class HTTP1_1 {
+  +HTTP1_1()
+  +parseRequest(String): HTTPRequest
+  +createResponse(): HTTPResponse
+  +processRequest(HTTPRequest): HTTPResponse
+}
+
+class HTTP2 {
+  +HTTP2()
+  +parseRequest(String): HTTPRequest
+  +createResponse(): HTTPResponse
+  +processRequest(HTTPRequest): HTTPResponse
+}
+
+class HTTPRequest {
+  +HTTPRequest()
+  +getMethod(): String
+  +getUrl(): String
+  +getHeaders(): Map<String, String>
+  +getBody(): String
+}
+
+class HTTPResponse {
+  +HTTPResponse()
+  +setStatusCode(int)
+  +getStatusCode(): int
+  +setHeaders(Map<String, String>)
+  +getHeaders(): Map<String, String>
+  +setBody(String)
+  +getBody(): String
+}
+
+class ConfigLoader {
+  <<singleton>>
+  +ConfigLoader()
+  +loadConfig(String)
+  +getConfig(): Map<String, String>
+}
+
+class FileManager {
+  +FileManager()
+  +readFile(String): String
+}
+
+class ErrorHandler {
+  +ErrorHandler()
+  +handleError(Exception)
+}
+
+class Logger {
+  <<singleton>>
+  +Logger()
+  +log(String, int)
+}
+
+class SessionManager {
+  +SessionManager()
+  +createSession(): String
+  +getSession(String): Map<String, String>
+  +setSession(String, Map<String, String>)
+  +deleteSession(String)
+}
+
+class CookieManager {
+  +CookieManager()
+  +createCookie(String, String): String
+  +getCookie(String): String
+  +deleteCookie(String)
+}
+
+class CGIHandler {
+  +CGIHandler()
+  +executeCGIScript(String): String
+  -identifyRuntime(String): Runtime
+  -runScript(String): String
+}
+
+class Router {
+  +Router()
+  +route(HTTPRequest): Handler
+}
+
+class Handler {
+  <<interface>>
+  +processRequest(HTTPRequest): HTTPResponse
+}
+
+class FileHandler {
+  +FileHandler()
+  +processRequest(HTTPRequest): HTTPResponse
+  -fileManager: FileManager
+}
+
+class CGIHandler {
+  +CGIHandler()
+  +processRequest(HTTPRequest): HTTPResponse
+}
+
+Server "1" -- "0..*" ConnectionHandler : has
+ConnectionHandler "1" -- "1" HTTPProtocol : has
+HTTPProtocol <|-- HTTP1_1 : implements
+HTTPProtocol <|-- HTTP2 : implements
+ConnectionHandler "1" -- "1" HTTPRequest : has
+ConnectionHandler "1" -- "1" HTTPResponse : has
+Server "1" -- "1" ConfigLoader : uses
+ConnectionHandler "1" -- "1" Router : uses
+Router "1" -- "0..*" Handler : uses
+Handler <|-- FileHandler : implements
+Handler <|-- CGIHandler : implements
+FileHandler "1" -- "1" FileManager : uses
+ConnectionHandler "1" -- "1" FileManager : uses
+ConnectionHandler "1" -- "1" Logger : uses
+ConnectionHandler "1" -- "1" SessionManager : uses
+ConnectionHandler "1" -- "1" CookieManager : uses
+Server "1" -- "1" ErrorHandler : has
+ConnectionHandler "1" -- "1" ErrorHandler : uses
+FileManager "1" -- "1" ErrorHandler : uses
+

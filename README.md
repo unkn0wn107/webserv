@@ -3,6 +3,8 @@ Simple http/1.1 (bis) server implemented in c++ for 42 school cursus
 
 ## RFC : [Résumé des différents documents de la RFC](doc/RFC.md)
 
+## [Diagramme de classes](doc/UML.mmd)
+
 ## clang-format / clang-tidy
 1. Install llvm
  - Debian / Ubuntu : `sudo apt update && sudo apt install clang-format clang-tidy`

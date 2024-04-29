@@ -1,35 +1,54 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    Makefile                                           :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
+#    Updated: 2024/04/29 17:36:19 by agaley           ###   ########lyon.fr    #
+#                                                                              #
+# **************************************************************************** #
+
 NAME = webserv
-CC = g++
-CFLAGS = -Wall -Wextra -Werror -std=c++98
 
-# Source files
-SRC = Server.cpp ConfigLoader.cpp ErrorHandler.cpp HTTP1_1.cpp HTTP2.cpp \
-      HTTPRequest.cpp HTTPResponse.cpp FileManager.cpp CGIHandler.cpp \
-      Router.cpp FileHandler.cpp Logger.cpp SessionManager.cpp CookieManager.cpp
+CXX = g++
+CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
 
-# Object files
-OBJ = $(SRC:.cpp=.o)
+SRC_DIR = src
+OBJ_DIR = obj
 
-# Default rule
+SRC = $(SRC_DIR)/Server.cpp $(SRC_DIR)/ConfigLoader.cpp $(SRC_DIR)/FileManager.cpp \
+	  $(SRC_DIR)/ErrorHandler.cpp $(SRC_DIR)/Logger.cpp \
+      $(SRC_DIR)/HTTP1_1.cpp $(SRC_DIR)/HTTP2.cpp \
+      $(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp \
+      $(SRC_DIR)/Router.cpp $(SRC_DIR)/CGIHandler.cpp $(SRC_DIR)/FileHandler.cpp \
+      $(SRC_DIR)/SessionManager.cpp $(SRC_DIR)/CookieManager.cpp
+
+OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))
+DEPS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.d, $(SRC))
+
+VPATH = $(SRC_DIR)
+
 all: $(NAME)
 
-# Linking the program
 $(NAME): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) $(OBJ) -o $(NAME)
 
-# Compiling source files
-%.o: %.cpp
-	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJ_DIR)/%.o: %.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Cleaning up object files
+-include $(DEPS)
+
 clean:
 	rm -f $(OBJ)
+	rm -f $(DEPS)
 
-# Full clean (objects and executable)
 fclean: clean
 	rm -f $(NAME)
+	rm -rf $(OBJ_DIR)
 
-# Rebuild everything
 re: fclean all
 
 .PHONY: all clean fclean re

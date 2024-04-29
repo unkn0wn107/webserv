@@ -10,13 +10,12 @@ class ConfigLoader {
   ConfigLoader(const std::string* filepath);
   static ConfigLoader*               instance;
   std::map<std::string, std::string> config;
+  ConfigLoader(const ConfigLoader&);
+  ConfigLoader& operator=(const ConfigLoader&);
 
  public:
   static ConfigLoader* getInstance(const std::string* filepath);
   ~ConfigLoader();
-  // Disallow copy and assignment to enforce singleton.
-  ConfigLoader(const ConfigLoader&) = delete;
-  ConfigLoader& operator=(const ConfigLoader&) = delete;
 
   /**
    * Load configuration from a file.

@@ -50,4 +50,4 @@ class FileManager {
   }
 };
 
-#endif  // FILEMANAGER_H
+#endif

@@ -4,10 +4,6 @@
 #include <map>
 #include <string>
 
-/**
- * @brief The CookieManager class is responsible for managing cookies.
- * It provides functionality to create, retrieve, and delete cookies.
- */
 class CookieManager {
  public:
   /**
@@ -40,4 +36,4 @@ class CookieManager {
       cookies;  // Map to store cookies by their names.
 };
 
-#endif  // COOKIE_MANAGER_H
+#endif

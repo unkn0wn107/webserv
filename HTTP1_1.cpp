@@ -59,6 +59,11 @@ HTTPResponse HTTP1_1::processRequest(const HTTPRequest& request) {
   // Example processing logic
   if (request.getMethod() == "GET") {
     response.setBody("Received a GET request for " + request.getUrl());
+  } else if (request.getMethod() == "HEAD") {
+    response.setBody("Received a HEAD request with body: " + request.getBody());
+  } else if (request.getMethod() == "DELETE") {
+    response.setBody("Received a DELETE request with body: " +
+                     request.getBody());
   } else if (request.getMethod() == "POST") {
     response.setBody("Received a POST request with body: " + request.getBody());
   } else {

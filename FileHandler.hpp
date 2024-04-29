@@ -19,15 +19,15 @@ class FileHandler : public Handler {
       std::string path = fileManager.resolvePath(request.getUrl());
       std::string content = fileManager.readFile(path);
       response.setBody(content);
-      response.setStatusCode(200);  // OK
+      response.setStatusCode(200);
       response.setHeaders({{"Content-Type", fileManager.getMimeType(path)},
                            {"Content-Length", std::to_string(content.size())}});
     } catch (const std::exception& e) {
-      response.setStatusCode(404);  // Not Found
+      response.setStatusCode(404);
       response.setBody("404 Not Found");
     }
     return response;
   }
 };
 
-#endif  // FILEHANDLER_H
+#endif

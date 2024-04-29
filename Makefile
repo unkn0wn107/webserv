@@ -1,6 +1,4 @@
-# Makefile for HTTP Server Project in C++ 98
-
-NAME = http_server
+NAME = webserv
 CC = g++
 CFLAGS = -Wall -Wextra -Werror -std=c++98
 

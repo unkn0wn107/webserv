@@ -8,12 +8,12 @@
 
 class Server {
  public:
-  static Server&     getInstance();
+  Server();
+  Server(std::map<std::string, std::string> config);
   void               start();
   ConnectionHandler* acceptConnection();
 
  private:
-  Server();
   Server(const Server&);             // Prevent copy-construction
   Server& operator=(const Server&);  // Prevent assignment
   ~Server();
@@ -28,4 +28,4 @@ class Server {
   int                             epoll_fd;
 };
 
-#endif  // SERVER_H
+#endif

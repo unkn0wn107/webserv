@@ -40,20 +40,9 @@ class Logger {
   }
 
  private:
-  /**
-   * Private constructor to prevent instantiation.
-   */
   Logger() {}
-
-  /**
-   * Private copy constructor to prevent copying.
-   */
   Logger(const Logger&);
-
-  /**
-   * Private assignment operator to prevent assignment.
-   */
   Logger& operator=(const Logger&);
 };
 
-#endif  // LOGGER_H
+#endif

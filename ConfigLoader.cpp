@@ -5,15 +5,17 @@
 
 ConfigLoader* ConfigLoader::instance = nullptr;
 
-ConfigLoader& ConfigLoader::getInstance() {
-  if (instance == nullptr) {
-    instance = new ConfigLoader();
-  }
-  return *instance;
+ConfigLoader* ConfigLoader::getInstance(const std::string* filepath) {
+  if (!instance)
+    if (!filepath)
+      instance = new ConfigLoader();
+    else
+      instance = new ConfigLoader(filepath);
+  return instance;
 }
 
-void ConfigLoader::loadConfig(const std::string& filename) {
-  std::ifstream configFile(filename.c_str());
+bool ConfigLoader::loadConfig(const std::string& filepath) {
+  std::ifstream configFile(filepath.c_str());
   if (!configFile.is_open()) {
     throw std::runtime_error("Unable to open configuration file.");
   }
@@ -31,9 +33,10 @@ void ConfigLoader::loadConfig(const std::string& filename) {
   }
 
   configFile.close();
+  return true;
 }
 
-std::string ConfigLoader::getConfig(const std::string& key) const {
+std::string ConfigLoader::getConfigValue(const std::string& key) const {
   std::map<std::string, std::string>::const_iterator it = config.find(key);
   if (it != config.end()) {
     return it->second;
@@ -42,13 +45,15 @@ std::string ConfigLoader::getConfig(const std::string& key) const {
   }
 }
 
+std::map<std::string, std::string> ConfigLoader::getConfig() const {
+  return config;
+}
+
 ConfigLoader::ConfigLoader() {
-  // Default configuration values can be set here
+  // Default config
   config["server_port"] = "8080";
   config["server_host"] = "127.0.0.1";
   config["max_client_body_size"] = "8192";  // 8 KB
 }
 
-ConfigLoader::~ConfigLoader() {
-  // Cleanup if necessary
-}
+ConfigLoader::~ConfigLoader() {}

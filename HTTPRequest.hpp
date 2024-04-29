@@ -4,11 +4,6 @@
 #include <map>
 #include <string>
 
-/**
- * Class HTTPRequest represents an HTTP request.
- * It encapsulates all the necessary components of an HTTP request such as
- * method, URL, headers, and body.
- */
 class HTTPRequest {
  public:
   HTTPRequest();
@@ -33,4 +28,4 @@ class HTTPRequest {
   std::string                        body;
 };
 
-#endif  // HTTPREQUEST_H
+#endif

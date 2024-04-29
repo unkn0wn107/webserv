@@ -5,16 +5,8 @@
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 
-/**
- * Class CGIHandler is responsible for handling CGI scripts execution.
- * It identifies the appropriate runtime for the script based on its extension,
- * executes the script, and captures its output to form an HTTP response.
- */
 class CGIHandler {
  public:
-  /**
-   * Constructor for CGIHandler.
-   */
   CGIHandler();
 
   /**
@@ -42,4 +34,4 @@ class CGIHandler {
                         const HTTPRequest& request);
 };
 
-#endif  // CGIHANDLER_H
+#endif

@@ -1,5 +1,8 @@
 {
 	"editor.defaultFormatter": "trunk.io",
 	"editor.formatOnSave": true,
-	"files.insertFinalNewline": true
+	"files.insertFinalNewline": true,
+	"files.associations": {
+		"cstdlib": "cpp"
+	}
 }

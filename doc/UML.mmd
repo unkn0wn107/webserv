@@ -2,46 +2,24 @@ classDiagram
 class Server {
   <<singleton>>
   +Server()
+  +Server(std::map<std::string, std::string> config)
   +start()
   +acceptConnection(): ConnectionHandler
   -config: ConfigLoader
   -connections: List~ConnectionHandler~
   -errorHandler: ErrorHandler
+  -epoll_fd: int
 }
 
 class ConnectionHandler {
-  +ConnectionHandler(Server, Socket)
-  +process()
-  +sendResponse()
+  +ConnectionHandler()
+  +ConnectionHandler(std::map<std::string, std::string> config)
+  +handleConnection(Socket)
   -socket: Socket
   -request: HTTPRequest
   -response: HTTPResponse
-  -protocol: HTTPProtocol
   -router: Router
-  -fileManager: FileManager
-  -errorHandler: ErrorHandler
-}
-
-class HTTPProtocol {
-  <<abstract>>
-  +HTTPProtocol()
-  +parseRequest(String): HTTPRequest
-  +createResponse(): HTTPResponse
-  +processRequest(HTTPRequest): HTTPResponse
-}
-
-class HTTP1_1 {
-  +HTTP1_1()
-  +parseRequest(String): HTTPRequest
-  +createResponse(): HTTPResponse
-  +processRequest(HTTPRequest): HTTPResponse
-}
-
-class HTTP2 {
-  +HTTP2()
-  +parseRequest(String): HTTPRequest
-  +createResponse(): HTTPResponse
-  +processRequest(HTTPRequest): HTTPResponse
+  -logger: Logger
 }
 
 class HTTPRequest {
@@ -50,6 +28,10 @@ class HTTPRequest {
   +getUrl(): String
   +getHeaders(): Map<String, String>
   +getBody(): String
+  -method: String
+  -url: String
+  -headers: Map<String, String>
+  -body: String
 }
 
 class HTTPResponse {
@@ -60,56 +42,47 @@ class HTTPResponse {
   +getHeaders(): Map<String, String>
   +setBody(String)
   +getBody(): String
+  -statusCode: int
+  -headers: Map<String, String>
+  -body: String
 }
 
 class ConfigLoader {
   <<singleton>>
   +ConfigLoader()
+  +ConfigLoader(const std::string* filepath)
+  +getInstance(const std::string* filepath): ConfigLoader
   +loadConfig(String)
+  +getConfigValue(String): String
   +getConfig(): Map<String, String>
+  -config: Map<String, String>
 }
 
 class FileManager {
   +FileManager()
   +readFile(String): String
+  +writeFile(String, String)
 }
 
 class ErrorHandler {
   +ErrorHandler()
-  +handleError(Exception)
+  +exception(Exception)
+  +log(String)
+  +fatal(String)
 }
 
 class Logger {
   <<singleton>>
   +Logger()
+  +getInstance(): Logger
   +log(String, int)
-}
-
-class SessionManager {
-  +SessionManager()
-  +createSession(): String
-  +getSession(String): Map<String, String>
-  +setSession(String, Map<String, String>)
-  +deleteSession(String)
-}
-
-class CookieManager {
-  +CookieManager()
-  +createCookie(String, String): String
-  +getCookie(String): String
-  +deleteCookie(String)
-}
-
-class CGIHandler {
-  +CGIHandler()
-  +executeCGIScript(String): String
-  -identifyRuntime(String): Runtime
-  -runScript(String): String
 }
 
 class Router {
   +Router()
   +route(HTTPRequest): Handler
+  +addRoute(String, Handler)
+  -routes: Map<String, Handler>
 }
 
 class Handler {
@@ -118,7 +91,7 @@ class Handler {
 }
 
 class FileHandler {
-  +FileHandler()
+  +FileHandler(FileManager&)
   +processRequest(HTTPRequest): HTTPResponse
   -fileManager: FileManager
 }
@@ -126,12 +99,13 @@ class FileHandler {
 class CGIHandler {
   +CGIHandler()
   +processRequest(HTTPRequest): HTTPResponse
+  -identifyRuntime(String): String
+  -runScript(String, HTTPRequest): String
 }
 
 Server "1" -- "0..*" ConnectionHandler : has
 ConnectionHandler "1" -- "1" HTTPProtocol : has
 HTTPProtocol <|-- HTTP1_1 : implements
-HTTPProtocol <|-- HTTP2 : implements
 ConnectionHandler "1" -- "1" HTTPRequest : has
 ConnectionHandler "1" -- "1" HTTPResponse : has
 Server "1" -- "1" ConfigLoader : uses
@@ -142,9 +116,6 @@ Handler <|-- CGIHandler : implements
 FileHandler "1" -- "1" FileManager : uses
 ConnectionHandler "1" -- "1" FileManager : uses
 ConnectionHandler "1" -- "1" Logger : uses
-ConnectionHandler "1" -- "1" SessionManager : uses
-ConnectionHandler "1" -- "1" CookieManager : uses
 Server "1" -- "1" ErrorHandler : has
 ConnectionHandler "1" -- "1" ErrorHandler : uses
 FileManager "1" -- "1" ErrorHandler : uses
-

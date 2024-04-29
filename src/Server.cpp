@@ -9,14 +9,14 @@
 
 Server::Server() {}
 
-Server::Server(std::map<std::string, std::string> config) : config(config) {
+Server::Server(std::map<std::string, std::string> config) : _config(config) {
   start();
-  ~Server();
+  Server::~Server();
 }
 
 Server::~Server() {
   close(epoll_fd);
-  close(server_socket);
+  close(_server_socket);
 }
 
 void Server::start() {
@@ -29,29 +29,29 @@ void Server::setupServerSocket() {
   struct sockaddr_in address;
   int                opt = 1;
 
-  if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+  if ((_server_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     errorHandler.fatal("Socket creation failed");
 
-  if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
+  if (setsockopt(_server_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
                  sizeof(opt)))
     errorHandler.fatal("Setsockopt failed");
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(config["port"]);
+  address.sin_port = htons(_config["port"]);
 
-  if (bind(server_socket, (struct sockaddr*)&address, sizeof(address)) < 0)
+  if (bind(_server_socket, (struct sockaddr*)&address, sizeof(address)) < 0)
     errorHandler.fatal("Bind failed");
 
-  if (listen(server_socket, 10) < 0)
+  if (listen(_server_socket, 10) < 0)
     errorHandler.fatal("Listen failed");
 
   // Set socket to non-blocking mode
-  int flags = fcntl(server_socket, F_GETFL, 0);
+  int flags = fcntl(_server_socket, F_GETFL, 0);
   if (flags == -1)
     errorHandler.fatal("Failed to get socket flags");
 
-  if (fcntl(server_socket, F_SETFL, flags | O_NONBLOCK) == -1)
+  if (fcntl(_server_socket, F_SETFL, flags | O_NONBLOCK) == -1)
     errorHandler.fatal("Failed to set socket to non-blocking");
 }
 
@@ -61,10 +61,10 @@ void Server::setupEpoll() {
     errorHandler.fatal("Epoll creation failed");
 
   struct epoll_event event;
-  event.data.fd = server_socket;
+  event.data.fd = _server_socket;
   event.events = EPOLLIN | EPOLLET;
 
-  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server_socket, &event) == -1)
+  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _server_socket, &event) == -1)
     errorHandler.fatal("Epoll control failed");
 }
 
@@ -76,7 +76,7 @@ void Server::run() {
   while (true) {
     event_count = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
     for (int i = 0; i < event_count; i++) {
-      if (events[i].data.fd == server_socket) {
+      if (events[i].data.fd == _server_socket) {
         acceptConnection();
       } else {
         ConnectionHandler* handler =
@@ -97,7 +97,7 @@ void Server::acceptConnection() {
   socklen_t          addrlen = sizeof(address);
   int                new_socket;
 
-  while ((new_socket = accept(server_socket, (struct sockaddr*)&address,
+  while ((new_socket = accept(_server_socket, (struct sockaddr*)&address,
                               &addrlen)) != -1) {
     // Set new socket to non-blocking mode
     int flags = fcntl(new_socket, F_GETFL, 0);

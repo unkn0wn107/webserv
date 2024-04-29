@@ -22,7 +22,7 @@ class CGIHandler {
    * @param scriptPath The path to the CGI script.
    * @return String representing the runtime to be used.
    */
-  std::string identifyRuntime(const std::string& scriptPath);
+  std::string identifyRuntime(const std::string& scriptPath) const;
 
   /**
    * Executes the CGI script using the identified runtime.
@@ -31,7 +31,7 @@ class CGIHandler {
    * @return String containing the output from the CGI script.
    */
   std::string runScript(const std::string& scriptPath,
-                        const HTTPRequest& request);
+                        const HTTPRequest& request) const;
 };
 
 #endif

@@ -9,7 +9,6 @@
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "Router.hpp"
-#include "Socket.hpp"
 
 class ConnectionHandler {
  public:
@@ -19,10 +18,10 @@ class ConnectionHandler {
   ConnectionHandler& operator=(const ConnectionHandler&);
   ~ConnectionHandler();
 
-  void handleConnection(Socket socket);
+  void handleConnection(int socket);
 
  private:
-  Socket       _socket;
+  int            _socket;
   HTTPRequest  _request;
   HTTPResponse _response;
   Router       _router;

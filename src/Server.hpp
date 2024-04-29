@@ -18,14 +18,16 @@ class Server {
   Server& operator=(const Server&);  // Prevent assignment
   ~Server();
 
-  void setupServer();
-  void handleConnections();
+  void setupServerSocket();
+  void setupEpoll();
+  void run();
 
   static Server*                  instance;
-  ConfigLoader&                   config;
+  std::map<std::string, std::string>                   _config;
   ErrorHandler                    errorHandler;
   std::vector<ConnectionHandler*> connections;
   int                             epoll_fd;
+  int _server_socket;
 };
 
 #endif

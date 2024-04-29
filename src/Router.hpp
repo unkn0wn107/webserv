@@ -12,8 +12,6 @@ class Router {
   Router();
   ~Router();
 
-  // Route the incoming HTTP request to the appropriate handler based on the URL
-  // and method
   Handler* route(const HTTPRequest& request);
 
   // Add a route to the router with a specific handler for a URL pattern
@@ -24,4 +22,4 @@ class Router {
   std::map<std::string, Handler*> routes;
 };
 
-#endif  // ROUTER_H
+#endif

@@ -1,25 +1,41 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   HTTPRequest.cpp                                    :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 17:13:46 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "HTTPRequest.hpp"
 
 HTTPRequest::HTTPRequest() : _method(""), _url(""), _body("") {}
 
-void HTTPRequest::parse(const std::string& rawRequest) {
-  std::istringstream requestStream(rawRequest);
-  std::string        line;
-  std::getline(requestStream, line);
-  std::istringstream lineStream(line);
-  lineStream >> _method >> _url;
+void HTTPRequest::setMethod(const std::string& method) {
+  _method = method;
+}
+void HTTPRequest::setUrl(const std::string& url) {
+  _url = url;
+}
 
-  while (std::getline(requestStream, line) && line != "\r") {
-    auto colonPos = line.find(':');
-    if (colonPos != std::string::npos) {
-      std::string key = line.substr(0, colonPos);
-      std::string value = line.substr(colonPos + 2);  // Skip ": "
-      _headers[key] = value;
-    }
-  }
+void HTTPRequest::setHeaders(
+    const std::map<std::string, std::string>& headers) {
+  _headers = headers;
+}
 
-  // Read the body if any
-  _body = std::string(std::istreambuf_iterator<char>(requestStream), {});
+void HTTPRequest::addHeader(const std::string& key, const std::string& value) {
+  _headers[key] = value;
+}
+
+void HTTPRequest::setBody(const std::string& body) {
+  _body = body;
+}
+
+std::string HTTPRequest::getRequestStr() const {
+  return _requestStr;
 }
 
 std::string HTTPRequest::getMethod() const {

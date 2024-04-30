@@ -1,13 +1,35 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 17:11:31 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "ConnectionHandler.hpp"
-#include "CGIHandler.hpp"
-#include "FileHandler.hpp"
-#include "Server.hpp"
 
 ConnectionHandler::ConnectionHandler(Server& server, int socket)
     : _server(server), _socket(socket) {}
 
 ConnectionHandler::~ConnectionHandler() {
   close(_socket);
+}
+
+HTTPProtocol* ConnectionHandler::selectHTTPProtocolVersion(
+    const std::string& requestString) {
+  std::istringstream iss(requestString);
+  std::string        method, url, version;
+  iss >> method >> url >> version;
+
+  if (version == "HTTP/1.1") {
+    return new HTTP1_1();
+  } else {
+    ErrorHandler::log("Unknown HTTP protocol version");
+  }
 }
 
 void ConnectionHandler::process() {

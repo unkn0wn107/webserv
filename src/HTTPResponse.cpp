@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 16:17:32 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "HTTPResponse.hpp"
 
 HTTPResponse::HTTPResponse() : _statusCode(HTTPResponse::OK) {
@@ -47,7 +59,7 @@ std::string HTTPResponse::getStatusMessage(int code) const {
 
 std::string HTTPResponse::generate() const {
   std::string response;
-  response += "HTTP/1.1 " + std::to_string(_statusCode) + " " +
+  response += "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
               getStatusMessage(_statusCode) + "\r\n";
 
   for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
@@ -58,7 +70,7 @@ std::string HTTPResponse::generate() const {
   response += "Content-Type: text/plain\r\n";
 
   if (_body.length() > 0) {
-    response += "Content-Length: " + std::to_string(_body.length()) + "\r\n";
+    response += "Content-Length: " + Utils::to_string(_body.length()) + "\r\n";
     response += "\r\n" + _body;
   }
 

@@ -1,38 +1,45 @@
-#include "CGIHandler.hpp"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   CGIHandler.cpp                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 16:41:25 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
 
-std::map<std::string, std::string> CGIHandler::availableCGIs = {
-    {".php", "/usr/bin/php-cgi"},
-    {".py", "/usr/bin/python"}};
+#include "CGIHandler.hpp"
 
 CGIHandler::CGIHandler() {}
 
 bool CGIHandler::isScript(const std::string& url) {
   std::string extension = url.substr(url.find_last_of('.'));
-  return availableCGIs.find(extension) != availableCGIs.end();
+  return _AVAILABLE_CGIS.find(extension) != _AVAILABLE_CGIS.end();
 }
 
 std::string CGIHandler::identifyRuntime(const std::string& scriptPath) const {
   std::string extension = scriptPath.substr(scriptPath.find_last_of('.'));
-  auto        it = availableCGIs.find(extension);
-  if (it != availableCGIs.end()) {
+  std::map<std::string, std::string>::const_iterator it =
+      _AVAILABLE_CGIS.find(extension);
+  if (it != _AVAILABLE_CGIS.end()) {
     return it->second;
   }
   return "";
 }
 
-std::string CGIHandler::runScript(const std::string& scriptPath,
-                                  const HTTPRequest& request) const {
+std::string CGIHandler::runScript(const std::string& scriptPath) const {
   std::string runtime = identifyRuntime(scriptPath);
   if (runtime.empty()) {
     std::cerr << "No suitable runtime found for script: " << scriptPath
               << std::endl;
     return "";
   }
-  return executeCGIScript(runtime, request);
+  return executeCGIScript(runtime);
 }
 
-std::string CGIHandler::executeCGIScript(const std::string& scriptPath,
-                                         const HTTPRequest& request) const {
+std::string CGIHandler::executeCGIScript(const std::string& scriptPath) const {
   int pipefd[2];
   if (pipe(pipefd) == -1) {
     std::cerr << "Failed to create pipe" << std::endl;

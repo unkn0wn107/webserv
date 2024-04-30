@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   CGIHandler.hpp                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 16:38:15 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #ifndef CGIHANDLER_H
 #define CGIHANDLER_H
 
@@ -27,10 +39,9 @@ class CGIHandler {
   static HTTPResponse processRequest(const HTTPRequest& request);
 
  private:
-  /**
-   * A map to store the association between CGI script names and their binaries
-   */
-  static std::map<std::string, std::string> availableCGIs;
+  static const std::pair<std::string, std::string> _AVAILABLE_CGI_PAIRS[];
+  static const int                                 _NUM_AVAILABLE_CGI;
+  static const std::map<std::string, std::string>  _AVAILABLE_CGIS;
 
   /**
    * Identifies the runtime environment based on the script file extension.
@@ -45,11 +56,19 @@ class CGIHandler {
    * @param request The HTTP request object for passing to the CGI.
    * @return String containing the output from the CGI script.
    */
-  std::string runScript(const std::string& scriptPath,
-                        const HTTPRequest& request) const;
-
-  std::string executeCGIScript(const std::string& scriptPath,
-                               const HTTPRequest& request) const;
+  std::string runScript(const std::string& scriptPath) const;
+  std::string executeCGIScript(const std::string& scriptPath) const;
 };
+
+const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGI_PAIRS[] = {
+    std::make_pair(".php", "/usr/bin/php-cgi"),
+    std::make_pair(".py", "/usr/bin/python")};
+
+const int CGIHandler::_NUM_AVAILABLE_CGI =
+    sizeof(_AVAILABLE_CGI_PAIRS) / sizeof(std::pair<std::string, std::string>);
+
+const std::map<std::string, std::string> CGIHandler::_AVAILABLE_CGIS(
+    _AVAILABLE_CGI_PAIRS,
+    _AVAILABLE_CGI_PAIRS + CGIHandler::_NUM_AVAILABLE_CGI);
 
 #endif

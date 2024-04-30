@@ -1,36 +1,42 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Logger.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/30 16:12:15 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 16:12:18 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "Logger.hpp"
 #include <ctime>
 #include <fstream>
 #include <iostream>
 
-Logger* Logger::instance = nullptr;
+Logger::Logger() {}
 
-Logger::Logger() {
-  // Constructor for Logger, private as per Singleton pattern
-}
+Logger::~Logger() {}
 
-Logger* Logger::getInstance() {
-  if (instance == nullptr) {
-    instance = new Logger();
-  }
+Logger& Logger::get() {
+  static Logger instance;
   return instance;
 }
 
-void Logger::log(const std::string& message, int level) {
+void Logger::log(const std::string& message, logLevel level) {
   std::ofstream logFile;
-  logFile.open("server.log", std::ios_base::app);  // Append mode
+  logFile.open("server.log", std::ios_base::app);
 
   if (!logFile.is_open()) {
     std::cerr << "Failed to open log file." << std::endl;
     return;
   }
 
-  // Get current time and format it
-  std::time_t now = std::time(nullptr);
+  std::time_t now = std::time(NULL);
   char        buf[100];
   std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
 
-  // Write log entry
   logFile << "[" << buf << "] ";
 
   switch (level) {
@@ -51,11 +57,4 @@ void Logger::log(const std::string& message, int level) {
   logFile << message << std::endl;
 
   logFile.close();
-}
-
-void Logger::release() {
-  if (instance != nullptr) {
-    delete instance;
-    instance = nullptr;
-  }
 }

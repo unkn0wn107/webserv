@@ -1,8 +1,16 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   HTTP1_1.cpp                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/30 16:10:48 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 16:22:08 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "HTTP1_1.hpp"
-#include <algorithm>
-#include <sstream>
-#include "HTTPRequest.hpp"
-#include "HTTPResponse.hpp"
 
 HTTP1_1::HTTP1_1() {}
 
@@ -35,7 +43,8 @@ HTTPRequest HTTP1_1::parseRequest(const std::string& requestData) {
   // Parse body if any
   std::string body;
   if (request.getHeader("Content-Length") != "") {
-    int   contentLength = std::stoi(request.getHeader("Content-Length"));
+    size_t contentLength =
+        Utils::stoi<size_t>(request.getHeader("Content-Length"));
     char* buffer = new char[contentLength + 1];
     stream.read(buffer, contentLength);
     buffer[contentLength] = '\0';

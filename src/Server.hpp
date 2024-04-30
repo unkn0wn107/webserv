@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 03:36:26 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 16:47:13 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,9 +42,8 @@ class Server {
   void acceptConnection();
 
   std::map<std::string, std::string> _config;
-  ErrorHandler                       errorHandler;
-  std::vector<ConnectionHandler*>    connections;
-  int                                epoll_fd;
+  std::vector<ConnectionHandler*>    _connections;
+  int                                _epoll_fd;
   int                                _server_socket;
 };
 

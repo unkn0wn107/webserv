@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   FileHandler.cpp                                    :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/30 16:11:37 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 16:42:59 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "FileHandler.hpp"
 #include <sys/stat.h>
 #include <fstream>
@@ -33,9 +45,9 @@ HTTPResponse FileHandler::processRequest(const HTTPRequest& request) {
     response.setStatusCode(HTTPResponse::NOT_FOUND);
 
   // Set common headers
-  response.setHeaders(
-      {{"Content-Type", "text/html"},
-       {"Content-Length", std::to_string(response.getBody().length())}});
+  response.addHeader("Content-Type", "text/html");
+  response.addHeader("Content-Length",
+                     Utils::to_string(response.getBody().length()));
 
   return response;
 }

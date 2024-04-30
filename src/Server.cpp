@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 03:35:09 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 16:47:54 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@ Server::Server(std::map<std::string, std::string> config) : _config(config) {
 }
 
 Server::~Server() {
-  close(epoll_fd);
+  close(_epoll_fd);
   close(_server_socket);
 }
 
@@ -35,38 +35,38 @@ void Server::setupServerSocket() {
 
   _server_socket = socket(AF_INET, SOCK_STREAM, 0);
   if (_server_socket == 0)
-    errorHandler.fatal("Socket creation failed");
+    ErrorHandler::fatal("Socket creation failed");
 
   if (setsockopt(_server_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
                  sizeof(opt)))
-    errorHandler.fatal("Setsockopt failed");
+    ErrorHandler::fatal("Setsockopt failed");
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(std::stoi(_config["port"]));
+  address.sin_port = htons(Utils::stoi<int>(_config["port"]));
 
   if (bind(_server_socket, (struct sockaddr*)&address, sizeof(address)) < 0)
-    errorHandler.fatal("Bind failed");
+    ErrorHandler::fatal("Bind failed");
 
   if (listen(_server_socket, 10) < 0)
-    errorHandler.fatal("Listen failed");
+    ErrorHandler::fatal("Listen failed");
 
   int flags = fcntl(_server_socket, F_GETFL, 0);
   if (flags == -1 || fcntl(_server_socket, F_SETFL, flags | O_NONBLOCK) == -1)
-    errorHandler.fatal("Failed to set socket to non-blocking");
+    ErrorHandler::fatal("Failed to set socket to non-blocking");
 }
 
 void Server::setupEpoll() {
-  epoll_fd = epoll_create1(0);
-  if (epoll_fd == -1)
-    errorHandler.fatal("Epoll creation failed");
+  _epoll_fd = epoll_create1(0);
+  if (_epoll_fd == -1)
+    ErrorHandler::fatal("Epoll creation failed");
 
   struct epoll_event event;
   event.data.fd = _server_socket;
   event.events = EPOLLIN | EPOLLET | EPOLLOUT;
 
-  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _server_socket, &event) == -1)
-    errorHandler.fatal("Epoll control failed");
+  if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server_socket, &event) == -1)
+    ErrorHandler::fatal("Epoll control failed");
 }
 
 void Server::run() {
@@ -75,7 +75,7 @@ void Server::run() {
   int                event_count;
 
   while (true) {
-    event_count = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+    event_count = epoll_wait(_epoll_fd, events, MAX_EVENTS, -1);
     for (int i = 0; i < event_count; i++) {
       if (events[i].data.fd == _server_socket) {
         acceptConnection();
@@ -102,7 +102,7 @@ void Server::acceptConnection() {
                               &addrlen)) != -1) {
     int flags = fcntl(new_socket, F_GETFL, 0);
     if (flags == -1 || fcntl(new_socket, F_SETFL, flags | O_NONBLOCK) == -1) {
-      errorHandler.log("Failed to set new socket to non-blocking");
+      ErrorHandler::log("Failed to set new socket to non-blocking");
       continue;
     }
 
@@ -111,8 +111,8 @@ void Server::acceptConnection() {
     event.data.ptr = handler;
     event.events = EPOLLIN | EPOLLET | EPOLLOUT;
 
-    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, new_socket, &event) == -1) {
-      errorHandler.log("Failed to add new socket to epoll");
+    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, new_socket, &event) == -1) {
+      ErrorHandler::log("Failed to add new socket to epoll");
       delete handler;
     }
   }

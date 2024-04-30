@@ -1,16 +1,29 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ConfigLoader.cpp                                   :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/30 16:11:13 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 16:11:14 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "ConfigLoader.hpp"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 
-ConfigLoader* ConfigLoader::instance = nullptr;
+ConfigLoader* ConfigLoader::instance = NULL;
 
 ConfigLoader* ConfigLoader::getInstance(const std::string* filepath) {
-  if (!instance)
+  if (!instance) {
     if (!filepath)
       instance = new ConfigLoader();
     else
       instance = new ConfigLoader(filepath);
+  }
   return instance;
 }
 

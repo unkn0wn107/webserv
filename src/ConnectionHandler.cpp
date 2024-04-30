@@ -1,56 +1,43 @@
 #include "ConnectionHandler.hpp"
+#include "CGIHandler.hpp"
+#include "FileHandler.hpp"
+#include "Server.hpp"
 
-ConnectionHandler::ConnectionHandler(Socket socket) : _socket(socket) {}
-
-ConnectionHandler::ConnectionHandler(const ConnectionHandler& other) {
-  _socket = other._socket;
-}
-
-ConnectionHandler& ConnectionHandler::operator=(
-    const ConnectionHandler& other) {
-  _socket = other._socket;
-  return *this;
-}
+ConnectionHandler::ConnectionHandler(Server& server, int socket)
+    : _server(server), _socket(socket) {}
 
 ConnectionHandler::~ConnectionHandler() {
-  delete _socket;
+  close(_socket);
 }
 
-void ConnectionHandler::handleConnection(Socket clientSocket) {
-  // Process incoming requests and send responses for a single client connection
-
-  // Set up HTTP request and response objects
-  HTTPRequest  request;
-  HTTPResponse response;
-
-  // Parse incoming request from client
-  try {
-    request.parse(clientSocket);
-  } catch (const std::exception& e) {
-    // Handle parsing errors
-    response.setStatusCode(HTTPResponse::BAD_REQUEST);
-    response.setBody("Error parsing request: " + std::string(e.what()));
-    response.send(clientSocket);
+void ConnectionHandler::process() {
+  char    buffer[1024];
+  ssize_t bytes_read = recv(_socket, buffer, sizeof(buffer), 0);
+  if (bytes_read <= 0) {
+    // Handle error or close connection
     return;
   }
 
-  // Route request to appropriate handler
-  Router                   router;
-  std::unique_ptr<Handler> handler = router.route(request);
-
-  // Process request and generate response
   try {
-    handler->processRequest(request, response);
+    _request.parse(buffer);
   } catch (const std::exception& e) {
-    // Handle processing errors
-    response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
-    response.setBody("Error processing request: " + std::string(e.what()));
+    _response.setStatusCode(HTTPResponse::BAD_REQUEST);
+    _response.setBody("Error parsing request: " + std::string(e.what()));
+    sendResponse();
+    return;
   }
 
-  // Send response back to client
-  response.send(clientSocket);
+  std::string url = _request.getUrl();
+  std::string extension = url.substr(url.find_last_of('.'));
 
-  // Log connection details
-  Logger::log("Connection closed: " + clientSocket.getRemoteAddress() + ":" +
-              std::to_string(clientSocket.getRemotePort()));
+  if (CGIHandler::isScript(url))
+    _response = CGIHandler::processRequest(_request);
+  else
+    _response = FileHandler::processRequest(_request);
+  sendResponse();
+}
+
+void ConnectionHandler::sendResponse() {
+  std::string response = _response.generate();
+  send(_socket, response.c_str(), response.size(), 0);
 }

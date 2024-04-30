@@ -1,60 +1,66 @@
 #include "HTTPResponse.hpp"
 
-HTTPResponse::HTTPResponse()
-    : statusCode(200) {  // Default status code is 200 OK
+HTTPResponse::HTTPResponse() : _statusCode(HTTPResponse::OK) {
+  _protocol = "HTTP/1.1";
+}
+
+HTTPResponse::HTTPResponse(const std::string& protocol)
+    : _statusCode(HTTPResponse::OK) {
+  _protocol = protocol;
 }
 
 void HTTPResponse::setStatusCode(int code) {
-  statusCode = code;
-}
-
-int HTTPResponse::getStatusCode() const {
-  return statusCode;
+  _statusCode = code;
 }
 
 void HTTPResponse::setHeaders(const std::map<std::string, std::string>& hdrs) {
-  headers = hdrs;
+  _headers = hdrs;
+}
+
+void HTTPResponse::addHeader(const std::string& key, const std::string& value) {
+  _headers[key] = value;
+}
+
+void HTTPResponse::setBody(const std::string& body) {
+  _body = body;
+}
+
+int HTTPResponse::getStatusCode() const {
+  return _statusCode;
 }
 
 std::map<std::string, std::string> HTTPResponse::getHeaders() const {
-  return headers;
-}
-
-void HTTPResponse::setBody(const std::string& bdy) {
-  body = bdy;
+  return _headers;
 }
 
 std::string HTTPResponse::getBody() const {
-  return body;
-}
-
-std::string HTTPResponse::toString() const {
-  std::string response;
-  response += "HTTP/1.1 " + std::to_string(statusCode) + " " +
-              getStatusMessage(statusCode) + "\r\n";
-
-  for (const auto& header : headers) {
-    response += header.first + ": " + header.second + "\r\n";
-  }
-
-  response += "\r\n" + body;
-
-  return response;
+  return _body;
 }
 
 std::string HTTPResponse::getStatusMessage(int code) const {
-  switch (code) {
-    case 200:
-      return "OK";
-    case 400:
-      return "Bad Request";
-    case 403:
-      return "Forbidden";
-    case 404:
-      return "Not Found";
-    case 500:
-      return "Internal Server Error";
-    default:
-      return "Unknown";
+  std::map<int, std::string>::const_iterator it = statusCodeMessages.find(code);
+  if (it != statusCodeMessages.end())
+    return it->second;
+  else
+    return "Unknown";
+}
+
+std::string HTTPResponse::generate() const {
+  std::string response;
+  response += "HTTP/1.1 " + std::to_string(_statusCode) + " " +
+              getStatusMessage(_statusCode) + "\r\n";
+
+  for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
+       it != _headers.end(); ++it) {
+    response += it->first + ": " + it->second + "\r\n";
   }
+
+  response += "Content-Type: text/plain\r\n";
+
+  if (_body.length() > 0) {
+    response += "Content-Length: " + std::to_string(_body.length()) + "\r\n";
+    response += "\r\n" + _body;
+  }
+
+  return response;
 }

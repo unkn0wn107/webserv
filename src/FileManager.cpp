@@ -1,8 +1,4 @@
 #include "FileManager.hpp"
-#include <errno.h>
-#include <sys/stat.h>
-#include <fstream>
-#include <sstream>
 
 FileManager::FileManager() {}
 
@@ -19,7 +15,7 @@ std::string FileManager::readFile(const std::string& path) {
   return contents.str();
 }
 
-bool FileManager::fileExists(const std::string& path) {
+bool FileManager::doesFileExists(const std::string& path) {
   struct stat buffer;
   return (stat(path.c_str(), &buffer) == 0);
 }

@@ -15,20 +15,20 @@ class ErrorHandler {
    * generating an appropriate response.
    * @param e The exception object caught.
    */
-  void exception(const std::exception& e);
+  static void exception(const std::exception& e);
 
   /**
    * Handles generic error messages.
    * @param errorMessage The error message to be logged.
    */
-  void log(const std::string& errorMessage);
+  static void log(const std::string& errorMessage);
 
   /**
    * Handles fatal errors by logging them and optionally
    * generating an appropriate response.
    * @param errorMessage The error message to be logged.
    */
-  void fatal(const std::string& errorMessage);
+  static void fatal(const std::string& errorMessage);
 };
 
 #endif

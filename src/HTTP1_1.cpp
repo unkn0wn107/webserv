@@ -47,34 +47,20 @@ HTTPRequest HTTP1_1::parseRequest(const std::string& requestData) {
   return request;
 }
 
-HTTPResponse HTTP1_1::createResponse() {
-  return HTTPResponse();
-}
-
 HTTPResponse HTTP1_1::processRequest(const HTTPRequest& request) {
-  HTTPResponse response = createResponse();
-  response.setStatusCode(200);  // OK by default
-  response.setProtocol("HTTP/1.1");
+  HTTPResponse response = HTTPResponse("HTTP/1.1");
 
-  // Example processing logic
-  if (request.getMethod() == "GET") {
+  if (request.getMethod() == "GET")
     response.setBody("Received a GET request for " + request.getUrl());
-  } else if (request.getMethod() == "HEAD") {
+  else if (request.getMethod() == "HEAD")
     response.setBody("Received a HEAD request with body: " + request.getBody());
-  } else if (request.getMethod() == "DELETE") {
+  else if (request.getMethod() == "DELETE")
     response.setBody("Received a DELETE request with body: " +
                      request.getBody());
-  } else if (request.getMethod() == "POST") {
+  else if (request.getMethod() == "POST")
     response.setBody("Received a POST request with body: " + request.getBody());
-  } else {
-    response.setStatusCode(405);  // Method Not Allowed
-    response.setBody("Method Not Supported");
-  }
-
-  // Set common headers
-  response.addHeader("Content-Type", "text/plain");
-  response.addHeader("Content-Length",
-                     std::to_string(response.getBody().length()));
+  else
+    response.setStatusCode(HTTPResponse::METHOD_NOT_ALLOWED);
 
   return response;
 }

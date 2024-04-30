@@ -6,17 +6,13 @@
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 
-FileHandler::FileHandler() {
-  fileManager = new FileManager();
-}
+FileHandler::FileHandler() {}
 
-FileHandler::~FileHandler() {
-  delete fileManager;
-}
+FileHandler::~FileHandler() {}
 
 HTTPResponse FileHandler::processRequest(const HTTPRequest& request) {
   HTTPResponse response;
-  std::string  path = fileManager->resolvePath(request.getUrl());
+  std::string  path = request.getUrl();
   struct stat  path_stat;
   stat(path.c_str(), &path_stat);
 
@@ -24,24 +20,17 @@ HTTPResponse FileHandler::processRequest(const HTTPRequest& request) {
   if (S_ISDIR(path_stat.st_mode)) {
     // Handle directory request
     std::string indexFilePath = path + "/index.html";
-    if (fileManager->fileExists(indexFilePath)) {
-      response.setBody(fileManager->readFile(indexFilePath));
-      response.setStatusCode(200);
-    } else {
-      // Directory listing is turned off, return 403 Forbidden
-      response.setStatusCode(403);
-      response.setBody("403 Forbidden: Directory listing is disabled.");
-    }
-  } else if (fileManager->fileExists(path)) {
+    if (FileManager::doesFileExists(indexFilePath)) {
+      response.setBody(FileManager::readFile(indexFilePath));
+      response.setStatusCode(HTTPResponse::OK);
+    } else
+      response.setStatusCode(HTTPResponse::FORBIDDEN);
+  } else if (FileManager::doesFileExists(path)) {
     // Handle file request
-    response.setBody(fileManager->readFile(path));
-    response.setStatusCode(200);
-  } else {
-    // File not found
-    response.setStatusCode(404);
-    response.setBody(
-        "404 Not Found: The requested resource was not found on this server.");
-  }
+    response.setBody(FileManager::readFile(path));
+    response.setStatusCode(HTTPResponse::OK);
+  } else
+    response.setStatusCode(HTTPResponse::NOT_FOUND);
 
   // Set common headers
   response.setHeaders(

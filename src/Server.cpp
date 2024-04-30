@@ -1,17 +1,21 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Server.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 03:35:09 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "Server.hpp"
-#include <fcntl.h>
-#include <sys/epoll.h>
-#include <unistd.h>
-#include <cstring>
-#include <iostream>
-#include <stdexcept>
-#include "ConnectionHandler.hpp"
 
 Server::Server() {}
 
 Server::Server(std::map<std::string, std::string> config) : _config(config) {
   start();
-  Server::~Server();
 }
 
 Server::~Server() {
@@ -29,7 +33,8 @@ void Server::setupServerSocket() {
   struct sockaddr_in address;
   int                opt = 1;
 
-  if ((_server_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+  _server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  if (_server_socket == 0)
     errorHandler.fatal("Socket creation failed");
 
   if (setsockopt(_server_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
@@ -38,7 +43,7 @@ void Server::setupServerSocket() {
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(_config["port"]);
+  address.sin_port = htons(std::stoi(_config["port"]));
 
   if (bind(_server_socket, (struct sockaddr*)&address, sizeof(address)) < 0)
     errorHandler.fatal("Bind failed");
@@ -46,12 +51,8 @@ void Server::setupServerSocket() {
   if (listen(_server_socket, 10) < 0)
     errorHandler.fatal("Listen failed");
 
-  // Set socket to non-blocking mode
   int flags = fcntl(_server_socket, F_GETFL, 0);
-  if (flags == -1)
-    errorHandler.fatal("Failed to get socket flags");
-
-  if (fcntl(_server_socket, F_SETFL, flags | O_NONBLOCK) == -1)
+  if (flags == -1 || fcntl(_server_socket, F_SETFL, flags | O_NONBLOCK) == -1)
     errorHandler.fatal("Failed to set socket to non-blocking");
 }
 
@@ -62,7 +63,7 @@ void Server::setupEpoll() {
 
   struct epoll_event event;
   event.data.fd = _server_socket;
-  event.events = EPOLLIN | EPOLLET;
+  event.events = EPOLLIN | EPOLLET | EPOLLOUT;
 
   if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _server_socket, &event) == -1)
     errorHandler.fatal("Epoll control failed");
@@ -99,14 +100,8 @@ void Server::acceptConnection() {
 
   while ((new_socket = accept(_server_socket, (struct sockaddr*)&address,
                               &addrlen)) != -1) {
-    // Set new socket to non-blocking mode
     int flags = fcntl(new_socket, F_GETFL, 0);
-    if (flags == -1) {
-      errorHandler.log("Failed to get new socket flags");
-      continue;
-    }
-
-    if (fcntl(new_socket, F_SETFL, flags | O_NONBLOCK) == -1) {
+    if (flags == -1 || fcntl(new_socket, F_SETFL, flags | O_NONBLOCK) == -1) {
       errorHandler.log("Failed to set new socket to non-blocking");
       continue;
     }

@@ -5,7 +5,6 @@
 #include <string>
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
-#include "Handler.hpp"
 
 class Router {
  public:

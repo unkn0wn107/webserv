@@ -1,33 +1,51 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Server.hpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
+/*   Updated: 2024/04/30 03:36:26 by agaley           ###   ########lyon.fr   */
+/*                                                                            */
+/* ************************************************************************** */
+
 #ifndef SERVER_H
 #define SERVER_H
 
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <sys/epoll.h>
+#include <unistd.h>
+#include <iostream>
+#include <map>
+#include <string>
 #include <vector>
-#include "ConfigLoader.hpp"
 #include "ConnectionHandler.hpp"
 #include "ErrorHandler.hpp"
 
 class Server {
  public:
   Server();
-  Server(std::map<std::string, std::string> config);
-  void               start();
-  ConnectionHandler* acceptConnection();
+  explicit Server(std::map<std::string, std::string> config);
+  ~Server();
+
+  void start();
 
  private:
   Server(const Server&);             // Prevent copy-construction
   Server& operator=(const Server&);  // Prevent assignment
-  ~Server();
 
   void setupServerSocket();
   void setupEpoll();
   void run();
+  void acceptConnection();
 
-  static Server*                  instance;
-  std::map<std::string, std::string>                   _config;
-  ErrorHandler                    errorHandler;
-  std::vector<ConnectionHandler*> connections;
-  int                             epoll_fd;
-  int _server_socket;
+  std::map<std::string, std::string> _config;
+  ErrorHandler                       errorHandler;
+  std::vector<ConnectionHandler*>    connections;
+  int                                epoll_fd;
+  int                                _server_socket;
 };
 
 #endif

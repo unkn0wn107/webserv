@@ -2,6 +2,7 @@
 #define HTTPREQUEST_H
 
 #include <map>
+#include <sstream>
 #include <string>
 
 class HTTPRequest {
@@ -9,23 +10,19 @@ class HTTPRequest {
   HTTPRequest();
   ~HTTPRequest();
 
-  // Getters
+  void parse(const std::string& rawRequest);
+
   std::string                        getMethod() const;
   std::string                        getUrl() const;
   std::map<std::string, std::string> getHeaders() const;
+  std::string                        getHeader(const std::string& key) const;
   std::string                        getBody() const;
 
-  // Setters
-  void setMethod(const std::string& method);
-  void setUrl(const std::string& url);
-  void setHeaders(const std::map<std::string, std::string>& headers);
-  void setBody(const std::string& body);
-
  private:
-  std::string                        method;
-  std::string                        url;
-  std::map<std::string, std::string> headers;
-  std::string                        body;
+  std::string                        _method;
+  std::string                        _url;
+  std::map<std::string, std::string> _headers;
+  std::string                        _body;
 };
 
 #endif

@@ -1,47 +1,46 @@
 #include "HTTPRequest.hpp"
 
-HTTPRequest::HTTPRequest() : method(""), url(""), body("") {}
+HTTPRequest::HTTPRequest() : _method(""), _url(""), _body("") {}
 
-void HTTPRequest::setMethod(const std::string& method) {
-  this->method = method;
-}
+void HTTPRequest::parse(const std::string& rawRequest) {
+  std::istringstream requestStream(rawRequest);
+  std::string        line;
+  std::getline(requestStream, line);
+  std::istringstream lineStream(line);
+  lineStream >> _method >> _url;
 
-void HTTPRequest::setUrl(const std::string& url) {
-  this->url = url;
-}
+  while (std::getline(requestStream, line) && line != "\r") {
+    auto colonPos = line.find(':');
+    if (colonPos != std::string::npos) {
+      std::string key = line.substr(0, colonPos);
+      std::string value = line.substr(colonPos + 2);  // Skip ": "
+      _headers[key] = value;
+    }
+  }
 
-void HTTPRequest::setHeaders(
-    const std::map<std::string, std::string>& headers) {
-  this->headers = headers;
-}
-
-void HTTPRequest::setBody(const std::string& body) {
-  this->body = body;
+  // Read the body if any
+  _body = std::string(std::istreambuf_iterator<char>(requestStream), {});
 }
 
 std::string HTTPRequest::getMethod() const {
-  return method;
+  return _method;
 }
 
 std::string HTTPRequest::getUrl() const {
-  return url;
+  return _url;
 }
 
 std::map<std::string, std::string> HTTPRequest::getHeaders() const {
-  return headers;
+  return _headers;
 }
 
 std::string HTTPRequest::getBody() const {
-  return body;
-}
-
-void HTTPRequest::addHeader(const std::string& key, const std::string& value) {
-  headers[key] = value;
+  return _body;
 }
 
 std::string HTTPRequest::getHeader(const std::string& key) const {
-  std::map<std::string, std::string>::const_iterator it = headers.find(key);
-  if (it != headers.end()) {
+  std::map<std::string, std::string>::const_iterator it = _headers.find(key);
+  if (it != _headers.end()) {
     return it->second;
   }
   return "";

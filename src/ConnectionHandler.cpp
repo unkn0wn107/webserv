@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 17:11:31 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 17:50:23 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,18 +19,18 @@ ConnectionHandler::~ConnectionHandler() {
   close(_socket);
 }
 
-HTTPProtocol* ConnectionHandler::selectHTTPProtocolVersion(
-    const std::string& requestString) {
-  std::istringstream iss(requestString);
-  std::string        method, url, version;
-  iss >> method >> url >> version;
+// HTTPProtocol* ConnectionHandler::selectHTTPProtocolVersion(
+//     const std::string& requestString) {
+//   std::istringstream iss(requestString);
+//   std::string        method, url, version;
+//   iss >> method >> url >> version;
 
-  if (version == "HTTP/1.1") {
-    return new HTTP1_1();
-  } else {
-    ErrorHandler::log("Unknown HTTP protocol version");
-  }
-}
+//   if (version == "HTTP/1.1") {
+//     return new HTTP1_1();
+//   } else {
+//     ErrorHandler::log("Unknown HTTP protocol version");
+//   }
+// }
 
 void ConnectionHandler::process() {
   char    buffer[1024];
@@ -41,7 +41,8 @@ void ConnectionHandler::process() {
   }
 
   try {
-    _request.parse(buffer);
+    HTTP1_1 protocol;
+    _request = protocol.parseRequest(buffer);
   } catch (const std::exception& e) {
     _response.setStatusCode(HTTPResponse::BAD_REQUEST);
     _response.setBody("Error parsing request: " + std::string(e.what()));

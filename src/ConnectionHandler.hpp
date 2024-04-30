@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 17:10:19 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 17:47:20 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,6 @@
 #include "ErrorHandler.hpp"
 #include "FileHandler.hpp"
 #include "HTTP1_1.hpp"
-#include "HTTPProtocol.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
@@ -34,9 +33,9 @@ class ConnectionHandler {
   ConnectionHandler(Server& server, int socket);
   ~ConnectionHandler();
 
-  HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
-  void          process();
-  void          sendResponse();
+  // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
+  void process();
+  void sendResponse();
 
  private:
   Server&      _server;

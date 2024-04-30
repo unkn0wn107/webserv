@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 18:59:42 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 20:09:45 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 
@@ -47,7 +48,7 @@ class CGIHandler {
    * @param scriptPath The path to the CGI script.
    * @return String representing the runtime to be used.
    */
-  std::string identifyRuntime(const std::string& scriptPath) const;
+  static std::string identifyRuntime(const std::string& scriptPath);
 
   /**
    * Executes the CGI script using the identified runtime.
@@ -55,8 +56,8 @@ class CGIHandler {
    * @param request The HTTP request object for passing to the CGI.
    * @return String containing the output from the CGI script.
    */
-  std::string runScript(const std::string& scriptPath) const;
-  std::string executeCGIScript(const std::string& scriptPath) const;
+  static std::string runScript(const std::string& scriptPath);
+  static std::string executeCGIScript(const std::string& scriptPath);
 };
 
 #endif

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 19:03:56 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 19:58:27 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,6 +72,8 @@ const int HTTPResponse::NUM_STATUS_CODE_MESSAGES =
 HTTPResponse::HTTPResponse() : _statusCode(HTTPResponse::OK) {
   _protocol = "HTTP/1.1";
 }
+
+HTTPResponse::~HTTPResponse() {}
 
 HTTPResponse::HTTPResponse(const std::string& protocol)
     : _statusCode(HTTPResponse::OK) {

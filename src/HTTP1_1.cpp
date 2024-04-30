@@ -6,13 +6,15 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:48 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:22:08 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 19:59:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTP1_1.hpp"
 
 HTTP1_1::HTTP1_1() {}
+
+HTTP1_1::~HTTP1_1() {}
 
 HTTPRequest HTTP1_1::parseRequest(const std::string& requestData) {
   HTTPRequest        request;

@@ -6,13 +6,14 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 17:13:46 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 19:58:01 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPRequest.hpp"
 
 HTTPRequest::HTTPRequest() : _method(""), _url(""), _body("") {}
+HTTPRequest::~HTTPRequest() {}
 
 void HTTPRequest::setMethod(const std::string& method) {
   _method = method;

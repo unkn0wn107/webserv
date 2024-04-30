@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 19:03:10 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 20:09:55 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,11 @@ bool CGIHandler::isScript(const std::string& url) {
   return false;
 }
 
-std::string CGIHandler::identifyRuntime(const std::string& scriptPath) const {
+HTTPResponse CGIHandler::processRequest(const HTTPRequest& request) {
+  return runScript(request.getUrl());
+}
+
+std::string CGIHandler::identifyRuntime(const std::string& scriptPath) {
   std::string extension = scriptPath.substr(scriptPath.find_last_of('.'));
   for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
     if (CGIHandler::_AVAILABLE_CGIS[i].first == extension) {
@@ -42,7 +46,7 @@ std::string CGIHandler::identifyRuntime(const std::string& scriptPath) const {
   return "";
 }
 
-std::string CGIHandler::runScript(const std::string& scriptPath) const {
+std::string CGIHandler::runScript(const std::string& scriptPath) {
   std::string runtime = identifyRuntime(scriptPath);
   if (runtime.empty()) {
     std::cerr << "No suitable runtime found for script: " << scriptPath
@@ -52,7 +56,7 @@ std::string CGIHandler::runScript(const std::string& scriptPath) const {
   return executeCGIScript(runtime);
 }
 
-std::string CGIHandler::executeCGIScript(const std::string& scriptPath) const {
+std::string CGIHandler::executeCGIScript(const std::string& scriptPath) {
   int pipefd[2];
   if (pipe(pipefd) == -1) {
     std::cerr << "Failed to create pipe" << std::endl;

@@ -17,12 +17,12 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include "HTTPRequest.hpp"
+#include "HTTPResponse.hpp"
 #include "CGIHandler.hpp"
 #include "ErrorHandler.hpp"
 #include "FileHandler.hpp"
 #include "HTTP1_1.hpp"
-#include "HTTPRequest.hpp"
-#include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "Server.hpp"
 

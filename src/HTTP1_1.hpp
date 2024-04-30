@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:52 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:18:31 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 20:00:44 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,6 @@ class HTTP1_1 : public HTTPProtocol {
   virtual ~HTTP1_1();
 
   virtual HTTPRequest  parseRequest(const std::string& requestString);
-  virtual HTTPResponse createResponse();
   virtual HTTPResponse processRequest(const HTTPRequest& request);
 };
 

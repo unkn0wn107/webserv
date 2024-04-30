@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:13 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:11:14 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 19:13:56 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,14 +17,11 @@
 
 ConfigLoader* ConfigLoader::instance = NULL;
 
-ConfigLoader* ConfigLoader::getInstance(const std::string* filepath) {
+ConfigLoader& ConfigLoader::getInstance() {
   if (!instance) {
-    if (!filepath)
-      instance = new ConfigLoader();
-    else
-      instance = new ConfigLoader(filepath);
+    instance = new ConfigLoader();
   }
-  return instance;
+  return *instance;
 }
 
 bool ConfigLoader::loadConfig(const std::string& filepath) {

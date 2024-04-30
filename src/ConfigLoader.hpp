@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:11:18 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 19:40:37 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,14 +19,15 @@
 class ConfigLoader {
  private:
   ConfigLoader();
-  ConfigLoader(const std::string* filepath);
   static ConfigLoader*               instance;
   std::map<std::string, std::string> config;
+
+  // Disallow the copy constructor and copy assignment operator
   ConfigLoader(const ConfigLoader&);
   ConfigLoader& operator=(const ConfigLoader&);
 
  public:
-  static ConfigLoader* getInstance(const std::string* filepath);
+  static ConfigLoader& getInstance();
   ~ConfigLoader();
 
   /**

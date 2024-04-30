@@ -2,8 +2,9 @@
 #define HTTP2_H
 
 #include "HTTPProtocol.hpp"
-#include "HTTPRequest.hpp"
-#include "HTTPResponse.hpp"
+
+class HTTPRequest;
+class HTTPResponse;
 
 class HTTP2 : public HTTPProtocol {
  public:

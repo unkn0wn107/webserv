@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:40 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 17:51:06 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 20:03:13 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,9 @@
 #define HTTPPROTOCOL_H
 
 #include <string>
-#include "HTTPRequest.hpp"
-#include "HTTPResponse.hpp"
+
+class HTTPRequest;
+class HTTPResponse;
 
 // enum Version { UNKNOWN, HTTP1_1 };
 
@@ -27,7 +28,6 @@ class HTTPProtocol {
   // Version version;
 
   virtual HTTPRequest  parseRequest(const std::string& requestString) = 0;
-  virtual HTTPResponse createResponse() = 0;
   virtual HTTPResponse processRequest(const HTTPRequest& request) = 0;
 };
 

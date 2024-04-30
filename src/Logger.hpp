@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:22 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:51:39 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 17:39:08 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@ class Logger {
  public:
   static Logger& get();
 
-  const enum logLevel { INFO, WARNING, ERROR };
+  enum logLevel { INFO, WARNING, ERROR };
 
   /**
    * Logs a message with a severity level.

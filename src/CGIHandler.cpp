@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:41:25 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 19:03:10 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,17 +14,30 @@
 
 CGIHandler::CGIHandler() {}
 
+const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
+    std::make_pair(".php", "/usr/bin/php-cgi"),
+    std::make_pair(".py", "/usr/bin/python")};
+
+const int CGIHandler::_NUM_AVAILABLE_CGIS =
+    sizeof(CGIHandler::_AVAILABLE_CGIS) /
+    sizeof(std::pair<std::string, std::string>);
+
 bool CGIHandler::isScript(const std::string& url) {
   std::string extension = url.substr(url.find_last_of('.'));
-  return _AVAILABLE_CGIS.find(extension) != _AVAILABLE_CGIS.end();
+  for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
+    if (CGIHandler::_AVAILABLE_CGIS[i].first == extension) {
+      return true;
+    }
+  }
+  return false;
 }
 
 std::string CGIHandler::identifyRuntime(const std::string& scriptPath) const {
   std::string extension = scriptPath.substr(scriptPath.find_last_of('.'));
-  std::map<std::string, std::string>::const_iterator it =
-      _AVAILABLE_CGIS.find(extension);
-  if (it != _AVAILABLE_CGIS.end()) {
-    return it->second;
+  for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
+    if (CGIHandler::_AVAILABLE_CGIS[i].first == extension) {
+      return CGIHandler::_AVAILABLE_CGIS[i].second;
+    }
   }
   return "";
 }

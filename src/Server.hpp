@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:47:13 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/04/30 17:55:28 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,8 @@
 #include <vector>
 #include "ConnectionHandler.hpp"
 #include "ErrorHandler.hpp"
+
+class ConnectionHandler;
 
 class Server {
  public:

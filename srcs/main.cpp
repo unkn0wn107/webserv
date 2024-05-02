@@ -6,11 +6,12 @@
 /*   By: lmohin <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/29 21:33:35 by lmohin            #+#    #+#             */
-/*   Updated: 2024/05/01 18:40:53 by lmohin           ###   ########.fr       */
+/*   Updated: 2024/05/02 13:20:14 by lmohin           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "requestParser.hpp"
+#include "responseCreator.hpp"
 
 int	main(int argc, char **argv)
 {
@@ -49,5 +50,12 @@ int	main(int argc, char **argv)
 		std::cout << "HTTP Version Not Supported" << std::endl;
 		return (1);
 	}
+	ResponseCreator	creator;
+	std::cout << std::endl;
+	std::cout << creator.createStatusLine();
+	std::cout << creator.createHeaderFields();
+	std::cout << "\r\n";
+	// std::cout << creator.createBodyField();
+	std::cout << "\r\n";
 	return (0);
 }

@@ -4,7 +4,7 @@
 # include <string>
 # include <iostream>
 
-class RequestParser
+class RequestParser 
 {
 	public :
 		

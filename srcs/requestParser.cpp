@@ -108,7 +108,7 @@ bool	RequestParser::parseHTTPVersionToken(void)
 	return (true);
 }
 
-bool	RequestParser::httpVersionSupported(void)
+bool	RequestParser::httpVersionSupported(void) 
 {
 	if (this->_httpVersion.compare(0, 7, "HTTP/1."))
 		return (false);

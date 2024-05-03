@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP1_1.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 12:51:31 by mchenava          #+#    #+#             */
-/*   Updated: 2024/04/24 17:07:23 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/03 12:57:16 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,28 +26,30 @@ HTTP1_1& HTTP1_1::operator=(const HTTP1_1& other) {
 }
 
 
-void	HTTP1_1::processRequest(const Request& request, Response& response) const {
+void	HTTP1_1::processRequest(const Request* request, Response* response) const {
 	// Exemple de traitement basique d'une requête GET
-	if (request.getMethod() == "GET") {
+	std::string method = request->getMethod();
+	if (method == "GET") {
+		_log.info("GET request received");
 		_handleGetRequest(request, response);
 	} else {
 		// Gérer d'autres méthodes HTTP ou renvoyer une erreur 405 (Méthode non autorisée)
-		response.setStatusCode(405);
-		response.setHeader("Content-Type", "text/plain");
-		response.setBody("405 Method Not Allowed");
+		response->setStatusCode(405);
+		response->setHeader("Content-Type", "text/plain");
+		response->setBody("405 Method Not Allowed");
 	}
 }
 
-void	HTTP1_1::_handleGetRequest(const Request& request, Response& response) const{
+void	HTTP1_1::_handleGetRequest(const Request* request, Response* response) const{
 	// Ici, vous implémenteriez la logique pour gérer une requête GET
 	// Par exemple, chercher une ressource dans le système de fichiers et la renvoyer
 	// Ou renvoyer une erreur 404 si la ressource n'est pas trouvée
 
 	// Ceci est un exemple simplifié renvoyant une réponse fixe
-	(void)request;
 	_log.info("GET request received");
-	response.setStatusCode(200); // OK
-	response.setHeader("Content-Type", "text/html");
-	response.setBody("<html><body><h1>Hello, World!</h1></body></html>");
+	request->getMethod();
+	response->setStatusCode(200); // OK
+	response->setHeader("Content-Type", "text/html");
+	response->setBody("<html><body><h1>Hello, World!</h1></body></html>");
 }
 

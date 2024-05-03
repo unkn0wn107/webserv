@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.class.hpp                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 12:30:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/04/24 17:36:23 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/03 12:52:00 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@
 
 class ConnectionHandler{
 public:
-    ConnectionHandler(int clientSocket, HTTPProtocol& protocol);
+    ConnectionHandler(int clientSocket, HTTPProtocol* protocol);
     ConnectionHandler(const ConnectionHandler& other);
     ConnectionHandler& operator=(const ConnectionHandler& other);
     ~ConnectionHandler();
@@ -33,11 +33,11 @@ public:
 private:
     Logger& _log;
     int _clientSocket;
-    HTTPProtocol& _protocol; //Pointeur sur le protocole HTTP
+    HTTPProtocol* _protocol; //Pointeur sur le protocole HTTP
     bool _isCompleted;
 
-    Request _request;
-    Response _response;
+    Request* _request;
+    Response* _response;
 };
 
 #endif // CONNECTIONHANDLER_HPP

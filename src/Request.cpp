@@ -3,16 +3,22 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 14:41:58 by mchenava          #+#    #+#             */
-/*   Updated: 2024/04/24 17:07:50 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/03 12:48:04 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Request.class.hpp"
 
-Request::Request() : _log(Logger::getInstance()), _method(""), _uri(""), _body("") {}
+Request::Request()
+    : _log(Logger::getInstance()),
+    _method(""),
+    _uri(""),
+    _headers(),
+    _body("") 
+{}
 
 Request::Request(const std::string& rawRequest) : _log(Logger::getInstance()) {
     parse(rawRequest, rawRequest.size());
@@ -35,7 +41,7 @@ Request& Request::operator=(const Request& other) {
 Request::~Request() {}
 
 std::string Request::getMethod() const {
-    return _method;
+    return _method.c_str();
 }
 
 std::string Request::getURI() const {

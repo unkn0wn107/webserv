@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 12:30:33 by mchenava          #+#    #+#             */
-/*   Updated: 2024/04/24 17:36:05 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/03 12:57:00 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,8 +15,8 @@
 #include <unistd.h>
 #include <iostream>
 
-ConnectionHandler::ConnectionHandler(int clientSocket, HTTPProtocol& protocol)
-    : _log(Logger::getInstance()) , _clientSocket(clientSocket), _protocol(protocol) , _isCompleted(false) {}
+ConnectionHandler::ConnectionHandler(int clientSocket, HTTPProtocol* protocol)
+    : _log(Logger::getInstance()) , _clientSocket(clientSocket), _protocol(protocol) , _isCompleted(false), _request(new Request()), _response(new Response()) {}
 
 ConnectionHandler::~ConnectionHandler() {
     close(_clientSocket);
@@ -24,8 +24,8 @@ ConnectionHandler::~ConnectionHandler() {
 
 void ConnectionHandler::handleRequest() {
     receiveData();
-    if (!_request.isEmpty()) {  // Supposons que Request a une méthode isEmpty pour vérifier si des données ont été reçues
-        _protocol.processRequest(_request, _response);  // Modifié pour utiliser les objets Request et Response
+    if (!_request->isEmpty()) {  // Supposons que Request a une méthode isEmpty pour vérifier si des données ont été reçues
+        _protocol->processRequest(_request, _response);  // Modifié pour utiliser les objets Request et Response
         sendData();
     }
     _isCompleted = true;
@@ -35,7 +35,7 @@ void ConnectionHandler::receiveData() {
     char buffer[1024];
     ssize_t bytesReceived = recv(_clientSocket, buffer, sizeof(buffer), 0);
     if (bytesReceived > 0) {
-        _request.parse(buffer, bytesReceived);  // Supposons que Request a une méthode parse pour ajouter et traiter les données reçues
+        _request->parse(buffer, bytesReceived);  // Supposons que Request a une méthode parse pour ajouter et traiter les données reçues
     } else if (bytesReceived == 0) {
         std::cout << "Client disconnected." << std::endl;
     } else {
@@ -44,7 +44,7 @@ void ConnectionHandler::receiveData() {
 }
 
 void ConnectionHandler::sendData() {
-    std::string data = _response.generate();  // Supposons que Response a une méthode generate pour créer la réponse HTTP complète
+    std::string data = _response->generate();  // Supposons que Response a une méthode generate pour créer la réponse HTTP complète
     ssize_t totalSent = 0;
     ssize_t bytesSent;
     while (totalSent < (ssize_t)data.size()) {

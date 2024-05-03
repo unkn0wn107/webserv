@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 12:33:25 by mchenava          #+#    #+#             */
-/*   Updated: 2024/04/24 17:44:22 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/03 12:54:24 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,14 +30,14 @@ Server::Server(const std::string& configFilePath)
 
 Server::~Server() {
   for (std::vector<int>::iterator it = _listeningSockets.begin();
-       it != _listeningSockets.end(); ++it) {
+      it != _listeningSockets.end(); ++it) {
     int socketFd = *it;
     close(socketFd);
   }
-  for (std::map<int, ConnectionHandler*>::iterator it =
-           _connectionHandlers.begin();
-       it != _connectionHandlers.end(); ++it) {
-    delete it->second;
+  for (std::map<int, ConnectionHandler*>::iterator it = 
+    _connectionHandlers.begin();
+    it != _connectionHandlers.end(); ++it) {
+      delete it->second;
   }
 }
 
@@ -98,7 +98,7 @@ void Server::_acceptConnections() {
     }
     _setNonBlocking(clientSocket);
     _connectionHandlers[clientSocket] = new ConnectionHandler(
-        clientSocket, _getHTTPProtocol());
+        clientSocket, new HTTP1_1());
     _log.info("New connection accepted");
   }
 }
@@ -106,6 +106,7 @@ void Server::_acceptConnections() {
 void Server::_processConnections() {
   // Ici, vous pouvez itérer sur connectionHandlers et appeler handleRequest
   // pour chaque handler
+  // _log.info("Processing connections");
   for (std::map<int, ConnectionHandler*>::iterator it =
            _connectionHandlers.begin();
        it != _connectionHandlers.end(); ++it) {
@@ -113,9 +114,10 @@ void Server::_processConnections() {
     handler->handleRequest();
     if (handler->isCompleted()) {
       _log.info("Connection completed");
+      delete handler;
+      _connectionHandlers.erase(it->first);
     }
   }
-  // _log.info("Connections processed");
 }
 
 void Server::_setNonBlocking(int socketFd) {

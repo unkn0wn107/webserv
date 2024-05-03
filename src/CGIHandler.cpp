@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 20:09:55 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/04 00:58:28 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,13 @@ const int CGIHandler::_NUM_AVAILABLE_CGIS =
     sizeof(std::pair<std::string, std::string>);
 
 bool CGIHandler::isScript(const std::string& url) {
-  std::string extension = url.substr(url.find_last_of('.'));
+  size_t      lastDotPos = url.find_last_of('.');
+  std::string extension;
+  if (lastDotPos != std::string::npos)
+    extension = url.substr(lastDotPos);
+  else
+    extension = "";
+
   for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
     if (CGIHandler::_AVAILABLE_CGIS[i].first == extension) {
       return true;

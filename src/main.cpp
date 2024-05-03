@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 19:52:59 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/04 01:32:21 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,14 +19,12 @@ int main(int argc, char* argv[]) {
 
   std::map<std::string, std::string> config;
   try {
-    if (argc == 1) {
-      ConfigLoader& config = ConfigLoader::getInstance();
-      config.loadConfig("server_config.cfg");
-    } else if (argc == 2) {
-      ConfigLoader& config = ConfigLoader::getInstance();
+    ConfigLoader& config = ConfigLoader::getInstance();
+    if (argc == 1)
+      config.loadConfig(ConfigLoader::DEFAULT_FILE_NAME);
+    else if (argc == 2)
       config.loadConfig(argv[1]);
-    }
-    Server* server = new Server(config);
+    Server* server = new Server(config.getConfig());
     server->start();
   } catch (const std::exception& e) {
     ErrorHandler::exception(e);

@@ -6,12 +6,14 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:55 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 19:49:38 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/04 01:58:26 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HANDLER_HPP
 #define HANDLER_HPP
+
+#include "ConfigLoader.hpp"
 
 class HTTPRequest;
 class HTTPResponse;

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:13 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/04 01:34:52 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/04 02:01:21 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,8 +15,9 @@
 #include <sstream>
 #include <stdexcept>
 
-const std::string ConfigLoader::DEFAULT_PORT = "8080";
 const std::string ConfigLoader::DEFAULT_HOST = "127.0.0.1";
+const std::string ConfigLoader::DEFAULT_PORT = "8080";
+const std::string ConfigLoader::DEFAULT_ROOT = "./";
 const std::string ConfigLoader::DEFAULT_MAX_CLIENT_BODY_SIZE = "8192";
 const std::string ConfigLoader::DEFAULT_FILE_NAME = "server_config.cfg";
 ConfigLoader*     ConfigLoader::instance = NULL;
@@ -65,8 +66,9 @@ std::map<std::string, std::string> ConfigLoader::getConfig() const {
 }
 
 ConfigLoader::ConfigLoader() {
-  config["port"] = DEFAULT_PORT;
   config["host"] = DEFAULT_HOST;
+  config["port"] = DEFAULT_PORT;
+  config["root"] = DEFAULT_ROOT;
   config["max_client_body_size"] = DEFAULT_MAX_CLIENT_BODY_SIZE;
 }
 

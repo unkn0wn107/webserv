@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:37 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:42:59 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/04 02:10:09 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,9 +23,10 @@ FileHandler::FileHandler() {}
 FileHandler::~FileHandler() {}
 
 HTTPResponse FileHandler::processRequest(const HTTPRequest& request) {
-  HTTPResponse response;
-  std::string  path = request.getUrl();
-  struct stat  path_stat;
+  HTTPResponse  response;
+  ConfigLoader& configLoader = ConfigLoader::getInstance();
+  std::string   path = configLoader.getConfigValue("root") + request.getUrl();
+  struct stat   path_stat;
   stat(path.c_str(), &path_stat);
 
   // Check if the path is a directory
@@ -46,8 +47,6 @@ HTTPResponse FileHandler::processRequest(const HTTPRequest& request) {
 
   // Set common headers
   response.addHeader("Content-Type", "text/html");
-  response.addHeader("Content-Length",
-                     Utils::to_string(response.getBody().length()));
 
   return response;
 }

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/04 01:35:13 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/04 01:49:20 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,8 +50,9 @@ class ConfigLoader {
    */
   std::map<std::string, std::string> getConfig() const;
 
-  static const std::string DEFAULT_PORT;
   static const std::string DEFAULT_HOST;
+  static const std::string DEFAULT_PORT;
+  static const std::string DEFAULT_ROOT;
   static const std::string DEFAULT_MAX_CLIENT_BODY_SIZE;
   static const std::string DEFAULT_FILE_NAME;
 };

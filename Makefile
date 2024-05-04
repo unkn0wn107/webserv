@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/05/04 00:32:08 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/05/04 02:30:27 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -43,6 +43,17 @@ $(NAME): $(OBJ)
 $(OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+test: $(NAME)
+	@$(MAKE) run_webserv &
+	@$(MAKE) run_tests
+	@kill $$(pgrep -f './webserv')
+
+run_webserv:
+	@./webserv
+
+run_tests:
+	@./test.sh
 
 debug: $(DEBUG_OBJ)
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) $(DEBUG_OBJ) -o $(NAME)

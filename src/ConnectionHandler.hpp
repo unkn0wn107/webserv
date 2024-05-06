@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 17:47:20 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/04 01:13:53 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,12 +17,12 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "HTTPRequest.hpp"
-#include "HTTPResponse.hpp"
 #include "CGIHandler.hpp"
 #include "ErrorHandler.hpp"
 #include "FileHandler.hpp"
 #include "HTTP1_1.hpp"
+#include "HTTPRequest.hpp"
+#include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "Server.hpp"
 
@@ -36,12 +36,15 @@ class ConnectionHandler {
   // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
   void process();
   void sendResponse();
+  bool hasDataToSend() const;
 
  private:
   Server&      _server;
   int          _socket;
   HTTPRequest  _request;
   HTTPResponse _response;
+  std::string  _responseBuffer;
+  size_t       _responseSent;
 };
 
 #endif

@@ -6,14 +6,14 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 20:01:56 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/04 01:53:54 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ConnectionHandler.hpp"
 
 ConnectionHandler::ConnectionHandler(Server& server, int socket)
-    : _server(server), _socket(socket) {}
+    : _server(server), _socket(socket), _responseSent(0) {}
 
 ConnectionHandler::~ConnectionHandler() {
   close(_socket);
@@ -46,21 +46,29 @@ void ConnectionHandler::process() {
   } catch (const std::exception& e) {
     _response.setStatusCode(HTTPResponse::BAD_REQUEST);
     _response.setBody("Error parsing request: " + std::string(e.what()));
-    sendResponse();
+    _responseBuffer = _response.generate();
     return;
   }
 
   std::string url = _request.getUrl();
-  std::string extension = url.substr(url.find_last_of('.'));
-
   if (CGIHandler::isScript(url))
     _response = CGIHandler::processRequest(_request);
   else
     _response = FileHandler::processRequest(_request);
-  sendResponse();
+  _responseBuffer = _response.generate();
+}
+
+bool ConnectionHandler::hasDataToSend() const {
+  return _responseSent < _responseBuffer.size();
 }
 
 void ConnectionHandler::sendResponse() {
-  std::string response = _response.generate();
-  send(_socket, response.c_str(), response.size(), 0);
+  if (_responseSent < _responseBuffer.size()) {
+    ssize_t bytes_sent = send(_socket, _responseBuffer.c_str() + _responseSent,
+                              _responseBuffer.size() - _responseSent, 0);
+    if (bytes_sent > 0) {
+      _responseSent += bytes_sent;
+    }
+    // Handle partial send or errors appropriately
+  }
 }

@@ -12,11 +12,7 @@
 
 #include "Server.hpp"
 
-Server::Server() {}
-
-Server::Server(std::map<std::string, std::string> config) : _config(config) {
-  start();
-}
+Server::Server() : _config(ConfigLoader::getInstance().getConfig()) {}
 
 Server::~Server() {
   close(_epoll_fd);

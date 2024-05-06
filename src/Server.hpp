@@ -29,7 +29,6 @@ class ConnectionHandler;
 class Server {
  public:
   Server();
-  explicit Server(std::map<std::string, std::string> config);
   ~Server();
 
   void start();

@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
       config.loadConfig(ConfigLoader::DEFAULT_FILE_NAME);
     else if (argc == 2)
       config.loadConfig(argv[1]);
-    Server* server = new Server(config.getConfig());
+    Server* server = new Server();
     server->start();
   } catch (const std::exception& e) {
     ErrorHandler::exception(e);

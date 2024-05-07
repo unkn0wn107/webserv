@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/07 09:06:02 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/07 09:16:32 by agaley           ###   ########.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,20 +26,27 @@ void Server::start() {
 }
 
 void Server::setupServerSocket() {
-  struct sockaddr_in address;
-  int                opt = 1;
+  struct sockaddr_in6 address;
+  int                 opt = 1;
+  int                 ipv6only = 0;
 
-  _server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  _server_socket = socket(AF_INET6, SOCK_STREAM, 0);
   if (_server_socket == 0)
     ErrorHandler::fatal("Socket creation failed");
 
+  // reuseport si definit par la config
+  // https://nginx.org/en/docs/http/ngx_http_core_module.html#reuseport
   if (setsockopt(_server_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
                  sizeof(opt)))
     ErrorHandler::fatal("Setsockopt failed");
 
-  address.sin_family = AF_INET;
-  address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(Utils::stoi<int>(_config["port"]));
+  if (setsockopt(_server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only,
+                 sizeof(ipv6only)))
+    ErrorHandler::fatal("Setsockopt IPV6_V6ONLY failed");
+
+  address.sin6_family = AF_INET6;
+  address.sin6_addr = in6addr_any;
+  address.sin6_port = htons(Utils::stoi<int>(_config["port"]));
 
   if (bind(_server_socket, (struct sockaddr*)&address, sizeof(address)) < 0)
     ErrorHandler::fatal("Bind failed");

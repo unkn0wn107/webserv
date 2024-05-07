@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 17:55:28 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/07 09:51:40 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@
 #include <iostream>
 #include <map>
 #include <string>
-#include <vector>
+#include <set>
 #include "ConnectionHandler.hpp"
 #include "ErrorHandler.hpp"
 
@@ -41,9 +41,10 @@ class Server {
   void setupEpoll();
   void run();
   void acceptConnection();
+  void closeAllClients();
 
   std::map<std::string, std::string> _config;
-  std::vector<ConnectionHandler*>    _connections;
+  std::set<int>                      _client_sockets;
   int                                _epoll_fd;
   int                                _server_socket;
 };

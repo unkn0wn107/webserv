@@ -15,6 +15,7 @@
 Server::Server() : _config(ConfigLoader::getInstance().getConfig()) {}
 
 Server::~Server() {
+  closeAllClients();
   close(_epoll_fd);
   close(_server_socket);
 }
@@ -109,6 +110,8 @@ void Server::acceptConnection() {
       continue;
     }
 
+    _client_sockets.insert(new_socket);
+
     ConnectionHandler* handler = new ConnectionHandler(new_socket);
     struct epoll_event event;
     event.data.ptr = handler;
@@ -117,6 +120,16 @@ void Server::acceptConnection() {
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, new_socket, &event) == -1) {
       ErrorHandler::log("Failed to add new socket to epoll");
       delete handler;
+      close(new_socket);
+      _client_sockets.erase(new_socket);
     }
   }
+}
+
+void Server::closeAllClients() {
+  for (std::set<int>::iterator it = _client_sockets.begin();
+       it != _client_sockets.end(); ++it) {
+    close(*it);
+  }
+  _client_sockets.clear();
 }

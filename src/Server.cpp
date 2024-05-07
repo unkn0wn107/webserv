@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:47:54 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/07 09:06:02 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,7 +102,7 @@ void Server::acceptConnection() {
       continue;
     }
 
-    ConnectionHandler* handler = new ConnectionHandler(*this, new_socket);
+    ConnectionHandler* handler = new ConnectionHandler(new_socket);
     struct epoll_event event;
     event.data.ptr = handler;
     event.events = EPOLLIN | EPOLLET | EPOLLOUT;

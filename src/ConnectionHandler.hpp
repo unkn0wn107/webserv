@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/04 01:13:53 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/07 09:05:45 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,7 @@ class Server;
 
 class ConnectionHandler {
  public:
-  ConnectionHandler(Server& server, int socket);
+  ConnectionHandler(int socket);
   ~ConnectionHandler();
 
   // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
@@ -39,7 +39,6 @@ class ConnectionHandler {
   bool hasDataToSend() const;
 
  private:
-  Server&      _server;
   int          _socket;
   HTTPRequest  _request;
   HTTPResponse _response;

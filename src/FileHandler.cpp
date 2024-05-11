@@ -17,15 +17,16 @@
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "Config.hpp"
 
 FileHandler::FileHandler() {}
 
 FileHandler::~FileHandler() {}
 
-HTTPResponse FileHandler::processRequest(const HTTPRequest& request) {
+HTTPResponse FileHandler::processRequest(const HTTPRequest& request, ServerConfig& config) {
+  (void)request;
   HTTPResponse  response;
-  ConfigLoader& configLoader = ConfigLoader::getInstance();
-  std::string   path = configLoader.getConfigValue("root") + request.getUrl();
+  std::string   path = config.root + request.getUrl();
   struct stat   path_stat;
   stat(path.c_str(), &path_stat);
 

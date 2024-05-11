@@ -25,12 +25,13 @@
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "Server.hpp"
+#include "Config.hpp"
 
 class Server;
 
 class ConnectionHandler {
  public:
-  ConnectionHandler(int socket);
+  ConnectionHandler(int socket, ServerConfig& config);
   ~ConnectionHandler();
 
   // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
@@ -44,6 +45,7 @@ class ConnectionHandler {
   HTTPResponse _response;
   std::string  _responseBuffer;
   size_t       _responseSent;
+  ServerConfig& _config;
 };
 
 #endif

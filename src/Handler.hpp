@@ -13,15 +13,19 @@
 #ifndef HANDLER_HPP
 #define HANDLER_HPP
 
-#include "ConfigLoader.hpp"
+#include "Config.hpp"
+#include "Logger.hpp"
 
 class HTTPRequest;
 class HTTPResponse;
 
 class Handler {
- public:
-  virtual ~Handler() {}
-  virtual HTTPResponse handle(const HTTPRequest& request) = 0;
+  protected:
+    Logger&         _log;
+  public:
+    Handler() : _log(Logger::getInstance()) {}
+    virtual ~Handler() {}
+    virtual HTTPResponse handle(const HTTPRequest& request) = 0;
 };
 
 #endif

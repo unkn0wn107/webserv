@@ -11,8 +11,10 @@
 /* ************************************************************************** */
 
 #include "FileManager.hpp"
+#include "Config.hpp"
+#include "Logger.hpp"
 
-FileManager::FileManager() {}
+FileManager::FileManager() : _log(Logger::getInstance()) {}
 
 std::string FileManager::readFile(const std::string& path) {
   std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);

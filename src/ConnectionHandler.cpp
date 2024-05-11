@@ -12,8 +12,8 @@
 
 #include "ConnectionHandler.hpp"
 
-ConnectionHandler::ConnectionHandler(int socket)
-    : _socket(socket), _responseSent(0) {}
+ConnectionHandler::ConnectionHandler(int socket, ServerConfig& config)
+    : _socket(socket), _responseSent(0), _config(config) {}
 
 ConnectionHandler::~ConnectionHandler() {
   close(_socket);
@@ -41,7 +41,7 @@ void ConnectionHandler::process() {
   }
 
   try {
-    HTTP1_1 protocol;
+    HTTP1_1 protocol(_config);
     _request = protocol.parseRequest(buffer);
   } catch (const std::exception& e) {
     _response.setStatusCode(HTTPResponse::BAD_REQUEST);
@@ -54,7 +54,7 @@ void ConnectionHandler::process() {
   if (CGIHandler::isScript(url))
     _response = CGIHandler::processRequest(_request);
   else
-    _response = FileHandler::processRequest(_request);
+    _response = FileHandler::processRequest(_request, _config);
   _responseBuffer = _response.generate();
 }
 

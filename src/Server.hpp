@@ -28,10 +28,10 @@ class ConnectionHandler;
 
 class Server {
  public:
-  Server();
+  Server(ServerConfig& config);
   ~Server();
 
-  void start();
+  void run();
 
  private:
   Server(const Server&);             // Prevent copy-construction
@@ -39,14 +39,14 @@ class Server {
 
   void setupServerSocket();
   void setupEpoll();
-  void run();
   void acceptConnection();
   void closeAllClients();
 
-  std::map<std::string, std::string> _config;
+  ServerConfig&                      _config;
   std::set<int>                      _client_sockets;
   int                                _epoll_fd;
   int                                _server_socket;
+  Logger&                            _log;
 };
 
 #endif

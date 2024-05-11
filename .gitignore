@@ -32,3 +32,4 @@ webserv
 *.exe
 *.out
 *.app
+.log

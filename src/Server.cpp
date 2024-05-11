@@ -11,19 +11,23 @@
 /* ************************************************************************** */
 
 #include "Server.hpp"
+#include "Config.hpp"
+#include "Logger.hpp"
 
-Server::Server() : _config(ConfigLoader::getInstance().getConfig()) {}
+Server::Server(ServerConfig& config) : 
+  _config(config), 
+  _log(Logger::getInstance())
+{
+  _log.info("Server " + _config.server_names[0] + "is starting");
+  _log.info("Listening on port " + _config.listen_port);
+  setupServerSocket();
+  setupEpoll();
+}
 
 Server::~Server() {
   closeAllClients();
   close(_epoll_fd);
   close(_server_socket);
-}
-
-void Server::start() {
-  setupServerSocket();
-  setupEpoll();
-  run();
 }
 
 void Server::setupServerSocket() {
@@ -47,7 +51,7 @@ void Server::setupServerSocket() {
 
   address.sin6_family = AF_INET6;
   address.sin6_addr = in6addr_any;
-  address.sin6_port = htons(Utils::stoi<int>(_config["port"]));
+  address.sin6_port = htons(_config.listen_port);
 
   if (bind(_server_socket, (struct sockaddr*)&address, sizeof(address)) < 0)
     ErrorHandler::fatal("Bind failed");
@@ -107,18 +111,20 @@ void Server::acceptConnection() {
     int flags = fcntl(new_socket, F_GETFL, 0);
     if (flags == -1 || fcntl(new_socket, F_SETFL, flags | O_NONBLOCK) == -1) {
       ErrorHandler::log("Failed to set new socket to non-blocking");
+      _log.error("(" + _config.server_names[0] + ") Failed to set new socket to non-blocking");
       continue;
     }
 
     _client_sockets.insert(new_socket);
 
-    ConnectionHandler* handler = new ConnectionHandler(new_socket);
+    ConnectionHandler* handler = new ConnectionHandler(new_socket, _config);
     struct epoll_event event;
     event.data.ptr = handler;
     event.events = EPOLLIN | EPOLLET | EPOLLOUT;
 
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, new_socket, &event) == -1) {
       ErrorHandler::log("Failed to add new socket to epoll");
+      _log.error("(" + _config.server_names[0] + ") Failed to add new socket to epoll");
       delete handler;
       close(new_socket);
       _client_sockets.erase(new_socket);

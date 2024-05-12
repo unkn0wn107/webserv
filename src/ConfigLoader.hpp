@@ -44,6 +44,7 @@ class ConfigLoader {
   static void parseServerConfig(std::ifstream& configFile, ServerConfig* serverConfig);
   static void parseRouteConfig(std::ifstream& configFile, RouteConfig* routeConfig);
   std::string getServerConfigValue(const ServerConfig& config,const std::string& key) const;
+  static std::vector<ServerConfig> loadServerConfigs(const int port);
 
   /**
    * Retrieve all config.

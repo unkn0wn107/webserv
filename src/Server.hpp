@@ -41,8 +41,12 @@ class Server {
   void setupEpoll();
   void acceptConnection();
   void closeAllClients();
+  //   void process();
+  // void sendResponse();
+  // bool hasDataToSend() const;
 
   ServerConfig&                      _config;
+  int                                _socket;
   std::set<int>                      _client_sockets;
   int                                _epoll_fd;
   int                                _server_socket;

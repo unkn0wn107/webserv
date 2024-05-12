@@ -139,3 +139,44 @@ void Server::closeAllClients() {
   }
   _client_sockets.clear();
 }
+
+// void ConnectionHandler::process() {
+//   char    buffer[1024];
+//   ssize_t bytes_read = recv(_socket, buffer, sizeof(buffer), 0);
+//   if (bytes_read <= 0) {
+//     // Handle error or close connection
+//     return;
+//   }
+
+//   try {
+//     HTTP1_1 protocol(_config);
+//     _request = protocol.parseRequest(buffer);
+//   } catch (const std::exception& e) {
+//     _response.setStatusCode(HTTPResponse::BAD_REQUEST);
+//     _response.setBody("Error parsing request: " + std::string(e.what()));
+//     _responseBuffer = _response.generate();
+//     return;
+//   }
+
+//   std::string url = _request.getUrl();
+//   if (CGIHandler::isScript(url))
+//     _response = CGIHandler::processRequest(_request);
+//   else
+//     _response = FileHandler::processRequest(_request, _config);
+//   _responseBuffer = _response.generate();
+// }
+
+// bool ConnectionHandler::hasDataToSend() const {
+//   return _responseSent < _responseBuffer.size();
+// }
+
+// void ConnectionHandler::sendResponse() {
+//   if (_responseSent < _responseBuffer.size()) {
+//     ssize_t bytes_sent = send(_socket, _responseBuffer.c_str() + _responseSent,
+//                               _responseBuffer.size() - _responseSent, 0);
+//     if (bytes_sent > 0) {
+//       _responseSent += bytes_sent;
+//     }
+//     // Handle partial send or errors appropriately
+//   }
+// }

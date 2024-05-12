@@ -227,6 +227,16 @@ std::string ConfigLoader::getServerConfigValue(const ServerConfig& config, const
     }
 }
 
+std::vector<ServerConfig> ConfigLoader::loadServerConfigs(const int port){
+    std::vector<ServerConfig> serverConfigs;
+    for (std::vector<ServerConfig>::iterator it = getInstance()._config.servers.begin(); it != getInstance()._config.servers.end(); ++it) {
+        if (it->listen_port == port)
+            serverConfigs.push_back(*it);
+    }
+    return serverConfigs;
+}
+
+
 const Config& ConfigLoader::getConfig() const {
   return  _instance->_config;
 }

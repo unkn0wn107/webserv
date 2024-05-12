@@ -31,21 +31,18 @@ class Server;
 
 class ConnectionHandler {
  public:
-  ConnectionHandler(int socket, ServerConfig& config);
+  ConnectionHandler(std::vector<ServerConfig>& configs);
   ~ConnectionHandler();
 
-  // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
-  void process();
-  void sendResponse();
-  bool hasDataToSend() const;
+  void handleConnection(int socket);
 
  private:
-  int          _socket;
   HTTPRequest  _request;
   HTTPResponse _response;
   std::string  _responseBuffer;
   size_t       _responseSent;
-  ServerConfig& _config;
+  std::vector<ServerConfig>& _configs;
+  std::map<int, Server> _servers;
 };
 
 #endif

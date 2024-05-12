@@ -78,7 +78,7 @@ $(DEBUG_OBJ_DIR)/%.o: %.cpp
 
 clean:
 	rm -f $(OBJ) $(DEBUG_OBJ)
-	rm -f $(DEPS) $(DEBUG_DEPS)
+	rm -rf $(DEPS) $(DEBUG_DEPS) $(LOG_DIR)
 
 fclean: clean
 	rm -f $(NAME)

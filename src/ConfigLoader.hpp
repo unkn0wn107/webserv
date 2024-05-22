@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigLoader.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/04 01:49:20 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/22 18:39:32 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,6 +46,8 @@ class ConfigLoader {
                                 ServerConfig*  serverConfig);
   static void parseRouteConfig(std::ifstream& configFile,
                                RouteConfig*   routeConfig);
+  static void parseListenConfig(std::ifstream& configFile,
+                                ListenConfig* listenConfig);
   std::string getServerConfigValue(const ServerConfig& config,
                                    const std::string&  key) const;
 

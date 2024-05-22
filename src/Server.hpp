@@ -3,50 +3,40 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/07 09:51:40 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/22 18:32:23 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef SERVER_H
 #define SERVER_H
 
+#include "Config.hpp"
+#include "Logger.hpp"
+#include "Worker.hpp"
+#include <sys/socket.h>
 #include <fcntl.h>
 #include <netinet/in.h>
-#include <sys/epoll.h>
-#include <unistd.h>
-#include <iostream>
-#include <map>
-#include <set>
-#include <string>
-#include "ConnectionHandler.hpp"
-#include "ErrorHandler.hpp"
+#include <arpa/inet.h>
+#include <string.h>
 
 class ConnectionHandler;
 
 class Server {
- public:
-  Server(ServerConfig& config);
-  ~Server();
+	private:
+		Config&							_config;
+		Logger&							_log;
+		std::vector<Worker*>			_workers;
+		std::set<ListenConfig>			_uniqueConfigs;
+		std::map<ListenConfig, int>		_listenSockets;
 
-  void run();
+		void					_setupServerSockets(const std::vector<ServerConfig>& servers);
 
- private:
-  Server(const Server&);             // Prevent copy-construction
-  Server& operator=(const Server&);  // Prevent assignment
-
-  void setupServerSocket();
-  void setupEpoll();
-  void acceptConnection();
-  void closeAllClients();
-
-  ServerConfig& _config;
-  std::set<int> _client_sockets;
-  int           _epoll_fd;
-  int           _server_socket;
-  Logger&       _log;
+	public:
+		Server(Config& config);
+		~Server();
 };
 
 #endif

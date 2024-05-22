@@ -3,20 +3,21 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/04 01:32:21 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/22 18:51:13 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Config.hpp"
 #include "ConfigLoader.hpp"
 #include "Server.hpp"
+#include <cstdlib>
 
 int main(int argc, char* argv[]) {
   if (argc != 2 || argv[1] == NULL)
-    ErrorHandler::fatal("Bad arguments. usage : ./webserv [config_path]");
+    Logger::getInstance().error("Bad arguments. usage : ./webserv [config_path]");
 
   Config config;
   try {
@@ -32,7 +33,6 @@ int main(int argc, char* argv[]) {
     //         server.run();
     // }
   } catch (const std::exception& e) {
-    ErrorHandler::exception(e);
     Logger::getInstance().error("Shutdown Error in main.cpp");
     return EXIT_FAILURE;
   }

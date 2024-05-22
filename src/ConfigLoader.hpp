@@ -17,12 +17,13 @@
 #include <string>
 #include "Config.hpp"
 #include "Logger.hpp"
+#include "PortListener.hpp"
 
-/// @brief 
 class ConfigLoader {
  private:
   ConfigLoader();
   static ConfigLoader*               _instance;
+  std::set<int>               _configuredPorts;
   Config                             _config;
   Logger&                              _log;
 
@@ -45,6 +46,7 @@ class ConfigLoader {
   static void parseRouteConfig(std::ifstream& configFile, RouteConfig* routeConfig);
   std::string getServerConfigValue(const ServerConfig& config,const std::string& key) const;
   static std::vector<ServerConfig> loadServerConfigs(const int port);
+  static std::vector<PortListener *> creatListeners();
 
   /**
    * Retrieve all config.

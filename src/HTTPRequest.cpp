@@ -12,7 +12,12 @@
 
 #include "HTTPRequest.hpp"
 
-HTTPRequest::HTTPRequest() : _method(""), _url(""), _body("") {}
+HTTPRequest::HTTPRequest() :
+  _method(""),
+  _url(""),
+  _body("")
+{}
+
 HTTPRequest::~HTTPRequest() {}
 
 void HTTPRequest::setMethod(const std::string& method) {

@@ -12,9 +12,12 @@
 
 #include "ConnectionHandler.hpp"
 
-ConnectionHandler::ConnectionHandler(std::vector<ServerConfig>& configs): _responseSent(0), _configs(configs) {
-  for (ServerConfig it = _configs.begin(); it != _configs.end(); ++it) {
-    _servers.push_back(Server(*it));
+ConnectionHandler::ConnectionHandler(std::vector<ServerConfig>& configs): _configs(configs) {
+  _defaultServer = NULL;
+  for (std::vector<ServerConfig>::iterator it = _configs.begin(); it != _configs.end(); ++it) {
+    _servers.push_back(new Server(*it));
+    if (it->isDefault)
+      _defaultServer = _servers.back();
   }
 }
 
@@ -23,11 +26,27 @@ ConnectionHandler::~ConnectionHandler() {
 }
 
 void ConnectionHandler::handleConnection(int socket) {
-    _servers.push_back(Server(config, socket));
+  char    buffer[1024];
+  ssize_t bytes_read = recv(socket, buffer, sizeof(buffer), 0);
+  if (bytes_read <= 0) {
+    // Handle error or close connection
+    return;
+  }
+  _redirect(buffer);
 }
 
-void ConnectionHandler::_loadServers() {
-  for (ServerConfig& config : _configs) {
-    _servers.push_back(Server(config, so));
-  }
+void ConnectionHandler::_redirect(char* buffer) {
+    std::string request(buffer);
+    std::string hostHeader = "Host: ";
+    size_t hostPos = request.find(hostHeader);
+    if (hostPos == std::string::npos) {
+        return;
+    }
+    size_t hostStart = hostPos + hostHeader.length();
+    size_t hostEnd = request.find("\r\n", hostStart);
+    std::string host = request.substr(hostStart, hostEnd - hostStart);
+    for (std::vector<Server *>::iterator server = _servers.begin(); server != _servers.end(); ++server){
+      if ((*server)->isForMe(host)) return (*server)->processConnection(buffer);
+    }
+    _defaultServer->processConnection(buffer);
 }

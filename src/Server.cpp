@@ -14,157 +14,64 @@
 #include "Config.hpp"
 #include "Logger.hpp"
 
-Server::Server(ServerConfig& config) : 
-  _config(config), 
+Server::Server(ServerConfig& config) :
+  _config(config),
   _log(Logger::getInstance())
 {
-  _log.info("Server " + _config.server_names[0] + "is starting");
-  _log.info("Listening on port " + _config.listen_port);
-  setupServerSocket();
-  setupEpoll();
 }
 
 Server::~Server() {
-  closeAllClients();
-  close(_epoll_fd);
-  close(_server_socket);
 }
 
-void Server::setupServerSocket() {
-  struct sockaddr_in6 address;
-  int                 opt = 1;
-  int                 ipv6only = 0;
-
-  _server_socket = socket(AF_INET6, SOCK_STREAM, 0);
-  if (_server_socket == 0)
-    ErrorHandler::fatal("Socket creation failed");
-
-  // reuseport si definit par la config
-  // https://nginx.org/en/docs/http/ngx_http_core_module.html#reuseport
-  if (setsockopt(_server_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
-                 sizeof(opt)))
-    ErrorHandler::fatal("Setsockopt failed");
-
-  if (setsockopt(_server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only,
-                 sizeof(ipv6only)))
-    ErrorHandler::fatal("Setsockopt IPV6_V6ONLY failed");
-
-  address.sin6_family = AF_INET6;
-  address.sin6_addr = in6addr_any;
-  address.sin6_port = htons(_config.listen_port);
-
-  if (bind(_server_socket, (struct sockaddr*)&address, sizeof(address)) < 0)
-    ErrorHandler::fatal("Bind failed");
-
-  if (listen(_server_socket, 10) < 0)
-    ErrorHandler::fatal("Listen failed");
-
-  int flags = fcntl(_server_socket, F_GETFL, 0);
-  if (flags == -1 || fcntl(_server_socket, F_SETFL, flags | O_NONBLOCK) == -1)
-    ErrorHandler::fatal("Failed to set socket to non-blocking");
+bool Server::isForMe(std::string host)
+{
+  return std::find(_config.server_names.begin(), _config.server_names.end(), host) != _config.server_names.end();
 }
 
-void Server::setupEpoll() {
-  _epoll_fd = epoll_create1(0);
-  if (_epoll_fd == -1)
-    ErrorHandler::fatal("Epoll creation failed");
+HTTPProtocol* Server::_getProtocol(char* buffer) {
+    std::string request(buffer);
+    std::string protocolIndicator = "HTTP/";
 
-  struct epoll_event event;
-  event.data.fd = _server_socket;
-  event.events = EPOLLIN | EPOLLET | EPOLLOUT;
-
-  if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server_socket, &event) == -1)
-    ErrorHandler::fatal("Epoll control failed");
-}
-
-void Server::run() {
-  const int          MAX_EVENTS = 10;
-  struct epoll_event events[MAX_EVENTS];
-  int                event_count;
-
-  while (true) {
-    event_count = epoll_wait(_epoll_fd, events, MAX_EVENTS, -1);
-    for (int i = 0; i < event_count; i++) {
-      if (events[i].data.fd == _server_socket) {
-        acceptConnection();
-      } else {
-        ConnectionHandler* handler =
-            reinterpret_cast<ConnectionHandler*>(events[i].data.ptr);
-        if (events[i].events & EPOLLIN) {
-          handler->process();
-        }
-        if (events[i].events & EPOLLOUT) {
-          handler->sendResponse();
-        }
-      }
+    size_t protocolPos = request.find(protocolIndicator);
+    if (protocolPos == std::string::npos) {
+        return NULL;
     }
-  }
-}
-
-void Server::acceptConnection() {
-  struct sockaddr_in address;
-  socklen_t          addrlen = sizeof(address);
-  int                new_socket;
-
-  while ((new_socket = accept(_server_socket, (struct sockaddr*)&address,
-                              &addrlen)) != -1) {
-    int flags = fcntl(new_socket, F_GETFL, 0);
-    if (flags == -1 || fcntl(new_socket, F_SETFL, flags | O_NONBLOCK) == -1) {
-      ErrorHandler::log("Failed to set new socket to non-blocking");
-      _log.error("(" + _config.server_names[0] + ") Failed to set new socket to non-blocking");
-      continue;
+    size_t versionStart = protocolPos + protocolIndicator.length();
+    size_t versionEnd = request.find("\r\n", versionStart); // La version du protocole est suivie par un retour à la ligne
+    if (versionEnd == std::string::npos) {
+        return NULL;
     }
-
-    _client_sockets.insert(new_socket);
-
-    ConnectionHandler* handler = new ConnectionHandler(new_socket, _config);
-    struct epoll_event event;
-    event.data.ptr = handler;
-    event.events = EPOLLIN | EPOLLET | EPOLLOUT;
-
-    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, new_socket, &event) == -1) {
-      ErrorHandler::log("Failed to add new socket to epoll");
-      _log.error("(" + _config.server_names[0] + ") Failed to add new socket to epoll");
-      delete handler;
-      close(new_socket);
-      _client_sockets.erase(new_socket);
+    std::string protocolVersion = request.substr(versionStart, versionEnd - versionStart);
+    // if (protocolVersion == "1.0") {
+    //     return new HTTP1_0(_config);
+    // } else
+    if (protocolVersion == "1.1") {
+        return new HTTP1_1(_config);
+    // } else if (protocolVersion == "2.0") {
+    //     return new HTTP2_0(_config);
+    } else {
+        return NULL;
     }
-  }
 }
 
-void Server::closeAllClients() {
-  for (std::set<int>::iterator it = _client_sockets.begin();
-       it != _client_sockets.end(); ++it) {
-    close(*it);
+void Server::processConnection(char *buffer) {
+  try {
+    HTTPProtocol* protocol = _getProtocol(buffer);
+    _request = protocol->parseRequest(buffer);
+  } catch (const std::exception& e) {
+    _response.setStatusCode(HTTPResponse::BAD_REQUEST);
+    _response.setBody("Error parsing request: " + std::string(e.what()));
+    _responseBuffer = _response.generate();
+    return;
   }
-  _client_sockets.clear();
+
+  std::string url = _request.getUrl();
+  if (CGIHandler::isScript(url))
+    _response = CGIHandler::processRequest(_request);
+  else
+    _response = FileHandler::processRequest(_request, _config);
+  _responseBuffer = _response.generate();
 }
-
-// void ConnectionHandler::process() {
-//   char    buffer[1024];
-//   ssize_t bytes_read = recv(_socket, buffer, sizeof(buffer), 0);
-//   if (bytes_read <= 0) {
-//     // Handle error or close connection
-//     return;
-//   }
-
-//   try {
-//     HTTP1_1 protocol(_config);
-//     _request = protocol.parseRequest(buffer);
-//   } catch (const std::exception& e) {
-//     _response.setStatusCode(HTTPResponse::BAD_REQUEST);
-//     _response.setBody("Error parsing request: " + std::string(e.what()));
-//     _responseBuffer = _response.generate();
-//     return;
-//   }
-
-//   std::string url = _request.getUrl();
-//   if (CGIHandler::isScript(url))
-//     _response = CGIHandler::processRequest(_request);
-//   else
-//     _response = FileHandler::processRequest(_request, _config);
-//   _responseBuffer = _response.generate();
-// }
 
 // bool ConnectionHandler::hasDataToSend() const {
 //   return _responseSent < _responseBuffer.size();

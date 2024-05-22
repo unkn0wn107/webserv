@@ -37,12 +37,11 @@ class ConnectionHandler {
   void handleConnection(int socket);
 
  private:
-  HTTPRequest  _request;
-  HTTPResponse _response;
-  std::string  _responseBuffer;
-  size_t       _responseSent;
-  std::vector<ServerConfig>& _configs;
-  std::map<int, Server> _servers;
+  std::vector<ServerConfig> _configs;
+  std::vector<Server *> _servers;
+  Server              *_defaultServer;
+
+  void  _redirect(char *buffer);
 };
 
 #endif

@@ -28,6 +28,7 @@ SRC = $(SRC_DIR)/Server.cpp $(SRC_DIR)/ConfigLoader.cpp $(SRC_DIR)/FileManager.c
       $(SRC_DIR)/HTTP1_1.cpp \
       $(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp \
       $(SRC_DIR)/CGIHandler.cpp $(SRC_DIR)/FileHandler.cpp \
+	  $(SRC_DIR)/PortListener.cpp \
       $(SRC_DIR)/main.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/11 16:32:17 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/21 13:59:18 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 
 typedef struct RouteConfig {
     std::string route;
@@ -29,13 +30,15 @@ typedef struct RouteConfig {
 } RouteConfig;
 
 typedef struct ServerConfig {
-    int listen_port;
-    std::string host;
-    std::vector<std::string> server_names;
-    std::string root;
-    std::map<int, std::string> error_pages;
-    int client_max_body_size;
-    std::vector<RouteConfig> routes;
+    bool                        isDefault;
+    int                         listen_port;
+    std::string                 host;
+    std::vector<std::string>    server_names;
+    std::string                 root;
+    std::map<int, std::string>  error_pages;
+    int                         client_max_body_size;
+    std::vector<RouteConfig>    routes;
+    ServerConfig() : isDefault(false) {}
 } ServerConfig;
 
 typedef struct Config {

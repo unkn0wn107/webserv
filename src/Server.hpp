@@ -23,6 +23,7 @@
 #include <set>
 #include "ConnectionHandler.hpp"
 #include "ErrorHandler.hpp"
+#include "HTTPProtocol.hpp"
 
 class ConnectionHandler;
 
@@ -31,26 +32,23 @@ class Server {
   Server(ServerConfig& config);
   ~Server();
 
-  void run();
+  void processConnection(char *buffer);
+  bool isForMe(std::string host);
 
  private:
   Server(const Server&);             // Prevent copy-construction
   Server& operator=(const Server&);  // Prevent assignment
 
-  void setupServerSocket();
-  void setupEpoll();
-  void acceptConnection();
-  void closeAllClients();
-  //   void process();
+  HTTPProtocol* _getProtocol(char *buffer);
   // void sendResponse();
   // bool hasDataToSend() const;
 
   ServerConfig&                      _config;
-  int                                _socket;
-  std::set<int>                      _client_sockets;
-  int                                _epoll_fd;
-  int                                _server_socket;
   Logger&                            _log;
+  HTTPRequest  _request;
+  HTTPResponse _response;
+  std::string  _responseBuffer;
+  size_t       _responseSent;
 };
 
 #endif

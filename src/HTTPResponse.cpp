@@ -12,6 +12,51 @@
 
 #include "HTTPResponse.hpp"
 
+const int HTTPResponse::CONTINUE;
+const int HTTPResponse::SWITCHING_PROTOCOLS;
+
+const int HTTPResponse::OK;
+const int HTTPResponse::CREATED;
+const int HTTPResponse::ACCEPTED;
+const int HTTPResponse::NON_AUTHORITATIVE_INFORMATION;
+const int HTTPResponse::NO_CONTENT;
+const int HTTPResponse::RESET_CONTENT;
+const int HTTPResponse::PARTIAL_CONTENT;
+
+const int HTTPResponse::MULTIPLE_CHOICES;
+const int HTTPResponse::MOVED_PERMANENTLY;
+const int HTTPResponse::FOUND;
+const int HTTPResponse::SEE_OTHER;
+const int HTTPResponse::NOT_MODIFIED;
+const int HTTPResponse::USE_PROXY;
+const int HTTPResponse::TEMPORARY_REDIRECT;
+
+const int HTTPResponse::BAD_REQUEST;
+const int HTTPResponse::UNAUTHORIZED;
+const int HTTPResponse::PAYMENT_REQUIRED;
+const int HTTPResponse::FORBIDDEN;
+const int HTTPResponse::NOT_FOUND;
+const int HTTPResponse::METHOD_NOT_ALLOWED;
+const int HTTPResponse::NOT_ACCEPTABLE;
+const int HTTPResponse::PROXY_AUTHENTICATION_REQUIRED;
+const int HTTPResponse::REQUEST_TIMEOUT;
+const int HTTPResponse::CONFLICT;
+const int HTTPResponse::GONE;
+const int HTTPResponse::LENGTH_REQUIRED;
+const int HTTPResponse::PRECONDITION_FAILED;
+const int HTTPResponse::REQUEST_ENTITY_TOO_LARGE;
+const int HTTPResponse::REQUEST_URI_TOO_LONG;
+const int HTTPResponse::UNSUPPORTED_MEDIA_TYPE;
+const int HTTPResponse::REQUESTED_RANGE_NOT_SATISFIABLE;
+const int HTTPResponse::EXPECTATION_FAILED;
+
+const int HTTPResponse::INTERNAL_SERVER_ERROR;
+const int HTTPResponse::NOT_IMPLEMENTED;
+const int HTTPResponse::BAD_GATEWAY;
+const int HTTPResponse::SERVICE_UNAVAILABLE;
+const int HTTPResponse::GATEWAY_TIMEOUT;
+const int HTTPResponse::HTTP_VERSION_NOT_SUPPORTED;
+
 const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::CONTINUE, "Continue"),
     std::make_pair(HTTPResponse::SWITCHING_PROTOCOLS, "Switching Protocols"),

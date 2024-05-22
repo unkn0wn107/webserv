@@ -1,6 +1,6 @@
 {
   "editor.defaultFormatter": "trunk.io",
-  "editor.formatOnSave": true,
+  "editor.formatOnSave": false,
   "files.insertFinalNewline": true,
   "files.associations": {
     "cstdlib": "cpp",
@@ -81,7 +81,15 @@
     "xlocbuf": "cpp",
     "xlocmes": "cpp",
     "xlocmon": "cpp",
-    "xloctime": "cpp"
+    "xloctime": "cpp",
+    "bitset": "cpp",
+    "complex": "cpp",
+    "condition_variable": "cpp",
+    "list": "cpp",
+    "unordered_set": "cpp",
+    "mutex": "cpp",
+    "typeindex": "cpp",
+    "semaphore": "cpp"
   },
   "docwriter.style": "Doxygen"
 }

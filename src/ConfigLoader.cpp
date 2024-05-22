@@ -88,7 +88,7 @@ void ConfigLoader::parseServerConfig(std::ifstream& configFile, ServerConfig* se
             getInstance()._log.info("server block Skip empty or comment line :" + line);
             continue;
         }
-        
+
         afterValue = getInstance()._cleanValue(afterValue, '#');
         getInstance()._log.info("========= Parsing server block line: key = [" + key + "] line = [" + line + "]");
         if (key == "route") {
@@ -105,6 +105,11 @@ void ConfigLoader::parseServerConfig(std::ifstream& configFile, ServerConfig* se
         } else {
             if (key == "listen") {
                 serverConfig->listen_port = Utils::stoi<int>(getInstance()._parseValue(lineStream.str()));
+                getInstance()._configuredPorts.insert(serverConfig->listen_port);
+                if (getInstance()._cleanValue(afterValue, ';') == "default_server")
+                {
+                    serverConfig->isDefault = true;
+                }
             } else if (key == "host") {
                 serverConfig->host = getInstance()._parseValue(lineStream.str());
             } else if (key == "server_name") {
@@ -188,7 +193,7 @@ std::string ConfigLoader::_parseValue(std::string toParse)
     std::string key;
     std::string value;
     std::string afterValue;
-    
+
     _log.info("Parsing value form :" + toParse);
     toParseStream >> key >> value >> afterValue;
     _log.info("parsed Value :" + value + " afterValue :" + afterValue);
@@ -280,6 +285,15 @@ void ConfigLoader::printConfig() {
         }
         std::cout << std::endl;
     }
+}
+
+std::vector<PortListener *> ConfigLoader::creatListeners(){
+    std::vector<PortListener *> listeners;
+    for (std::set<int>::iterator port = getInstance()._configuredPorts.begin(); port != getInstance()._configuredPorts.end(); ++port)
+    {
+        listeners.push_back(new PortListener(*port, loadServerConfigs(*port)));
+    }
+    return listeners;
 }
 
 ConfigLoader::ConfigLoader() : _log(Logger::getInstance()) {

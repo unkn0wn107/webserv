@@ -32,17 +32,18 @@ std::string Utils::to_string(const T& num) {
 }
 
 std::string Utils::trim(const std::string& str) {
-    const char* whitespace = " \t\n\r\f\v";
+  const char* whitespace = " \t\n\r\f\v";
 
-    // Trouver le premier caractère non blanc
-    size_t start = str.find_first_not_of(whitespace);
-    if (start == std::string::npos) return ""; // La chaîne est composée uniquement d'espaces blancs
+  // Trouver le premier caractère non blanc
+  size_t start = str.find_first_not_of(whitespace);
+  if (start == std::string::npos)
+    return "";  // La chaîne est composée uniquement d'espaces blancs
 
-    // Trouver le dernier caractère non blanc
-    size_t end = str.find_last_not_of(whitespace);
+  // Trouver le dernier caractère non blanc
+  size_t end = str.find_last_not_of(whitespace);
 
-    // Extraire la sous-chaîne sans les espaces blancs au début et à la fin
-    return str.substr(start, end - start + 1);
+  // Extraire la sous-chaîne sans les espaces blancs au début et à la fin
+  return str.substr(start, end - start + 1);
 }
 
 template size_t Utils::stoi<size_t>(const std::string& str);

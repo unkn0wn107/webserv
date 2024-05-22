@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "CGIHandler.hpp"
+#include "Config.hpp"
 #include "ErrorHandler.hpp"
 #include "FileHandler.hpp"
 #include "HTTP1_1.hpp"
@@ -25,7 +26,6 @@
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "Server.hpp"
-#include "Config.hpp"
 
 class Server;
 
@@ -40,11 +40,11 @@ class ConnectionHandler {
   bool hasDataToSend() const;
 
  private:
-  int          _socket;
-  HTTPRequest  _request;
-  HTTPResponse _response;
-  std::string  _responseBuffer;
-  size_t       _responseSent;
+  int           _socket;
+  HTTPRequest   _request;
+  HTTPResponse  _response;
+  std::string   _responseBuffer;
+  size_t        _responseSent;
   ServerConfig& _config;
 };
 

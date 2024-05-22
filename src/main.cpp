@@ -10,9 +10,9 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "Config.hpp"
 #include "ConfigLoader.hpp"
 #include "Server.hpp"
-#include "Config.hpp"
 
 int main(int argc, char* argv[]) {
   if (argc != 2 || argv[1] == NULL)
@@ -20,11 +20,14 @@ int main(int argc, char* argv[]) {
 
   Config config;
   try {
-    ConfigLoader::loadConfig(argc == 1 ? ConfigLoader::DEFAULT_FILE_NAME : argv[1]);
-    Logger::getInstance().info("WebServ running...\n\nCurrent configuration:\n\n");
+    ConfigLoader::loadConfig(argc == 1 ? ConfigLoader::DEFAULT_FILE_NAME
+                                       : argv[1]);
+    Logger::getInstance().info(
+        "WebServ running...\n\nCurrent configuration:\n\n");
     ConfigLoader::printConfig();
     config = ConfigLoader::getInstance().getConfig();
-    // for (std::map<int, ServerConfig>::iterator it = config.servers.begin(); it != config.servers.end(); ++it) {
+    // for (std::map<int, ServerConfig>::iterator it = config.servers.begin();
+    // it != config.servers.end(); ++it) {
     //         Server server(it->second);
     //         server.run();
     // }

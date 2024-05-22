@@ -24,7 +24,8 @@ class FileHandler : public Handler {
   ~FileHandler();
 
  public:
-  static HTTPResponse processRequest(const HTTPRequest& request, ServerConfig& config);
+  static HTTPResponse processRequest(const HTTPRequest& request,
+                                     ServerConfig&      config);
 };
 
 #endif

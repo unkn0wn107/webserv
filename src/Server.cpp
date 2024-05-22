@@ -14,10 +14,8 @@
 #include "Config.hpp"
 #include "Logger.hpp"
 
-Server::Server(ServerConfig& config) : 
-  _config(config), 
-  _log(Logger::getInstance())
-{
+Server::Server(ServerConfig& config)
+    : _config(config), _log(Logger::getInstance()) {
   _log.info("Server " + _config.server_names[0] + "is starting");
   _log.info("Listening on port " + _config.listen_port);
   setupServerSocket();
@@ -111,7 +109,8 @@ void Server::acceptConnection() {
     int flags = fcntl(new_socket, F_GETFL, 0);
     if (flags == -1 || fcntl(new_socket, F_SETFL, flags | O_NONBLOCK) == -1) {
       ErrorHandler::log("Failed to set new socket to non-blocking");
-      _log.error("(" + _config.server_names[0] + ") Failed to set new socket to non-blocking");
+      _log.error("(" + _config.server_names[0] +
+                 ") Failed to set new socket to non-blocking");
       continue;
     }
 
@@ -124,7 +123,8 @@ void Server::acceptConnection() {
 
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, new_socket, &event) == -1) {
       ErrorHandler::log("Failed to add new socket to epoll");
-      _log.error("(" + _config.server_names[0] + ") Failed to add new socket to epoll");
+      _log.error("(" + _config.server_names[0] +
+                 ") Failed to add new socket to epoll");
       delete handler;
       close(new_socket);
       _client_sockets.erase(new_socket);

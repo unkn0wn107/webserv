@@ -11,14 +11,13 @@
 /* ************************************************************************** */
 
 #include "HTTP1_1.hpp"
-#include <algorithm> 
+#include <algorithm>
 #include "Config.hpp"
 #include "Logger.hpp"
 
 std::vector<std::string> HTTP1_1::_validMethods;
 
-HTTP1_1::HTTP1_1(ServerConfig& config): HTTPProtocol(config)
-{
+HTTP1_1::HTTP1_1(ServerConfig& config) : HTTPProtocol(config) {
   _validMethods.push_back("GET");
   _validMethods.push_back("HEAD");
   _validMethods.push_back("DELETE");
@@ -71,12 +70,13 @@ HTTPRequest HTTP1_1::parseRequest(const std::string& requestData) {
 
 HTTPResponse HTTP1_1::processRequest(const HTTPRequest& request) {
   HTTPResponse response = HTTPResponse("HTTP/1.1");
-  if (std::find(_validMethods.begin(), _validMethods.end(), request.getMethod()) != _validMethods.end())
-  {
-    response.setBody("Received a " + request.getMethod() + " request for " + request.getUrl());
-    _log.info("(" + _config.server_names[0] + ") Received a " + request.getMethod() + " request for " + request.getUrl());
-  }
-  else
+  if (std::find(_validMethods.begin(), _validMethods.end(),
+                request.getMethod()) != _validMethods.end()) {
+    response.setBody("Received a " + request.getMethod() + " request for " +
+                     request.getUrl());
+    _log.info("(" + _config.server_names[0] + ") Received a " +
+              request.getMethod() + " request for " + request.getUrl());
+  } else
     response.setStatusCode(HTTPResponse::METHOD_NOT_ALLOWED);
   return response;
 }

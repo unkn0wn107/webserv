@@ -13,11 +13,11 @@
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
 
-#include <iostream>
-#include <fstream>
-#include <string>
 #include <ctime>
+#include <fstream>
+#include <iostream>
 #include <map>
+#include <string>
 #include "Config.hpp"
 
 #define LOG_FILE_PATH "./logs/"
@@ -25,26 +25,25 @@
 #define LOG_FILE_EXT ".log"
 
 class Logger {
-public:
+ public:
+  static Logger& getInstance();
+  void           setConfig(const Config& config);
 
-	static Logger& getInstance();
-  void  setConfig(const Config& config);
-
-	void info(const std::string& message) const;
-	void warning(const std::string& message) const;
+  void info(const std::string& message) const;
+  void warning(const std::string& message) const;
   void error(const std::string& message) const;
 
-private :
-	Logger();
-	~Logger();
+ private:
+  Logger();
+  ~Logger();
 
   static Logger* _instance;
-  
-  Config _config;
-  std::ofstream*  _progLogFile;
-  std::string _progLogFileName;
-	std::string _getCurrentTime() const;
-  
+
+  Config         _config;
+  std::ofstream* _progLogFile;
+  std::string    _progLogFileName;
+  std::string    _getCurrentTime() const;
+
   void _openLogFile();
   void _closeLogFile();
   void _setFileName();

@@ -19,8 +19,8 @@
 #include <unistd.h>
 #include <iostream>
 #include <map>
-#include <string>
 #include <set>
+#include <string>
 #include "ConnectionHandler.hpp"
 #include "ErrorHandler.hpp"
 
@@ -42,11 +42,11 @@ class Server {
   void acceptConnection();
   void closeAllClients();
 
-  ServerConfig&                      _config;
-  std::set<int>                      _client_sockets;
-  int                                _epoll_fd;
-  int                                _server_socket;
-  Logger&                            _log;
+  ServerConfig& _config;
+  std::set<int> _client_sockets;
+  int           _epoll_fd;
+  int           _server_socket;
+  Logger&       _log;
 };
 
 #endif

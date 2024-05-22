@@ -14,20 +14,21 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <sstream>
+#include "Config.hpp"
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
-#include "Config.hpp"
 
 FileHandler::FileHandler() {}
 
 FileHandler::~FileHandler() {}
 
-HTTPResponse FileHandler::processRequest(const HTTPRequest& request, ServerConfig& config) {
+HTTPResponse FileHandler::processRequest(const HTTPRequest& request,
+                                         ServerConfig&      config) {
   (void)request;
-  HTTPResponse  response;
-  std::string   path = config.root + request.getUrl();
-  struct stat   path_stat;
+  HTTPResponse response;
+  std::string  path = config.root + request.getUrl();
+  struct stat  path_stat;
   stat(path.c_str(), &path_stat);
 
   // Check if the path is a directory

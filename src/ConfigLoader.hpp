@@ -18,19 +18,20 @@
 #include "Config.hpp"
 #include "Logger.hpp"
 
-/// @brief 
+/// @brief
 class ConfigLoader {
  private:
   ConfigLoader();
-  static ConfigLoader*               _instance;
-  Config                             _config;
-  Logger&                              _log;
+  static ConfigLoader* _instance;
+  Config               _config;
+  Logger&              _log;
 
   // Disallow the copy constructor and copy assignment operator
   ConfigLoader(const ConfigLoader&);
   ConfigLoader& operator=(const ConfigLoader&);
   std::string   _parseValue(std::string value);
   std::string   _cleanValue(std::string toClean, char c);
+
  public:
   static ConfigLoader& getInstance();
   ~ConfigLoader();
@@ -41,16 +42,19 @@ class ConfigLoader {
    * @return True if the configuration is loaded successfully, false otherwise.
    */
   static void loadConfig(const std::string& filepath);
-  static void parseServerConfig(std::ifstream& configFile, ServerConfig* serverConfig);
-  static void parseRouteConfig(std::ifstream& configFile, RouteConfig* routeConfig);
-  std::string getServerConfigValue(const ServerConfig& config,const std::string& key) const;
+  static void parseServerConfig(std::ifstream& configFile,
+                                ServerConfig*  serverConfig);
+  static void parseRouteConfig(std::ifstream& configFile,
+                               RouteConfig*   routeConfig);
+  std::string getServerConfigValue(const ServerConfig& config,
+                                   const std::string&  key) const;
 
   /**
    * Retrieve all config.
    * @return The configuration map.
    */
   const Config& getConfig() const;
-  static void printConfig();
+  static void   printConfig();
 
   static const std::string DEFAULT_HOST;
   static const std::string DEFAULT_PORT;

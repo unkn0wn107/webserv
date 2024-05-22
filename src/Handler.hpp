@@ -20,12 +20,13 @@ class HTTPRequest;
 class HTTPResponse;
 
 class Handler {
-  protected:
-    Logger&         _log;
-  public:
-    Handler() : _log(Logger::getInstance()) {}
-    virtual ~Handler() {}
-    virtual HTTPResponse handle(const HTTPRequest& request) = 0;
+ protected:
+  Logger& _log;
+
+ public:
+  Handler() : _log(Logger::getInstance()) {}
+  virtual ~Handler() {}
+  virtual HTTPResponse handle(const HTTPRequest& request) = 0;
 };
 
 #endif

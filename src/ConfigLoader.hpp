@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/04 01:49:20 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/22 18:00:35 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,8 +44,8 @@ class ConfigLoader {
   static void loadConfig(const std::string& filepath);
   static void parseServerConfig(std::ifstream& configFile,
                                 ServerConfig*  serverConfig);
-  static void parseRouteConfig(std::ifstream& configFile,
-                               RouteConfig*   routeConfig);
+  static void parseLocationConfig(std::ifstream&  configFile,
+                                  LocationConfig* locationConfig);
   std::string getServerConfigValue(const ServerConfig& config,
                                    const std::string&  key) const;
 

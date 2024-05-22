@@ -6,14 +6,14 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/05/04 02:30:27 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/05/22 19:48:07 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = webserv
 
 CXX = g++
-CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98 -fsanitize=address -g3
+CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
 DEBUGFLAGS = -g3
 
 SRC_DIR = src
@@ -21,6 +21,9 @@ OBJ_DIR = obj
 DEBUG_OBJ_DIR = obj_debug
 LOG_DIR = ./logs
 LOG_FILE_EXT = .log
+
+NGINX_PORT_1 = 8000
+NGINX_PORT_2 = 8001
 
 SRC = $(SRC_DIR)/Server.cpp $(SRC_DIR)/ConfigLoader.cpp $(SRC_DIR)/FileManager.cpp \
       $(SRC_DIR)/ConnectionHandler.cpp \
@@ -62,6 +65,14 @@ update_gitignore:
 
 run_webserv:
 	@./webserv
+
+nginx-build:
+	docker build -t nginx nginx/
+
+nginx: nginx-build
+	docker run --rm --name nginx -p $(NGINX_PORT_1):8080 -p $(NGINX_PORT_2):8081 \
+		-v ./default.conf:/etc/nginx/conf.d/default.conf:ro \
+		-v ./site:/var/www/html nginx
 
 run_tests:
 	@./test.sh

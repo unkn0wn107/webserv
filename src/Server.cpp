@@ -16,8 +16,8 @@
 
 Server::Server(ServerConfig& config)
     : _config(config), _log(Logger::getInstance()) {
-  _log.info("Server " + _config.server_names[0] + "is starting");
-  _log.info("Listening on port " + _config.listen_port);
+  _log.info("Server " + _config.server_names[0] + " is starting on port " +
+            Utils::to_string(_config.listen_port));
   setupServerSocket();
   setupEpoll();
 }

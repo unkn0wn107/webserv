@@ -13,12 +13,14 @@
 NAME = webserv
 
 CXX = g++
-CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
+CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98 -fsanitize=address -g3
 DEBUGFLAGS = -g3
 
 SRC_DIR = src
 OBJ_DIR = obj
 DEBUG_OBJ_DIR = obj_debug
+LOG_DIR = ./logs
+LOG_FILE_EXT = .log
 
 SRC = $(SRC_DIR)/Server.cpp $(SRC_DIR)/ConfigLoader.cpp $(SRC_DIR)/FileManager.cpp \
       $(SRC_DIR)/ConnectionHandler.cpp \
@@ -37,8 +39,9 @@ VPATH = $(SRC_DIR)
 
 all: $(NAME)
 
-$(NAME): $(OBJ)
+$(NAME): $(OBJ) update_gitignore
 	$(CXX) $(CXXFLAGS) $(OBJ) -o $(NAME)
+	mkdir -p $(LOG_DIR)
 
 $(OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(OBJ_DIR)
@@ -48,6 +51,14 @@ test: $(NAME)
 	@$(MAKE) run_webserv &
 	@$(MAKE) run_tests
 	@kill $$(pgrep -f './webserv')
+
+update_gitignore:
+	@if ! grep -q "$(LOG_FILE_EXT)" .gitignore; then \
+		echo "$(LOG_FILE_EXT)" >> .gitignore; \
+		echo "Added $(LOG_FILE_EXT) to .gitignore"; \
+	else \
+		echo "$(LOG_FILE_EXT) already in .gitignore"; \
+	fi
 
 run_webserv:
 	@./webserv

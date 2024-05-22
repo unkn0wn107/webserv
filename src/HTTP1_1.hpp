@@ -22,8 +22,11 @@
 #include "Utils.hpp"
 
 class HTTP1_1 : public HTTPProtocol {
+ private:
+  static std::vector<std::string> _validMethods;
+
  public:
-  HTTP1_1();
+  HTTP1_1(ServerConfig& config);
   virtual ~HTTP1_1();
 
   virtual HTTPRequest  parseRequest(const std::string& requestString);

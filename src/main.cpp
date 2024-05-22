@@ -10,26 +10,32 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "Config.hpp"
 #include "ConfigLoader.hpp"
 #include "Server.hpp"
 
 int main(int argc, char* argv[]) {
-  if (argc > 2)
-    ErrorHandler::fatal("Too many arguments. usage : ./webserv [config_path]");
+  if (argc != 2 || argv[1] == NULL)
+    ErrorHandler::fatal("Bad arguments. usage : ./webserv [config_path]");
 
-  std::map<std::string, std::string> config;
+  Config config;
   try {
-    ConfigLoader& config = ConfigLoader::getInstance();
-    if (argc == 1)
-      config.loadConfig(ConfigLoader::DEFAULT_FILE_NAME);
-    else if (argc == 2)
-      config.loadConfig(argv[1]);
-    Server* server = new Server();
-    server->start();
+    ConfigLoader::loadConfig(argc == 1 ? ConfigLoader::DEFAULT_FILE_NAME
+                                       : argv[1]);
+    Logger::getInstance().info(
+        "WebServ running...\n\nCurrent configuration:\n\n");
+    ConfigLoader::printConfig();
+    config = ConfigLoader::getInstance().getConfig();
+    // for (std::map<int, ServerConfig>::iterator it = config.servers.begin();
+    // it != config.servers.end(); ++it) {
+    //         Server server(it->second);
+    //         server.run();
+    // }
   } catch (const std::exception& e) {
     ErrorHandler::exception(e);
+    Logger::getInstance().error("Shutdown Error in main.cpp");
     return EXIT_FAILURE;
   }
-
+  Logger::getInstance().info("Shutdown WebServ");
   return EXIT_SUCCESS;
 }

@@ -14,6 +14,8 @@
 #define HTTPPROTOCOL_H
 
 #include <string>
+#include "Config.hpp"
+#include "Logger.hpp"
 
 class HTTPRequest;
 class HTTPResponse;
@@ -21,8 +23,13 @@ class HTTPResponse;
 // enum Version { UNKNOWN, HTTP1_1 };
 
 class HTTPProtocol {
+ protected:
+  Logger&       _log;
+  ServerConfig& _config;
+
  public:
-  HTTPProtocol() {}
+  HTTPProtocol(ServerConfig& config)
+      : _log(Logger::getInstance()), _config(config) {}
   virtual ~HTTPProtocol() {}
 
   // Version version;

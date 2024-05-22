@@ -21,6 +21,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "Logger.hpp"
 
 class FileManager {
  public:
@@ -48,6 +49,7 @@ class FileManager {
 
  private:
   FileManager();
+  Logger& _log;
 };
 
 #endif

@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <sstream>
+#include "Config.hpp"
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
@@ -22,11 +23,12 @@ FileHandler::FileHandler() {}
 
 FileHandler::~FileHandler() {}
 
-HTTPResponse FileHandler::processRequest(const HTTPRequest& request) {
-  HTTPResponse  response;
-  ConfigLoader& configLoader = ConfigLoader::getInstance();
-  std::string   path = configLoader.getConfigValue("root") + request.getUrl();
-  struct stat   path_stat;
+HTTPResponse FileHandler::processRequest(const HTTPRequest& request,
+                                         ServerConfig&      config) {
+  (void)request;
+  HTTPResponse response;
+  std::string  path = config.root + request.getUrl();
+  struct stat  path_stat;
   stat(path.c_str(), &path_stat);
 
   // Check if the path is a directory

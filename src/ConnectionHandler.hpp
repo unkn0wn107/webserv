@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "CGIHandler.hpp"
+#include "Config.hpp"
 #include "ErrorHandler.hpp"
 #include "FileHandler.hpp"
 #include "HTTP1_1.hpp"
@@ -30,7 +31,7 @@ class Server;
 
 class ConnectionHandler {
  public:
-  ConnectionHandler(int socket);
+  ConnectionHandler(int socket, ServerConfig& config);
   ~ConnectionHandler();
 
   // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
@@ -39,11 +40,12 @@ class ConnectionHandler {
   bool hasDataToSend() const;
 
  private:
-  int          _socket;
-  HTTPRequest  _request;
-  HTTPResponse _response;
-  std::string  _responseBuffer;
-  size_t       _responseSent;
+  int           _socket;
+  HTTPRequest   _request;
+  HTTPResponse  _response;
+  std::string   _responseBuffer;
+  size_t        _responseSent;
+  ServerConfig& _config;
 };
 
 #endif

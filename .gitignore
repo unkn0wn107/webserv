@@ -1,4 +1,5 @@
 webserv
+logs/*
 */*.log
 
 # Prerequisites
@@ -33,3 +34,4 @@ webserv
 *.exe
 *.out
 *.app
+.log

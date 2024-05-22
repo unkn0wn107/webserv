@@ -25,6 +25,7 @@ class Utils {
 
   template <typename T>
   static std::string to_string(const T& num);
+  static std::string trim(const std::string& str);
 };
 
 #endif

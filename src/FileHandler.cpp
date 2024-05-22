@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:37 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/04 02:10:09 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/22 20:40:06 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,17 +38,17 @@ HTTPResponse FileHandler::processRequest(const HTTPRequest& request,
     if (FileManager::doesFileExists(indexFilePath)) {
       response.setBody(FileManager::readFile(indexFilePath));
       response.setStatusCode(HTTPResponse::OK);
+      response.addHeader("Content-Type", "text/html");
     } else
       response.setStatusCode(HTTPResponse::FORBIDDEN);
   } else if (FileManager::doesFileExists(path)) {
     // Handle file request
     response.setBody(FileManager::readFile(path));
     response.setStatusCode(HTTPResponse::OK);
+    // TODO : Detect content type based on actual file type
+    response.addHeader("Content-Type", "text/html");
   } else
     response.setStatusCode(HTTPResponse::NOT_FOUND);
-
-  // Set common headers
-  response.addHeader("Content-Type", "text/html");
 
   return response;
 }

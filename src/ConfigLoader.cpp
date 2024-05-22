@@ -22,7 +22,7 @@
 
 const std::string ConfigLoader::DEFAULT_HOST = "127.0.0.1";
 const std::string ConfigLoader::DEFAULT_PORT = "8080";
-const std::string ConfigLoader::DEFAULT_ROOT = "./";
+const std::string ConfigLoader::DEFAULT_ROOT = "./site";
 const std::string ConfigLoader::DEFAULT_MAX_CLIENT_BODY_SIZE = "8192";
 const std::string ConfigLoader::DEFAULT_FILE_NAME = "server_config.cfg";
 ConfigLoader*     ConfigLoader::_instance = NULL;
@@ -141,6 +141,9 @@ void ConfigLoader::parseServerConfig(std::ifstream& configFile,
     }
     key = "";
   }
+
+  if (serverConfig->root.empty())
+    serverConfig->root = ConfigLoader::DEFAULT_ROOT;
 }
 
 void ConfigLoader::parseLocationConfig(std::ifstream&  configFile,

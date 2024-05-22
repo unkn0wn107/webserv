@@ -1,5 +1,6 @@
 webserv
 logs/*
+*/*.log
 
 # Prerequisites
 *.d

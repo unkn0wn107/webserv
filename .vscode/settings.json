@@ -82,7 +82,8 @@
     "stop_token": "cpp",
     "thread": "cpp",
     "typeindex": "cpp",
-    "semaphore": "cpp"
+    "semaphore": "cpp",
+    "xmemory0": "cpp"
   },
   "docwriter.style": "Doxygen"
 }

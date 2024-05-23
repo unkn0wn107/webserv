@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/22 15:27:31 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/23 12:14:09 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@ int		Worker::_setupEpoll()
 		_log.error("WORKER: Failed \"epoll_create1\"");
 		exit(EXIT_FAILURE);
 	}
+	return socket;
 }
 
 void	Worker::assignConnection(int clientSocket)
@@ -82,7 +83,16 @@ void Worker::_runEventLoop() {
 
 void Worker::_handleIncomingConnection(int fd) {
     // Gérer une nouvelle connexion entrante
+    int clientSocket = accept(fd, NULL, NULL);
+    if (clientSocket == -1) {
+        _log.error("Erreur lors de l'acceptation de la connexion");
+        return;
+    }
+    _log.info("Nouvelle connexion entrante");
+}
 
+void	Worker::_handleOutgoingData(int fd) {
+    _log.info("Données sortantes" + Utils::to_string(fd));
 }
 
 void*	Worker::_workerRoutine(void *ref)

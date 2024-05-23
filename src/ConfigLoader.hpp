@@ -1,4 +1,4 @@
-/* ************************************************************************** */
+  /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
 /*   ConfigLoader.hpp                                   :+:      :+:    :+:   */
@@ -46,7 +46,7 @@ class ConfigLoader {
                                 ServerConfig*  serverConfig);
   static void parseRouteConfig(std::ifstream& configFile,
                                RouteConfig*   routeConfig);
-  static void parseListenConfig(std::ifstream& configFile,
+  static void parseListenConfig(std::istringstream& lineStream,
                                 ListenConfig* listenConfig);
   std::string getServerConfigValue(const ServerConfig& config,
                                    const std::string&  key) const;

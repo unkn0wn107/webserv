@@ -111,7 +111,8 @@ void ConfigLoader::parseServerConfig(std::ifstream& configFile,
     } else {
       if (key == "listen") {
         ListenConfig listenConfig;
-        parseListenConfig(configFile, &listenConfig);
+        std::istringstream iss(line);
+        parseListenConfig(iss, &listenConfig);
         serverConfig->listen.push_back(listenConfig);
         getInstance()._config.unique_listen_configs.insert(listenConfig);
       } else if (key == "server_name") {
@@ -145,13 +146,11 @@ void ConfigLoader::parseServerConfig(std::ifstream& configFile,
   }
 }
 
-void ConfigLoader::parseListenConfig(std::ifstream& configFile, ListenConfig* listenConfig) {
-	std::string line;
-	std::getline(configFile, line);
-	std::istringstream iss(line);
-	std::string token;
+void ConfigLoader::parseListenConfig(std::istringstream& lineStream, ListenConfig* listenConfig) {
+  std::string token;
 
-	while (iss >> token) {
+	while (lineStream >> token) {
+    std::cout << "token = " << token << std::endl;
 		if (token.find('[') != std::string::npos) { // Adresse IPv6 avec port
 			std::string::size_type endPos = token.find(']');
 			std::string::size_type colonPos = token.find(':', endPos);
@@ -267,35 +266,41 @@ const Config& ConfigLoader::getConfig() const {
 
 void ConfigLoader::printConfig() {
   const Config& config = getInstance()._config;
-  for (std::vector<ServerConfig>::const_iterator it = config.servers.begin();
-       it != config.servers.end(); ++it) {
+  std::cout << "Worker Processes: " << config.worker_processes << std::endl;
+  std::cout << "Worker Connections: " << config.worker_connections << std::endl;
+  std::cout << "Log File: " << config.log_file << std::endl;
+
+  std::cout << "Unique Listen Configs:" << std::endl;
+  for (std::set<ListenConfig>::const_iterator it = config.unique_listen_configs.begin(); it != config.unique_listen_configs.end(); ++it) {
+    const ListenConfig& listen = *it;
+    std::cout << "\tAddress: " << listen.address
+              << " Port: " << listen.port
+              << " Default Server: " << (listen.default_server ? "Yes" : "No")
+              << " Backlog: " << listen.backlog
+              << " Rcvbuf: " << listen.rcvbuf
+              << " Sndbuf: " << listen.sndbuf
+              << " IPv6 Only: " << (listen.ipv6only ? "Yes" : "No") << std::endl;
+  }
+
+  for (std::vector<ServerConfig>::const_iterator it = config.servers.begin(); it != config.servers.end(); ++it) {
     const ServerConfig& server = *it;
     std::cout << "====Server on port: " << server.listen[0].port << std::endl;
     std::cout << "Server Names: ";
-    for (std::vector<std::string>::const_iterator nameIt =
-             server.server_names.begin();
-         nameIt != server.server_names.end(); ++nameIt) {
+    for (std::vector<std::string>::const_iterator nameIt = server.server_names.begin(); nameIt != server.server_names.end(); ++nameIt) {
       std::cout << *nameIt << " ";
     }
     std::cout << std::endl;
     std::cout << "Root: " << server.root << std::endl;
-    std::cout << "Client Max Body Size: " << server.client_max_body_size
-              << std::endl;
+    std::cout << "Client Max Body Size: " << server.client_max_body_size << std::endl;
 
-    // Afficher les pages d'erreur
     std::cout << "====Error Pages:" << std::endl;
-    for (std::map<int, std::string>::const_iterator errorIt =
-             server.error_pages.begin();
-         errorIt != server.error_pages.end(); ++errorIt) {
+    for (std::map<int, std::string>::const_iterator errorIt = server.error_pages.begin(); errorIt != server.error_pages.end(); ++errorIt) {
       std::cout << " \tError Code: " << errorIt->first
                 << " - Page: " << errorIt->second << std::endl;
     }
 
-    // Afficher les routes
     std::cout << "Routes:" << std::endl;
-    for (std::vector<RouteConfig>::const_iterator routeIt =
-             server.routes.begin();
-         routeIt != server.routes.end(); ++routeIt) {
+  for (std::vector<RouteConfig>::const_iterator routeIt = server.routes.begin(); routeIt != server.routes.end(); ++routeIt) {
       const RouteConfig& routeConfig = *routeIt;
       std::cout << "========Route: " << routeConfig.route << std::endl;
       std::cout << "\tDirectory: " << routeConfig.directory << std::endl;
@@ -306,9 +311,7 @@ void ConfigLoader::printConfig() {
       std::cout << "\tCGI Handler: " << routeConfig.cgi_handler << std::endl;
       std::cout << "\tUpload Path: " << routeConfig.upload_path << std::endl;
       std::cout << "\tAllowed Methods: ";
-      for (std::vector<std::string>::const_iterator methodIt =
-               routeConfig.allow_methods.begin();
-           methodIt != routeConfig.allow_methods.end(); ++methodIt) {
+      for (std::vector<std::string>::const_iterator methodIt = routeConfig.allow_methods.begin(); methodIt != routeConfig.allow_methods.end(); ++methodIt) {
         std::cout << *methodIt << " ";
       }
       std::cout << std::endl;

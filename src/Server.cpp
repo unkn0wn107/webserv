@@ -11,75 +11,86 @@
 /* ************************************************************************** */
 
 #include "Server.hpp"
+#include "Utils.hpp"
 
 Server::Server(Config& config):
 	_config(config),
-	_log(Logger::getInstance())
+	_log(Logger::getInstance()),
+	_workerIndex(0)
 {
-	_setupServerSockets(_config.servers);
+	_setupWorkers();
+	_setupServerSockets();
 }
 
 Server::~Server() {
-
+	for (size_t i = 0; i < _workers.size(); i++) {
+		delete _workers[i];
+	}
 }
 
-void Server::_setupServerSockets(const std::vector<ServerConfig>& servers) {
-    for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
-        const ServerConfig& server = *it;
-        for (std::vector<ListenConfig>::const_iterator it2 = server.listen.begin(); it2 != server.listen.end(); ++it2) {
-            const ListenConfig& listenConfig = *it2;
-            if (_uniqueConfigs.insert(listenConfig).second) {  // Vérifie si l'insertion est réussie
-                int sock = socket(AF_INET6, SOCK_STREAM, 0);
-                if (sock < 0) {
-                    _log.error("(" + server.server_names[0] + ") Failed to create socket");
-                    continue;
-                }
-
-                struct sockaddr_in6 address;
-                memset(&address, 0, sizeof(address));
-                address.sin6_family = AF_INET6;
-                address.sin6_port = htons(listenConfig.port);
-
-                if (listenConfig.address.empty() || listenConfig.address == "*") {
-                    address.sin6_addr = in6addr_any;
-                } else {
-                    if (inet_pton(AF_INET6, listenConfig.address.c_str(), &address.sin6_addr) <= 0) {
-                        _log.error("(" + server.server_names[0] + ") Invalid address");
-                        close(sock);
-                        continue;
-                    }
-                }
-
-                int opt = 1;
-                if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
-                    _log.error("(" + server.server_names[0] + ") Failed to set socket options");
-                    close(sock);
-                    continue;
-                }
-
-                if (listenConfig.ipv6only) {
-                    int ipv6only = 1;
-                    if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) < 0) {
-                        _log.error("(" + server.server_names[0] + ") Failed to set IPV6_V6ONLY");
-                        close(sock);
-                        continue;
-                    }
-                }
-
-                if (bind(sock, (struct sockaddr*)&address, sizeof(address)) < 0) {
-                    _log.error("(" + server.server_names[0] + ") Failed to bind socket");
-                    close(sock);
-                    continue;
-                }
-
-                if (listen(sock, listenConfig.backlog) < 0) {
-                    _log.error("(" + server.server_names[0] + ") Failed to listen on socket");
-                    close(sock);
-                    continue;
-                }
-
-                _listenSockets[listenConfig] = sock;
-            }
-        }
+void Server::_setupWorkers() {
+    for (int i = 0; i < _config.worker_processes; i++) {
+        _workers.push_back(new Worker(_config));
     }
 }
+
+void Server::_setupServerSockets() {
+    const std::set<ListenConfig>& uniqueConfigs = _config.unique_listen_configs;
+
+    for (std::set<ListenConfig>::const_iterator it = uniqueConfigs.begin(); it != uniqueConfigs.end(); ++it) {
+        const ListenConfig& listenConfig = *it;
+        int sock = socket(AF_INET6, SOCK_STREAM, 0);
+        if (sock < 0) {
+            _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to create socket");
+            continue;
+        }
+
+        struct sockaddr_in6 address;
+        memset(&address, 0, sizeof(address));
+        address.sin6_family = AF_INET6;
+        address.sin6_port = htons(listenConfig.port);
+
+        if (listenConfig.address.empty() || listenConfig.address == "*") {
+            address.sin6_addr = in6addr_any;
+        } else {
+            if (inet_pton(AF_INET6, listenConfig.address.c_str(), &address.sin6_addr) <= 0) {
+                _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Invalid address");
+                close(sock);
+                continue;
+            }
+        }
+
+        int opt = 1;
+        if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
+            _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set socket options");
+            close(sock);
+            continue;
+        }
+
+        if (listenConfig.ipv6only) {
+            int ipv6only = 1;
+            if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) < 0) {
+                _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set IPV6_V6ONLY");
+                close(sock);
+                continue;
+            }
+        }
+
+        if (bind(sock, (struct sockaddr*)&address, sizeof(address)) < 0) {
+            _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to bind socket");
+            close(sock);
+            continue;
+        }
+
+        if (listen(sock, listenConfig.backlog) < 0) {
+            _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to listen on socket");
+            close(sock);
+            continue;
+        }
+
+        _listenSockets[listenConfig] = sock;
+		_workers[_workerIndex]->assignConnection(sock);
+		_workerIndex = (_workerIndex + 1) % _config.worker_processes;
+    }
+}
+

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/22 15:19:35 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/23 12:14:00 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,10 @@
 #include <iostream>
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <cstdlib>
+#include <sys/socket.h>
 #include "Logger.hpp"
+#include "Utils.hpp"
 
 #define MAX_EVENTS 10
 

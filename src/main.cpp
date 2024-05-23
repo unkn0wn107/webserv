@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/22 18:51:13 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/23 12:08:42 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,17 +21,12 @@ int main(int argc, char* argv[]) {
 
   Config config;
   try {
-    ConfigLoader::loadConfig(argc == 1 ? ConfigLoader::DEFAULT_FILE_NAME
-                                       : argv[1]);
+    ConfigLoader::loadConfig(argc == 1 ? ConfigLoader::DEFAULT_FILE_NAME : argv[1]);
     Logger::getInstance().info(
         "WebServ running...\n\nCurrent configuration:\n\n");
     ConfigLoader::printConfig();
     config = ConfigLoader::getInstance().getConfig();
-    // for (std::map<int, ServerConfig>::iterator it = config.servers.begin();
-    // it != config.servers.end(); ++it) {
-    //         Server server(it->second);
-    //         server.run();
-    // }
+    Server server(config);
   } catch (const std::exception& e) {
     Logger::getInstance().error("Shutdown Error in main.cpp");
     return EXIT_FAILURE;

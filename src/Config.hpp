@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/22 18:46:12 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/23 11:48:37 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,16 +17,17 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <unistd.h>
 
 typedef struct RouteConfig {
-  std::string              route;
-  std::string              directory;
-  std::string              default_file;
-  std::vector<std::string> allow_methods;
-  std::string              redirect;
-  bool                     directory_listing;
-  std::string              cgi_handler;
-  std::string              upload_path;
+	std::string              route;
+	std::string              directory;
+	std::string              default_file;
+	std::vector<std::string> allow_methods;
+	std::string              redirect;
+	bool                     directory_listing;
+	std::string              cgi_handler;
+	std::string              upload_path;
 } RouteConfig;
 
 typedef struct ListenConfig {
@@ -51,6 +52,14 @@ typedef struct ListenConfig {
        if (sndbuf > other.sndbuf) return false;
        return ipv6only < other.ipv6only;
    }
+   ListenConfig() {
+        port = 80;
+        default_server = false;
+        backlog = 1000;
+        rcvbuf = 1000;
+        sndbuf = 1000;
+        ipv6only = false;
+    }
 } ListenConfig;
 
 typedef struct ServerConfig {
@@ -69,6 +78,10 @@ typedef struct Config {
 	std::set<ListenConfig>		unique_listen_configs;
 	std::string					log_file;
 	std::vector<ServerConfig>	servers;
+	Config() {
+        worker_processes = sysconf(_SC_NPROCESSORS_CONF); // Initialisation dans le constructeur
+        worker_connections = 1000; // Valeur fixe initialisée ici
+    }
 } Config;
 
 #endif  // SERVER_CONFIG_HPP

@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Logger.class.hpp                                   :+:      :+:    :+:   */
+/*   Logger.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:21:59 by mchenava          #+#    #+#             */
-/*   Updated: 2024/04/24 17:16:22 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/24 02:04:28 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,12 +26,14 @@
 
 class Logger {
  public:
-  static Logger& getInstance();
-  void           setConfig(const Config& config);
+  static Logger&    getInstance();
+  void              setConfig(const Config& config);
+  const std::string getFileName() const;
 
   void info(const std::string& message) const;
   void warning(const std::string& message) const;
   void error(const std::string& message) const;
+  void emerg(const std::string& message) const;
 
  private:
   Logger();

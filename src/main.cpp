@@ -3,25 +3,27 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/24 16:44:51 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/29 17:58:26 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Config.hpp"
-#include "ConfigLoader.hpp"
-#include "Server.hpp"
 #include <cstdlib>
+#include "Config.hpp"
+#include "ConfigManager.hpp"
+#include "Server.hpp"
 
 int main(int argc, char* argv[]) {
   if (argc != 2 || argv[1] == NULL)
-    Logger::getInstance().error("Bad arguments. usage : ./webserv [config_path]");
+    Logger::getInstance().error(
+        "Bad arguments. usage : ./webserv [config_path]");
 
   Config config;
   try {
-    ConfigLoader::loadConfig(argc == 1 ? ConfigLoader::DEFAULT_FILE_NAME : argv[1]);
+    ConfigLoader::loadConfig(argc == 1 ? ConfigLoader::DEFAULT_FILE_NAME
+                                       : argv[1]);
     Logger::getInstance().info(
         "WebServ running...\n\nCurrent configuration:\n\n");
     ConfigLoader::printConfig();

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Logger.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/04/24 17:15:32 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/24 03:39:58 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@
 #include <iostream>
 #include <sstream>
 #include "Config.hpp"
-#include "ConfigLoader.hpp"
+#include "ConfigManager.hpp"
 #include "Utils.hpp"
 
 Logger* Logger::_instance = NULL;
@@ -35,6 +35,10 @@ Logger::~Logger() {
     _progLogFile->close();
   }
   delete _progLogFile;
+}
+
+const std::string Logger::getFileName() const {
+  return _progLogFileName;
 }
 
 void Logger::_openLogFile() {
@@ -64,6 +68,14 @@ void Logger::warning(const std::string& message) const {
 
 void Logger::error(const std::string& message) const {
   std::string msg = "[" + _getCurrentTime() + "] ERROR: " + message;
+  if (_progLogFile->is_open()) {
+    *_progLogFile << msg << std::endl;
+  }
+  std::cerr << msg << std::endl;
+}
+
+void Logger::emerg(const std::string& message) const {
+  std::string msg = "[" + _getCurrentTime() + "] EMERG: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }

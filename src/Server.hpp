@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/23 12:08:12 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/24 16:04:55 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-class ConnectionHandler;
+class Worker;
 
 class Server {
 	private:
@@ -35,7 +35,7 @@ class Server {
 		void					_setupServerSockets();
 		void					_setupWorkers();
 	public:
-		Server(Config& config);
+		Server();
 		~Server();
 };
 

@@ -67,6 +67,8 @@ void ConfigLoader::loadConfig(const std::string& filepath) {
       }
     } else if (key == "log_file") {
       getInstance()._config.log_file = getInstance()._parseValue(value);
+    } else if (key == "worker_processes") {
+      getInstance()._config.worker_processes = Utils::stoi<int>(value);
     } else
       getInstance()._log.warning("Unknowned key :" + key);
     key = "";
@@ -260,7 +262,7 @@ std::string ConfigLoader::_parseValue(std::string toParse) {
   return value;
 }
 
-const Config& ConfigLoader::getConfig() const {
+Config& ConfigLoader::getConfig() {
   return _instance->_config;
 }
 

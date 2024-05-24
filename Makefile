@@ -6,7 +6,7 @@
 #    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/05/23 12:09:26 by  mchenava        ###   ########.fr        #
+#    Updated: 2024/05/24 15:46:38 by  mchenava        ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -28,6 +28,7 @@ SRC = $(SRC_DIR)/Server.cpp $(SRC_DIR)/ConfigLoader.cpp $(SRC_DIR)/FileManager.c
       $(SRC_DIR)/HTTP1_1.cpp $(SRC_DIR)/Worker.cpp \
       $(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp \
       $(SRC_DIR)/CGIHandler.cpp $(SRC_DIR)/FileHandler.cpp \
+			$(SRC_DIR)/VirtualServer.cpp $(SRC_DIR)/Common.cpp \
       $(SRC_DIR)/main.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))

@@ -1,12 +1,12 @@
-  /* ************************************************************************** */
+/* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
 /*   ConfigLoader.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/22 18:39:32 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/05/24 15:48:35 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,7 +55,7 @@ class ConfigLoader {
    * Retrieve all config.
    * @return The configuration map.
    */
-  const Config& getConfig() const;
+  static Config& getConfig();
   static void   printConfig();
 
   static const std::string DEFAULT_HOST;

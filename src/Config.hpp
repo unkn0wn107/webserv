@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/23 11:48:37 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/24 16:06:29 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,6 +52,15 @@ typedef struct ListenConfig {
        if (sndbuf > other.sndbuf) return false;
        return ipv6only < other.ipv6only;
    }
+   bool operator==(const ListenConfig& other) const {
+        return address == other.address &&
+               port == other.port &&
+               default_server == other.default_server &&
+               backlog == other.backlog &&
+               rcvbuf == other.rcvbuf &&
+               sndbuf == other.sndbuf &&
+               ipv6only == other.ipv6only;
+    }
    ListenConfig() {
         port = 80;
         default_server = false;

@@ -6,18 +6,22 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/23 12:14:09 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/24 16:57:01 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Worker.hpp"
+#include "ConfigLoader.hpp"
+#include "Common.hpp"
+#include <algorithm>
 
-Worker::Worker(Config& config):
-	_config(config),
+Worker::Worker():
+	_config(ConfigLoader::getInstance().getConfig()),
 	_log(Logger::getInstance()),
-	_maxConnections(config.worker_connections),
+	_maxConnections(_config.worker_connections),
 	_currentConnections(0)
 {
+  _log.info("Worker constructor called");
 	if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0)
 	{
 		_log.error("WORKER : Failed to create thread proc");
@@ -40,59 +44,99 @@ int		Worker::_setupEpoll()
 	return socket;
 }
 
-void	Worker::assignConnection(int clientSocket)
+std::vector<VirtualServer*>	Worker::_setupAssociateVirtualServer(const ListenConfig& listenConfig)
+{
+	std::vector<VirtualServer*>	virtualServers;
+
+	 for (std::vector<ServerConfig>::iterator it = _config.servers.begin(); it != _config.servers.end(); ++it) {
+        // Parcourir tous les ListenConfig dans le ServerConfig actuel
+        for (std::vector<ListenConfig>::iterator lit = it->listen.begin(); lit != it->listen.end(); ++lit) {
+            if (*lit == listenConfig) {
+                virtualServers.push_back(new VirtualServer(*it));
+                break;
+            }
+        }
+    }
+	return virtualServers;
+}
+
+void	Worker::assignConnection(int clientSocket, const ListenConfig& listenConfig)
 {
 	struct epoll_event event;
     event.data.fd = clientSocket;
-    event.events = EPOLLIN | EPOLLOUT;
+    event.events = EPOLLIN | EPOLLOUT | EPOLLET;
 
 	if (_currentConnections >= _maxConnections) {
         _log.error("Nombre maximum de connexions atteint");
         close(clientSocket);
     } else {
 		if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, clientSocket, &event) == -1) {
-        _log.error("Erreur lors de l'ajout du socket à epoll");
-        close(clientSocket);
+			_log.error("Erreur lors de l'ajout du socket à epoll");
+			close(clientSocket);
     	}
-        _currentConnections++;
+		_listenSockets.push_back(clientSocket);
+		_listenConfigs[clientSocket] = listenConfig;
+		_virtualServers[clientSocket] = _setupAssociateVirtualServer(listenConfig);
+		_currentConnections++;
 	}
 }
 
 void Worker::_runEventLoop() {
     struct epoll_event events[MAX_EVENTS];
-    int nfds, fd;
+    int nfds;
 
     while (true) {
         nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
-        if (nfds == -1) {
+        if (nfds <= 0) {
             _log.error("Erreur lors de l'attente des événements epoll");
-            break;
+            continue;
         }
 
         for (int n = 0; n < nfds; ++n) {
-            fd = events[n].data.fd;
-            if (events[n].events & EPOLLIN) {
-                _handleIncomingConnection(fd);
-            }
-            if (events[n].events & EPOLLOUT) {
-                _handleOutgoingData(fd);
-            }
+            if (std::find(_listenSockets.begin(), _listenSockets.end(), events[n].data.fd) != _listenSockets.end())
+                _acceptNewConnection(events[n].data.fd);
+            else
+                _handleIncomingConnection(events[n]);
         }
     }
 }
 
-void Worker::_handleIncomingConnection(int fd) {
-    // Gérer une nouvelle connexion entrante
-    int clientSocket = accept(fd, NULL, NULL);
-    if (clientSocket == -1) {
-        _log.error("Erreur lors de l'acceptation de la connexion");
-        return;
-    }
-    _log.info("Nouvelle connexion entrante");
+void Worker::_acceptNewConnection(int fd) {
+	struct sockaddr	address;
+	socklen_t			addrlen = sizeof(address);
+	int					new_socket;
+	struct epoll_event	event;
+
+	while (true) {
+		new_socket = accept(fd, &address, &addrlen);
+		if (new_socket < 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				break;
+			else
+			{
+				_log.error("WORKER: Failed \"accept\"");
+				break;
+			}
+		}
+		if (set_non_blocking(new_socket) == -1)
+		{
+			_log.error("WORKER: Failed \"set_non_blocking\"");
+			continue;
+		}
+		event.events = EPOLLIN | EPOLLOUT | EPOLLET;
+		ConnectionHandler*	handler = new ConnectionHandler(new_socket, _epollSocket, _listenConfigs[new_socket], _virtualServers[new_socket]);
+		_handlers[new_socket] = handler;
+		event.data.ptr = handler;
+		if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
+			_log.error("Erreur lors de l'ajout du socket à epoll");
+			continue;
+		}
+	}
 }
 
-void	Worker::_handleOutgoingData(int fd) {
-    _log.info("Données sortantes" + Utils::to_string(fd));
+void Worker::_handleIncomingConnection(struct epoll_event& event) {
+	ConnectionHandler* handler = (ConnectionHandler*)event.data.ptr;
+	handler->processConnection();
 }
 
 void*	Worker::_workerRoutine(void *ref)

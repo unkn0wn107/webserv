@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/23 12:08:42 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/24 16:44:51 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
         "WebServ running...\n\nCurrent configuration:\n\n");
     ConfigLoader::printConfig();
     config = ConfigLoader::getInstance().getConfig();
-    Server server(config);
+    Server server;
   } catch (const std::exception& e) {
     Logger::getInstance().error("Shutdown Error in main.cpp");
     return EXIT_FAILURE;

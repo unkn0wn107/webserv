@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/24 17:02:27 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/27 13:29:16 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,10 +43,11 @@ bool VirtualServer::isHostMatching(const std::string& host) const {
     return false;  // Retourne faux si aucun nom d'hôte correspondant n'est trouvé
 }
 
-void VirtualServer::parseRequest(const std::string& request, size_t readn) {
-	_log.info("VirtualServer::parseRequest" + _serverConfig.server_names[0]);
+int VirtualServer::parseRequest(const std::string& request, size_t readn) {
+	_log.info("VirtualServer::parseRequest : " + _serverConfig.server_names[0]);
 	_log.info(request);
 	_log.info(Utils::to_string<size_t>(readn));
+	return 0;
 }
 
 std::string VirtualServer::getServerName() const {

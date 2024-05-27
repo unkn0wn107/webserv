@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 10:22:15 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/24 17:02:22 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/27 13:28:59 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ class	VirtualServer {
 		~VirtualServer();
 		bool							isDefaultServer();
 		bool							isHostMatching(const std::string& host) const;
-		void							parseRequest(const std::string& request, size_t readn);
+		int								parseRequest(const std::string& request, size_t readn);
 		std::string				getServerName() const;
 };
 

@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/27 13:08:28 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/27 13:46:23 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,7 @@ void	Worker::assignConnection(int clientSocket, const ListenConfig& listenConfig
 {
 	struct epoll_event event;
     event.data.fd = clientSocket;
-    event.events = EPOLLIN | EPOLLOUT | EPOLLET;
+    event.events = EPOLLIN | EPOLLET;
 
 	if (_currentConnections >= _maxConnections) {
         _log.error("Nombre maximum de connexions atteint");
@@ -123,7 +123,7 @@ void Worker::_acceptNewConnection(int fd) {
 			_log.error("WORKER: Failed \"set_non_blocking\"");
 			continue;
 		}
-		event.events = EPOLLIN | EPOLLOUT | EPOLLET;
+		event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
 		ConnectionHandler*	handler = new ConnectionHandler(new_socket, _epollSocket, _listenConfigs[fd], _virtualServers[fd]);
 		_handlers[new_socket] = handler;
 		event.data.ptr = handler;
@@ -135,6 +135,7 @@ void Worker::_acceptNewConnection(int fd) {
 }
 
 void Worker::_handleIncomingConnection(struct epoll_event& event) {
+	_log.info("WORKER: Handling incoming connection");
 	ConnectionHandler* handler = (ConnectionHandler*)event.data.ptr;
 	handler->processConnection();
 }

@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/27 13:03:06 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/27 13:52:12 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,8 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <sys/epoll.h>
+
 
 ConnectionHandler::ConnectionHandler(int clientSocket, int epollSocket, ListenConfig& listenConfig, std::vector<VirtualServer*>& virtualServers):
 	_log(Logger::getInstance()),
@@ -70,6 +72,17 @@ void ConnectionHandler::_receiveRequest() {
 	}
 	if (!end) return;
 	_processRequest();
+}
+
+void ConnectionHandler::_sendResponse() {
+	std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 20\r\nContent-Type: text/html\r\n\r\n<h1>Hello World</h1>";
+	_log.info("CONNECTION_HANDLER: Sending response");
+	if (send(_clientSocket, response.c_str(), response.length(), 0) == -1) {
+		_log.error(std::string("CONNECTION_HANDLER: send: ") + strerror(errno));
+		_connectionStatus = CLOSED;
+		return;
+	}
+	_connectionStatus = CLOSED;
 }
 
 VirtualServer* ConnectionHandler::_selectVirtualServer() {
@@ -134,20 +147,34 @@ void ConnectionHandler::_processRequest() {
 		return;
 	}
 	_log.info(std::string("CONNECTION_HANDLER: Selected virtual server: ") + vserv->getServerName());
-	vserv->parseRequest(_buffer, _readn);
+	if (vserv->parseRequest(_buffer, _readn) == -1) {
+		_log.error("CONNECTION_HANDLER: Request parsing failed");
+		_connectionStatus = CLOSED;
+		return;
+	}
+	_connectionStatus = SENDING;
 }
 
 void ConnectionHandler::processConnection() {
-	// struct epoll_event	event;
-	// event.data.fd = _clientSocket;
-	// event.events = EPOLLIN;
+	struct epoll_event	event;
+	event.data.fd = _clientSocket;
 	if (_connectionStatus == READING) {
 		_receiveRequest();
+		event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+		if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
+			_log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") + strerror(errno));
+			return;
+		}
 	}
-	else if (_connectionStatus == SENDING) {
-		// sendResponse();
+	if (_connectionStatus == SENDING) {
+		_sendResponse();
+		event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
+		if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
+			_log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") + strerror(errno));
+			return;
+		}
 	}
-	else if (_connectionStatus == CLOSED) {
+	if (_connectionStatus == CLOSED) {
 		close(_clientSocket);
 	}
 }

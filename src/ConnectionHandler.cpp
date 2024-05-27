@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/24 17:04:51 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/27 13:03:06 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,8 +24,13 @@ ConnectionHandler::ConnectionHandler(int clientSocket, int epollSocket, ListenCo
 	_readn(0),
 	_vservPool(virtualServers)
 {
-	_buffer = new char[1024]; //TODO: check if it's ok
+	_buffer = new char[1024];
 	memset(_buffer, 0, 1024);
+	_log.info("CONNECTION_HANDLER: New connection handler created");
+	_log.info("CONNECTION_HANDLER: serverPool size : " + _vservPool.size());
+	for (std::vector<VirtualServer*>::iterator it = _vservPool.begin(); it != _vservPool.end(); ++it) {
+		_log.info("CONNECTION_HANDLER: serverPool name : " + (*it)->getServerName());
+	}
 }
 
 ConnectionHandler::~ConnectionHandler() {
@@ -36,7 +41,7 @@ void ConnectionHandler::_receiveRequest() {
 	bool   end = false;
 	while (true) {
 		ssize_t	bytes = recv(_clientSocket, _buffer + _readn, 1, 0);
-		if (_readn >= 1024) { //adapt to buffer size
+		if (_readn >= 1024) {
 			_connectionStatus = CLOSED;
 			return;
 		}
@@ -68,31 +73,38 @@ void ConnectionHandler::_receiveRequest() {
 }
 
 VirtualServer* ConnectionHandler::_selectVirtualServer() {
-    std::string requestHeader(_buffer, _readn);  // Convertir le buffer en string pour faciliter la manipulation
-    std::string host = _extractHost(requestHeader);  // Méthode hypothétique pour extraire le champ Host
+	std::string requestHeader(_buffer, _readn);
+	std::string host = _extractHost(requestHeader);
+	_log.info(std::string("CONNECTION_HANDLER: Request header: ") + requestHeader);
+	_log.info(std::string("CONNECTION_HANDLER: Host extracted: ") + host);
+	if (host.empty()) {
+		return _findDefaultServer();
+	}
 
-    if (host.empty()) {
-        return _findDefaultServer();  // Trouver le serveur par défaut si aucun Host n'est spécifié
-    }
 
-    // Parcourir la liste des serveurs virtuels pour trouver une correspondance
-    for (std::vector<VirtualServer*>::iterator it = _vservPool.begin(); it != _vservPool.end(); ++it) {
-        if ((*it)->isHostMatching(host)) {  // Supposons que VirtualServer a une méthode pour vérifier le nom d'hôte
-            return *it;
-        }
-    }
+	for (std::vector<VirtualServer*>::iterator it = _vservPool.begin(); it != _vservPool.end(); ++it) {
+		if ((*it)->isHostMatching(host)) {
+			return *it;
+		}
+	}
 
-    // Si aucun serveur correspondant n'est trouvé, retourner le serveur par défaut
-    return _findDefaultServer();
+	return _findDefaultServer();
 }
 
 VirtualServer* ConnectionHandler::_findDefaultServer() {
-    for (std::vector<VirtualServer*>::iterator it = _vservPool.begin(); it != _vservPool.end(); ++it) {
-        if ((*it)->isDefaultServer()) {
-            return *it;
-        }
-    }
-    return NULL;
+	bool first = true;
+	VirtualServer*	firstVserv = NULL;
+	for (std::vector<VirtualServer*>::iterator it = _vservPool.begin(); it != _vservPool.end(); ++it) {
+		if (first) {
+			firstVserv = *it;
+			first = false;
+		}
+
+		if ((*it)->isDefaultServer()) {
+				return *it;
+		}
+	}
+	return firstVserv;
 }
 
 std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
@@ -101,16 +113,9 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
     std::string hostPrefix = "Host: ";
 
     while (std::getline(stream, line)) {
-        // Normaliser la ligne pour la comparaison
-        std::transform(line.begin(), line.end(), line.begin(), ::tolower);
-
-        // Vérifier si la ligne commence par "host:"
         size_t pos = line.find(hostPrefix);
         if (pos != std::string::npos) {
-            // Extraire la valeur de l'hôte après "Host: "
             std::string hostValue = line.substr(pos + hostPrefix.length());
-
-            // Supprimer les espaces de début et de fin
             size_t first = hostValue.find_first_not_of(" \t");
             size_t last = hostValue.find_last_not_of(" \r\n");
             if (first != std::string::npos && last != std::string::npos) {
@@ -119,8 +124,7 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
             break;
         }
     }
-
-    return "";  // Retourner une chaîne vide si aucun champ Host n'est trouvé
+    return "";
 }
 
 void ConnectionHandler::_processRequest() {

@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/24 16:57:01 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/27 13:08:28 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,15 +48,15 @@ std::vector<VirtualServer*>	Worker::_setupAssociateVirtualServer(const ListenCon
 {
 	std::vector<VirtualServer*>	virtualServers;
 
-	 for (std::vector<ServerConfig>::iterator it = _config.servers.begin(); it != _config.servers.end(); ++it) {
-        // Parcourir tous les ListenConfig dans le ServerConfig actuel
-        for (std::vector<ListenConfig>::iterator lit = it->listen.begin(); lit != it->listen.end(); ++lit) {
-            if (*lit == listenConfig) {
-                virtualServers.push_back(new VirtualServer(*it));
-                break;
-            }
-        }
-    }
+	for (std::vector<ServerConfig>::iterator it = _config.servers.begin(); it != _config.servers.end(); ++it) {
+		for (std::vector<ListenConfig>::iterator lit = it->listen.begin(); lit != it->listen.end(); ++lit) {
+			if (*lit == listenConfig) {
+				_log.info("WORKER: Associate VirtualServer to a conn: " + it->server_names[0]);
+				virtualServers.push_back(new VirtualServer(*it));
+				break;
+			}
+		}
+	}
 	return virtualServers;
 }
 
@@ -73,7 +73,7 @@ void	Worker::assignConnection(int clientSocket, const ListenConfig& listenConfig
 		if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, clientSocket, &event) == -1) {
 			_log.error("Erreur lors de l'ajout du socket à epoll");
 			close(clientSocket);
-    	}
+    }
 		_listenSockets.push_back(clientSocket);
 		_listenConfigs[clientSocket] = listenConfig;
 		_virtualServers[clientSocket] = _setupAssociateVirtualServer(listenConfig);
@@ -124,7 +124,7 @@ void Worker::_acceptNewConnection(int fd) {
 			continue;
 		}
 		event.events = EPOLLIN | EPOLLOUT | EPOLLET;
-		ConnectionHandler*	handler = new ConnectionHandler(new_socket, _epollSocket, _listenConfigs[new_socket], _virtualServers[new_socket]);
+		ConnectionHandler*	handler = new ConnectionHandler(new_socket, _epollSocket, _listenConfigs[fd], _virtualServers[fd]);
 		_handlers[new_socket] = handler;
 		event.data.ptr = handler;
 		if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {

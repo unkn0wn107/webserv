@@ -44,10 +44,10 @@ class ConfigLoader {
   static void loadConfig(const std::string& filepath);
   static void parseServerConfig(std::ifstream& configFile,
                                 ServerConfig*  serverConfig);
-  static void parseRouteConfig(std::ifstream& configFile,
-                               RouteConfig*   routeConfig);
   static void parseListenConfig(std::istringstream& lineStream,
                                 ListenConfig* listenConfig);
+  static void parseLocationConfig(std::ifstream&  configFile,
+                                  LocationConfig* locationConfig);
   std::string getServerConfigValue(const ServerConfig& config,
                                    const std::string&  key) const;
 

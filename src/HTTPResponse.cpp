@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 19:58:27 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/22 20:39:12 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -127,7 +127,8 @@ std::string HTTPResponse::generate() const {
     response += it->first + ": " + it->second + "\r\n";
   }
 
-  response += "Content-Type: text/plain\r\n";
+  if (_headers.find("Content-Type") == _headers.end())
+    response += "Content-Type: text/plain\r\n";
 
   if (_body.length() > 0) {
     response += "Content-Length: " + Utils::to_string(_body.length()) + "\r\n";

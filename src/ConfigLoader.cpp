@@ -22,7 +22,7 @@
 
 const std::string ConfigLoader::DEFAULT_HOST = "127.0.0.1";
 const std::string ConfigLoader::DEFAULT_PORT = "8080";
-const std::string ConfigLoader::DEFAULT_ROOT = "./";
+const std::string ConfigLoader::DEFAULT_ROOT = "./site";
 const std::string ConfigLoader::DEFAULT_MAX_CLIENT_BODY_SIZE = "8192";
 const std::string ConfigLoader::DEFAULT_FILE_NAME = "server_config.cfg";
 ConfigLoader*     ConfigLoader::_instance = NULL;
@@ -98,12 +98,12 @@ void ConfigLoader::parseServerConfig(std::ifstream& configFile,
     afterValue = getInstance()._cleanValue(afterValue, '#');
     getInstance()._log.info("========= Parsing server block line: key = [" +
                             key + "] line = [" + line + "]");
-    if (key == "route") {
-      RouteConfig routeConfig;
-      routeConfig.route = getInstance()._parseValue(lineStream.str());
+    if (key == "location") {
+      LocationConfig locationConfig;
+      locationConfig.location = getInstance()._parseValue(lineStream.str());
       if (afterValue == "{") {
-        parseRouteConfig(configFile, &routeConfig);
-        serverConfig->routes.push_back(routeConfig);
+        parseLocationConfig(configFile, &locationConfig);
+        serverConfig->locations.push_back(locationConfig);
         getInstance()._log.info(
             ">>>>>>>>>>>>>>>>>>>>> new route config add to server");
       } else {
@@ -146,6 +146,9 @@ void ConfigLoader::parseServerConfig(std::ifstream& configFile,
     }
     key = "";
   }
+
+  if (serverConfig->root.empty())
+    serverConfig->root = ConfigLoader::DEFAULT_ROOT;
 }
 
 void ConfigLoader::parseListenConfig(std::istringstream& lineStream, ListenConfig* listenConfig) {
@@ -182,10 +185,13 @@ void ConfigLoader::parseListenConfig(std::istringstream& lineStream, ListenConfi
 	}
 }
 
-void ConfigLoader::parseRouteConfig(std::ifstream& configFile,
-                                    RouteConfig*   routeConfig) {
+void ConfigLoader::parseLocationConfig(std::ifstream&  configFile,
+                                       LocationConfig* locationConfig) {
   std::string line;
   std::string key;
+
+  locationConfig->returnCode = 0;
+  bool firstReturnEncountered = false;
 
   while (key != "}" && getline(configFile, line)) {
     std::istringstream lineStream(line);
@@ -198,27 +204,40 @@ void ConfigLoader::parseRouteConfig(std::ifstream& configFile,
     getInstance()._log.info(" ====== Parsing route block line: key = " + key +
                             " line = " + line);
     std::string value;
-    if (key == "directory") {
-      routeConfig->directory = getInstance()._parseValue(lineStream.str());
-    } else if (key == "default_file") {
-      routeConfig->default_file = getInstance()._parseValue(lineStream.str());
-    } else if (key == "allow_methods") {
+    if (key == "root") {
+      locationConfig->root = getInstance()._parseValue(lineStream.str());
+    } else if (key == "index") {
+      locationConfig->index = getInstance()._parseValue(lineStream.str());
+    } else if (key == "limit_except") {
       std::istringstream methods(line);
       std::string        method;
       methods >> method;
-      while (methods >> method && method[0] != '#') {
-        method = getInstance()._cleanValue(method, ';');
-        routeConfig->allow_methods.push_back(method);
+      methods >> method;
+      while (methods >> method && method[0] != '{') {
+        method = getInstance()._cleanValue(method, ' ');
+        locationConfig->allow_methods.push_back(method);
       }
-    } else if (key == "redirect") {
-      routeConfig->redirect = getInstance()._parseValue(lineStream.str());
-    } else if (key == "directory_listing") {
-      routeConfig->directory_listing =
+    } else if (key == "return") {
+      if (firstReturnEncountered)
+        continue;
+
+      lineStream >> value;
+      locationConfig->returnCode = Utils::stoi<int>(value);
+      std::string            urlValue;
+      std::string::size_type pos =
+          line.find(' ', line.find(key) + key.length());
+      if (pos != std::string::npos) {
+        urlValue = line.substr(pos + 1);
+      }
+      locationConfig->returnUrl = getInstance()._parseValue(urlValue);
+      firstReturnEncountered = true;
+    } else if (key == "autoindex") {
+      locationConfig->autoindex =
           (getInstance()._parseValue(lineStream.str()) == "on");
     } else if (key == "cgi") {
-      routeConfig->cgi_handler = getInstance()._parseValue(lineStream.str());
+      locationConfig->cgi_handler = getInstance()._parseValue(lineStream.str());
     } else if (key == "accept_upload") {
-      routeConfig->upload_path = getInstance()._parseValue(lineStream.str());
+      locationConfig->upload_path = getInstance()._parseValue(lineStream.str());
     }
     key = "";
   }
@@ -262,6 +281,20 @@ std::string ConfigLoader::_parseValue(std::string toParse) {
   return value;
 }
 
+std::string ConfigLoader::getServerConfigValue(const ServerConfig& config,
+                                               const std::string&  key) const {
+  if (key == "listen_port") {
+    return Utils::to_string(config.listen_port);
+  } else if (key == "server_name") {
+    return config.server_names[0];
+  } else if (key == "client_max_body_size") {
+    return Utils::to_string(config.client_max_body_size);
+  } else {
+    _log.warning("Key not found in ServerConfig: " + key);
+    return "";
+  }
+}
+
 Config& ConfigLoader::getConfig() {
   return _instance->_config;
 }
@@ -302,18 +335,22 @@ void ConfigLoader::printConfig() {
     }
 
     std::cout << "Routes:" << std::endl;
-  for (std::vector<RouteConfig>::const_iterator routeIt = server.routes.begin(); routeIt != server.routes.end(); ++routeIt) {
-      const RouteConfig& routeConfig = *routeIt;
-      std::cout << "========Route: " << routeConfig.route << std::endl;
-      std::cout << "\tDirectory: " << routeConfig.directory << std::endl;
-      std::cout << "\tDefault File: " << routeConfig.default_file << std::endl;
-      std::cout << "\tRedirect: " << routeConfig.redirect << std::endl;
+    for (std::vector<LocationConfig>::const_iterator locationIt =
+             server.locations.begin();
+         locationIt != server.locations.end(); ++locationIt) {
+      const LocationConfig& locationConfig = *locationIt;
+      std::cout << "========Route: " << locationConfig.location << std::endl;
+      std::cout << "\tDirectory: " << locationConfig.root << std::endl;
+      std::cout << "\tDefault File: " << locationConfig.index << std::endl;
+      std::cout << "\tReturn code: " << locationConfig.returnCode << std::endl;
+      std::cout << "\tReturn url: " << locationConfig.returnUrl << std::endl;
       std::cout << "\tDirectory Listing: "
-                << (routeConfig.directory_listing ? "on" : "off") << std::endl;
-      std::cout << "\tCGI Handler: " << routeConfig.cgi_handler << std::endl;
-      std::cout << "\tUpload Path: " << routeConfig.upload_path << std::endl;
+                << (locationConfig.autoindex ? "on" : "off") << std::endl;
+      std::cout << "\tUpload Path: " << locationConfig.upload_path << std::endl;
       std::cout << "\tAllowed Methods: ";
-      for (std::vector<std::string>::const_iterator methodIt = routeConfig.allow_methods.begin(); methodIt != routeConfig.allow_methods.end(); ++methodIt) {
+      for (std::vector<std::string>::const_iterator methodIt =
+               locationConfig.allow_methods.begin();
+           methodIt != locationConfig.allow_methods.end(); ++methodIt) {
         std::cout << *methodIt << " ";
       }
       std::cout << std::endl;

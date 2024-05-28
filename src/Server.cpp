@@ -11,131 +11,104 @@
 /* ************************************************************************** */
 
 #include "Server.hpp"
-#include "Config.hpp"
-#include "Logger.hpp"
+#include "ConfigLoader.hpp"
+#include "Common.hpp"
+#include "Utils.hpp"
 
-Server::Server(ServerConfig& config)
-    : _config(config), _log(Logger::getInstance()) {
-  _log.info("Server " + _config.server_names[0] + " is starting on port " +
-            Utils::to_string(_config.listen_port));
-  setupServerSocket();
-  setupEpoll();
+Server::Server():
+	_config(ConfigLoader::getConfig()),
+	_log(Logger::getInstance()),
+	_workerIndex(0)
+{
+	_setupWorkers();
+	_setupServerSockets();
 }
 
 Server::~Server() {
-  closeAllClients();
-  close(_epoll_fd);
-  close(_server_socket);
+	for (size_t i = 0; i < _workers.size(); i++) {
+		delete _workers[i];
+	}
 }
 
-void Server::setupServerSocket() {
-  struct sockaddr_in6 address;
-  int                 opt = 1;
-  int                 ipv6only = 0;
-
-  _server_socket = socket(AF_INET6, SOCK_STREAM, 0);
-  if (_server_socket == 0)
-    ErrorHandler::fatal("Socket creation failed");
-
-  // reuseport si definit par la config
-  // https://nginx.org/en/docs/http/ngx_http_core_module.html#reuseport
-  if (setsockopt(_server_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
-                 sizeof(opt)))
-    ErrorHandler::fatal("Setsockopt failed");
-
-  if (setsockopt(_server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only,
-                 sizeof(ipv6only)))
-    ErrorHandler::fatal("Setsockopt IPV6_V6ONLY failed");
-
-  address.sin6_family = AF_INET6;
-  address.sin6_addr = in6addr_any;
-  address.sin6_port = htons(_config.listen_port);
-
-  if (bind(_server_socket, (struct sockaddr*)&address, sizeof(address)) < 0)
-    ErrorHandler::fatal("Bind failed");
-
-  if (listen(_server_socket, 10) < 0)
-    ErrorHandler::fatal("Listen failed");
-
-  int flags = fcntl(_server_socket, F_GETFL, 0);
-  if (flags == -1 || fcntl(_server_socket, F_SETFL, flags | O_NONBLOCK) == -1)
-    ErrorHandler::fatal("Failed to set socket to non-blocking");
-}
-
-void Server::setupEpoll() {
-  _epoll_fd = epoll_create1(0);
-  if (_epoll_fd == -1)
-    ErrorHandler::fatal("Epoll creation failed");
-
-  struct epoll_event event;
-  event.data.fd = _server_socket;
-  event.events = EPOLLIN | EPOLLET | EPOLLOUT;
-
-  if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server_socket, &event) == -1)
-    ErrorHandler::fatal("Epoll control failed");
-}
-
-void Server::run() {
-  const int          MAX_EVENTS = 10;
-  struct epoll_event events[MAX_EVENTS];
-  int                event_count;
-
-  while (true) {
-    event_count = epoll_wait(_epoll_fd, events, MAX_EVENTS, -1);
-    for (int i = 0; i < event_count; i++) {
-      if (events[i].data.fd == _server_socket) {
-        acceptConnection();
-      } else {
-        ConnectionHandler* handler =
-            reinterpret_cast<ConnectionHandler*>(events[i].data.ptr);
-        if (events[i].events & EPOLLIN) {
-          handler->process();
-        }
-        if (events[i].events & EPOLLOUT) {
-          handler->sendResponse();
-        }
-      }
+void Server::_setupWorkers() {
+    for (int i = 0; i < _config.worker_processes; i++) {
+        _workers.push_back(new Worker());
     }
-  }
 }
 
-void Server::acceptConnection() {
-  struct sockaddr_in address;
-  socklen_t          addrlen = sizeof(address);
-  int                new_socket;
+void Server::_setupServerSockets() {
+	const std::set<ListenConfig>& uniqueConfigs = _config.unique_listen_configs;
 
-  while ((new_socket = accept(_server_socket, (struct sockaddr*)&address,
-                              &addrlen)) != -1) {
-    int flags = fcntl(new_socket, F_GETFL, 0);
-    if (flags == -1 || fcntl(new_socket, F_SETFL, flags | O_NONBLOCK) == -1) {
-      ErrorHandler::log("Failed to set new socket to non-blocking");
-      _log.error("(" + _config.server_names[0] +
-                 ") Failed to set new socket to non-blocking");
-      continue;
-    }
+	for (std::set<ListenConfig>::const_iterator it = uniqueConfigs.begin(); it != uniqueConfigs.end(); ++it) {
+		const ListenConfig& listenConfig = *it;
+		int sock = socket(AF_INET6, SOCK_STREAM, 0);
+		if (sock < 0) {
+				_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to create socket");
+				continue;
+		}
 
-    _client_sockets.insert(new_socket);
+		struct sockaddr_in6 address;
+		memset(&address, 0, sizeof(address));
+		address.sin6_family = AF_INET6;
+		address.sin6_port = htons(listenConfig.port);
 
-    ConnectionHandler* handler = new ConnectionHandler(new_socket, _config);
-    struct epoll_event event;
-    event.data.ptr = handler;
-    event.events = EPOLLIN | EPOLLET | EPOLLOUT;
+		if (listenConfig.address.empty() || listenConfig.address == "*") {
+				address.sin6_addr = in6addr_any;
+		} else {
+				if (inet_pton(AF_INET6, listenConfig.address.c_str(), &address.sin6_addr) <= 0) {
+						_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Invalid address");
+						close(sock);
+						continue;
+				}
+		}
 
-    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, new_socket, &event) == -1) {
-      ErrorHandler::log("Failed to add new socket to epoll");
-      _log.error("(" + _config.server_names[0] +
-                 ") Failed to add new socket to epoll");
-      delete handler;
-      close(new_socket);
-      _client_sockets.erase(new_socket);
-    }
-  }
-}
+		int opt = 1;
+		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
+				_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set socket options");
+				close(sock);
+				continue;
+		}
 
-void Server::closeAllClients() {
-  for (std::set<int>::iterator it = _client_sockets.begin();
-       it != _client_sockets.end(); ++it) {
-    close(*it);
-  }
-  _client_sockets.clear();
+		if (listenConfig.ipv6only) {
+				int ipv6only = 1;
+				if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) < 0) {
+						_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set IPV6_V6ONLY");
+						close(sock);
+						continue;
+				}
+		}
+
+		if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &listenConfig.rcvbuf, sizeof(listenConfig.rcvbuf)) < 0) {
+			_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set SO_REUSEPORT");
+			close(sock);
+			continue;
+		}
+
+		if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &listenConfig.sndbuf, sizeof(listenConfig.sndbuf)) < 0) {
+			_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set SO_SNDBUF");
+			close(sock);
+			continue;
+		}
+
+		if (bind(sock, (struct sockaddr*)&address, sizeof(address)) < 0) {
+				_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to bind socket");
+				close(sock);
+				continue;
+		}
+
+		if (listen(sock, listenConfig.backlog) < 0) {
+				_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to listen on socket");
+				close(sock);
+				continue;
+		}
+
+		if (set_non_blocking(sock) < 0) {
+			_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set socket to non-blocking");
+			close(sock);
+			continue;
+		}
+		_listenSockets[listenConfig] = sock;
+		_workers[_workerIndex]->assignConnection(sock, listenConfig);
+		_workerIndex = (_workerIndex + 1) % _config.worker_processes;
+	}
 }

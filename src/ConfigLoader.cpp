@@ -67,6 +67,8 @@ void ConfigLoader::loadConfig(const std::string& filepath) {
       }
     } else if (key == "log_file") {
       getInstance()._config.log_file = getInstance()._parseValue(value);
+    } else if (key == "worker_processes") {
+      getInstance()._config.worker_processes = Utils::stoi<int>(value);
     } else
       getInstance()._log.warning("Unknowned key :" + key);
     key = "";
@@ -110,8 +112,11 @@ void ConfigLoader::parseServerConfig(std::ifstream& configFile,
       }
     } else {
       if (key == "listen") {
-        serverConfig->listen_port =
-            Utils::stoi<int>(getInstance()._parseValue(lineStream.str()));
+        ListenConfig listenConfig;
+        std::istringstream iss(line);
+        parseListenConfig(iss, &listenConfig);
+        serverConfig->listen.push_back(listenConfig);
+        getInstance()._config.unique_listen_configs.insert(listenConfig);
       } else if (key == "server_name") {
         std::istringstream serverNames(line);
         std::string        serverName;
@@ -144,6 +149,40 @@ void ConfigLoader::parseServerConfig(std::ifstream& configFile,
 
   if (serverConfig->root.empty())
     serverConfig->root = ConfigLoader::DEFAULT_ROOT;
+}
+
+void ConfigLoader::parseListenConfig(std::istringstream& lineStream, ListenConfig* listenConfig) {
+  std::string token;
+
+	while (lineStream >> token) {
+    std::cout << "token = " << token << std::endl;
+		if (token.find('[') != std::string::npos) { // Adresse IPv6 avec port
+			std::string::size_type endPos = token.find(']');
+			std::string::size_type colonPos = token.find(':', endPos);
+			listenConfig->address = token.substr(1, endPos - 1); // Enlever les crochets
+			if (colonPos != std::string::npos) {
+				listenConfig->port = Utils::stoi<int>(token.substr(colonPos + 1));
+			}
+		} else if (token.find(':') != std::string::npos) { // Adresse IP ou nom d'hôte avec port
+			std::string::size_type pos = token.find(':');
+			listenConfig->address = token.substr(0, pos);
+			listenConfig->port = Utils::stoi<int>(token.substr(pos + 1));
+		} else if (std::isdigit(token[0])) { // Juste le port
+			listenConfig->port = Utils::stoi<int>(token);
+		} else if (token == "default_server") {
+			listenConfig->default_server = true;
+		} else if (token == "ipv6only=on") {
+			listenConfig->ipv6only = true;
+		} else if (token == "ipv6only=off") {
+			listenConfig->ipv6only = false;
+		} else if (token.find("backlog=") != std::string::npos) {
+			listenConfig->backlog = Utils::stoi<int>(token.substr(8));
+		} else if (token.find("rcvbuf=") != std::string::npos) {
+			listenConfig->rcvbuf = Utils::stoi<int>(token.substr(7));
+		} else if (token.find("sndbuf=") != std::string::npos) {
+			listenConfig->sndbuf = Utils::stoi<int>(token.substr(7));
+		}
+	}
 }
 
 void ConfigLoader::parseLocationConfig(std::ifstream&  configFile,
@@ -256,37 +295,45 @@ std::string ConfigLoader::getServerConfigValue(const ServerConfig& config,
   }
 }
 
-const Config& ConfigLoader::getConfig() const {
+Config& ConfigLoader::getConfig() {
   return _instance->_config;
 }
 
 void ConfigLoader::printConfig() {
   const Config& config = getInstance()._config;
-  for (std::vector<ServerConfig>::const_iterator it = config.servers.begin();
-       it != config.servers.end(); ++it) {
+  std::cout << "Worker Processes: " << config.worker_processes << std::endl;
+  std::cout << "Worker Connections: " << config.worker_connections << std::endl;
+  std::cout << "Log File: " << config.log_file << std::endl;
+
+  std::cout << "Unique Listen Configs:" << std::endl;
+  for (std::set<ListenConfig>::const_iterator it = config.unique_listen_configs.begin(); it != config.unique_listen_configs.end(); ++it) {
+    const ListenConfig& listen = *it;
+    std::cout << "\tAddress: " << listen.address
+              << " Port: " << listen.port
+              << " Default Server: " << (listen.default_server ? "Yes" : "No")
+              << " Backlog: " << listen.backlog
+              << " Rcvbuf: " << listen.rcvbuf
+              << " Sndbuf: " << listen.sndbuf
+              << " IPv6 Only: " << (listen.ipv6only ? "Yes" : "No") << std::endl;
+  }
+
+  for (std::vector<ServerConfig>::const_iterator it = config.servers.begin(); it != config.servers.end(); ++it) {
     const ServerConfig& server = *it;
-    std::cout << "====Server on port: " << server.listen_port << std::endl;
+    std::cout << "====Server on port: " << server.listen[0].port << std::endl;
     std::cout << "Server Names: ";
-    for (std::vector<std::string>::const_iterator nameIt =
-             server.server_names.begin();
-         nameIt != server.server_names.end(); ++nameIt) {
+    for (std::vector<std::string>::const_iterator nameIt = server.server_names.begin(); nameIt != server.server_names.end(); ++nameIt) {
       std::cout << *nameIt << " ";
     }
     std::cout << std::endl;
     std::cout << "Root: " << server.root << std::endl;
-    std::cout << "Client Max Body Size: " << server.client_max_body_size
-              << std::endl;
+    std::cout << "Client Max Body Size: " << server.client_max_body_size << std::endl;
 
-    // Afficher les pages d'erreur
     std::cout << "====Error Pages:" << std::endl;
-    for (std::map<int, std::string>::const_iterator errorIt =
-             server.error_pages.begin();
-         errorIt != server.error_pages.end(); ++errorIt) {
+    for (std::map<int, std::string>::const_iterator errorIt = server.error_pages.begin(); errorIt != server.error_pages.end(); ++errorIt) {
       std::cout << " \tError Code: " << errorIt->first
                 << " - Page: " << errorIt->second << std::endl;
     }
 
-    // Afficher les routes
     std::cout << "Routes:" << std::endl;
     for (std::vector<LocationConfig>::const_iterator locationIt =
              server.locations.begin();

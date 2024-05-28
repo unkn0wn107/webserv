@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigLoader.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/22 18:00:35 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/24 15:48:35 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,8 @@ class ConfigLoader {
   static void loadConfig(const std::string& filepath);
   static void parseServerConfig(std::ifstream& configFile,
                                 ServerConfig*  serverConfig);
+  static void parseListenConfig(std::istringstream& lineStream,
+                                ListenConfig* listenConfig);
   static void parseLocationConfig(std::ifstream&  configFile,
                                   LocationConfig* locationConfig);
   std::string getServerConfigValue(const ServerConfig& config,
@@ -53,7 +55,7 @@ class ConfigLoader {
    * Retrieve all config.
    * @return The configuration map.
    */
-  const Config& getConfig() const;
+  static Config& getConfig();
   static void   printConfig();
 
   static const std::string DEFAULT_HOST;

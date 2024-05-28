@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/27 13:46:23 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/28 08:42:31 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,13 +15,15 @@
 #include "Common.hpp"
 #include <algorithm>
 
-Worker::Worker():
+Worker::Worker(pthread_mutex_t* epollMutex):
 	_config(ConfigLoader::getInstance().getConfig()),
 	_log(Logger::getInstance()),
 	_maxConnections(_config.worker_connections),
-	_currentConnections(0)
+	_currentConnections(0),
+	_epollMutex(epollMutex)
 {
   _log.info("Worker constructor called");
+	_setupEpoll();
 	if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0)
 	{
 		_log.error("WORKER : Failed to create thread proc");
@@ -33,15 +35,14 @@ Worker::~Worker()
 	pthread_join(_thread, NULL);
 }
 
-int		Worker::_setupEpoll()
+void		Worker::_setupEpoll()
 {
-	int	socket = epoll_create1(0);
-	if (socket == -1)
+	_epollSocket = epoll_create1(0);
+	if (_epollSocket <= 0)
 	{
-		_log.error("WORKER: Failed \"epoll_create1\"");
+		_log.error(std::string("WORKER: Failed \"epoll_create1\": ") + strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	return socket;
 }
 
 std::vector<VirtualServer*>	Worker::_setupAssociateVirtualServer(const ListenConfig& listenConfig)
@@ -67,13 +68,15 @@ void	Worker::assignConnection(int clientSocket, const ListenConfig& listenConfig
     event.events = EPOLLIN | EPOLLET;
 
 	if (_currentConnections >= _maxConnections) {
-        _log.error("Nombre maximum de connexions atteint");
+        _log.error("WORKER: Max connections reached");
         close(clientSocket);
     } else {
+
 		if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, clientSocket, &event) == -1) {
-			_log.error("Erreur lors de l'ajout du socket à epoll");
 			close(clientSocket);
-    }
+			_log.error(std::string("WORKER (assign conn): Failed \"epoll_ctl\": ") + strerror(errno) + " (" + Utils::to_string(clientSocket) + ")");
+			return;
+		}
 		_listenSockets.push_back(clientSocket);
 		_listenConfigs[clientSocket] = listenConfig;
 		_virtualServers[clientSocket] = _setupAssociateVirtualServer(listenConfig);
@@ -128,7 +131,7 @@ void Worker::_acceptNewConnection(int fd) {
 		_handlers[new_socket] = handler;
 		event.data.ptr = handler;
 		if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
-			_log.error("Erreur lors de l'ajout du socket à epoll");
+			_log.error("WORKER (new conn): Failed \"epoll_ctl\"");
 			continue;
 		}
 	}
@@ -143,7 +146,6 @@ void Worker::_handleIncomingConnection(struct epoll_event& event) {
 void*	Worker::_workerRoutine(void *ref)
 {
 	Worker* worker = static_cast<Worker*>(ref);
-	worker->_epollSocket = worker->_setupEpoll();
 	worker->_runEventLoop();
 	return NULL;
 }

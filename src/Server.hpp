@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/24 16:04:55 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/28 07:56:43 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,11 +26,12 @@ class Worker;
 
 class Server {
 	private:
-		Config&												_config;
-		Logger&												_log;
-		std::vector<Worker*>					_workers;
-		int														_workerIndex;
+		Config&							_config;
+		Logger&							_log;
+		std::vector<Worker*>			_workers;
+		int								_workerIndex;
 		std::map<ListenConfig, int>		_listenSockets;
+		pthread_mutex_t					_epollMutex;
 
 		void					_setupServerSockets();
 		void					_setupWorkers();

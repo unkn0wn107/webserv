@@ -68,7 +68,11 @@ void ConfigLoader::loadConfig(const std::string& filepath) {
     } else if (key == "log_file") {
       getInstance()._config.log_file = getInstance()._parseValue(value);
     } else if (key == "worker_processes") {
-      getInstance()._config.worker_processes = Utils::stoi<int>(value);
+      if (getInstance()._cleanValue(value, ';') == "auto")
+        continue;
+      else {
+        getInstance()._config.worker_processes = Utils::stoi<int>(value);
+      }
     } else
       getInstance()._log.warning("Unknowned key :" + key);
     key = "";
@@ -284,7 +288,7 @@ std::string ConfigLoader::_parseValue(std::string toParse) {
 std::string ConfigLoader::getServerConfigValue(const ServerConfig& config,
                                                const std::string&  key) const {
   if (key == "listen_port") {
-    return Utils::to_string(config.listen_port);
+    return Utils::to_string(config.listen[0].port);
   } else if (key == "server_name") {
     return config.server_names[0];
   } else if (key == "client_max_body_size") {

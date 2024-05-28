@@ -20,6 +20,7 @@ Server::Server():
 	_log(Logger::getInstance()),
 	_workerIndex(0)
 {
+	pthread_mutex_init(&_epollMutex, NULL);
 	_setupWorkers();
 	_setupServerSockets();
 }
@@ -28,12 +29,13 @@ Server::~Server() {
 	for (size_t i = 0; i < _workers.size(); i++) {
 		delete _workers[i];
 	}
+	pthread_mutex_destroy(&_epollMutex);
 }
 
 void Server::_setupWorkers() {
-    for (int i = 0; i < _config.worker_processes; i++) {
-        _workers.push_back(new Worker());
-    }
+	for (int i = 0; i < _config.worker_processes; i++) {
+			_workers.push_back(new Worker(&_epollMutex));
+	}
 }
 
 void Server::_setupServerSockets() {
@@ -64,18 +66,18 @@ void Server::_setupServerSockets() {
 
 		int opt = 1;
 		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
-				_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set socket options");
-				close(sock);
-				continue;
+			_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set socket options");
+			close(sock);
+			continue;
 		}
 
 		if (listenConfig.ipv6only) {
-				int ipv6only = 1;
-				if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) < 0) {
-						_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set IPV6_V6ONLY");
-						close(sock);
-						continue;
-				}
+			int ipv6only = 1;
+			if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) < 0) {
+					_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to set IPV6_V6ONLY");
+					close(sock);
+					continue;
+			}
 		}
 
 		if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &listenConfig.rcvbuf, sizeof(listenConfig.rcvbuf)) < 0) {
@@ -91,15 +93,15 @@ void Server::_setupServerSockets() {
 		}
 
 		if (bind(sock, (struct sockaddr*)&address, sizeof(address)) < 0) {
-				_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to bind socket");
-				close(sock);
-				continue;
+			_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to bind socket");
+			close(sock);
+			continue;
 		}
 
 		if (listen(sock, listenConfig.backlog) < 0) {
-				_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to listen on socket");
-				close(sock);
-				continue;
+			_log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) + ") Failed to listen on socket");
+			close(sock);
+			continue;
 		}
 
 		if (set_non_blocking(sock) < 0) {

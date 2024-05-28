@@ -1,6 +1,6 @@
 indent_style = tab;
-indent_size = 4;
-tab_width = 4;
+indent_size = 2;
+tab_width = 2;
 
 [*]
 cpp_indent_braces=false

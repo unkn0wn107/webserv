@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
+#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/05/24 15:46:38 by  mchenava        ###   ########.fr        #
+#    Updated: 2024/05/28 16:53:53 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -75,6 +75,9 @@ nginx: nginx-build
 		-v ./default.conf:/etc/nginx/conf.d/default.conf:ro \
 		-v ./site:/var/www/html nginx
 
+docker-fclean:
+	docker system prune --all --volumes -f
+
 run_tests:
 	@./test.sh
 
@@ -92,7 +95,7 @@ clean:
 	rm -f $(OBJ) $(DEBUG_OBJ)
 	rm -f $(DEPS) $(DEBUG_DEPS)
 
-fclean: clean
+fclean: clean docker-clean
 	rm -f $(NAME)
 	rm -rf $(OBJ_DIR) $(DEBUG_OBJ_DIR)
 

@@ -13,40 +13,34 @@
 #include "HTTPRequest.hpp"
 #include <iostream>
 
-HTTPRequest::HTTPRequest(std::string rawRequest, size_t readn) : 
-	_rawRequest(rawRequest),
-	_readn(readn),
-	_method(""),
-	_uri(""),
-	_body("")
-	{
-  	parseRequest();
+HTTPRequest::HTTPRequest(std::string rawRequest, size_t readn)
+    : _rawRequest(rawRequest), _readn(readn), _method(""), _uri(""), _body("") {
+  parseRequest();
 }
-
 
 HTTPRequest::~HTTPRequest() {}
 
-void	HTTPRequest::parseRequest() {
-    std::istringstream requestStream(_rawRequest);
-    std::string line;
-    std::getline(requestStream, line);
-    std::istringstream lineStream(line);
-    lineStream >> _method >> _uri >> _protocol;
-    while (std::getline(requestStream, line) && line != "\r") {
-        std::size_t pos = line.find(":");
-        if (pos != std::string::npos) {
-            addHeader(line.substr(0, pos), line.substr(pos + 2));
-        }
+void HTTPRequest::parseRequest() {
+  std::istringstream requestStream(_rawRequest);
+  std::string        line;
+  std::getline(requestStream, line);
+  std::istringstream lineStream(line);
+  lineStream >> _method >> _uri >> _protocol;
+  while (std::getline(requestStream, line) && line != "\r") {
+    std::size_t pos = line.find(":");
+    if (pos != std::string::npos) {
+      addHeader(line.substr(0, pos), line.substr(pos + 2));
     }
-    if (_method == "POST" || _method == "PUT") {
-        std::stringstream bodyStream;
-        bodyStream << requestStream.rdbuf();
-        setBody(bodyStream.str());
-    }
+  }
+  if (_method == "POST" || _method == "PUT") {
+    std::stringstream bodyStream;
+    bodyStream << requestStream.rdbuf();
+    setBody(bodyStream.str());
+  }
 }
 
-void	HTTPRequest::configure(ServerConfig& config) {
-	_config = config;
+void HTTPRequest::configure(ServerConfig& config) {
+  _config = config;
 }
 
 void HTTPRequest::setMethod(const std::string& method) {

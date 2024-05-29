@@ -14,20 +14,20 @@
 #include <string.h>
 #include "Logger.hpp"
 
-int	set_non_blocking(int sockfd) {
+int set_non_blocking(int sockfd) {
   int flags, s;
-	flags = fcntl(sockfd, F_GETFL);
-	if(flags == -1)
-	{
-		Logger::getInstance().error(std::string("SET_NON_BLOCKING: fcntl get: ") + strerror(errno));
-		return -1;
-	}
-	flags |= O_NONBLOCK;
-	s = fcntl(sockfd, F_SETFL, flags);
-	if(s == -1)
-	{
-		Logger::getInstance().error(std::string("SET_NON_BLOCKING: fcntl set: ") + strerror(errno));
-		return -1;
-	}
-	return 0;
+  flags = fcntl(sockfd, F_GETFL);
+  if (flags == -1) {
+    Logger::getInstance().error(std::string("SET_NON_BLOCKING: fcntl get: ") +
+                                strerror(errno));
+    return -1;
+  }
+  flags |= O_NONBLOCK;
+  s = fcntl(sockfd, F_SETFL, flags);
+  if (s == -1) {
+    Logger::getInstance().error(std::string("SET_NON_BLOCKING: fcntl set: ") +
+                                strerror(errno));
+    return -1;
+  }
+  return 0;
 }

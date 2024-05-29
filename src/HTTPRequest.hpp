@@ -23,18 +23,18 @@ class HTTPRequest {
   HTTPRequest(std::string rawRequest, size_t readn);
   ~HTTPRequest();
 
-  void	parseRequest();
+  void parseRequest();
 
   // GETTERS
-  std::string													getRawRequest() const;
-  std::string                        	getMethod() const;
-  std::string                        	getURI() const;
-  std::map<std::string, std::string>	getHeaders() const;
-  std::string                        	getHeader(const std::string& key) const;
-  std::string                        	getBody() const;
-  std::string                        	getProtocol() const;
-  std::string													getHost() const;
-  void																configure(ServerConfig& config);
+  std::string                        getRawRequest() const;
+  std::string                        getMethod() const;
+  std::string                        getURI() const;
+  std::map<std::string, std::string> getHeaders() const;
+  std::string                        getHeader(const std::string& key) const;
+  std::string                        getBody() const;
+  std::string                        getProtocol() const;
+  std::string                        getHost() const;
+  void                               configure(ServerConfig& config);
 
   // SETTERS
   void setMethod(const std::string& method);
@@ -44,14 +44,14 @@ class HTTPRequest {
   void setBody(const std::string& body);
 
  private:
-  std::string                        	_rawRequest;
-  size_t                              _readn;
-  std::string                        	_method;
-  std::string                        	_uri;
-  std::map<std::string, std::string>	_headers;
-  std::string                         _body;
-  std::string                         _protocol;
-	ServerConfig												_config;
+  std::string                        _rawRequest;
+  size_t                             _readn;
+  std::string                        _method;
+  std::string                        _uri;
+  std::map<std::string, std::string> _headers;
+  std::string                        _body;
+  std::string                        _protocol;
+  ServerConfig                       _config;
 };
 
 #endif

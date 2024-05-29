@@ -11,8 +11,8 @@
 /* ************************************************************************** */
 
 #ifndef COMMON_HPP
-# define COMMON_HPP
+#define COMMON_HPP
 
-int	set_non_blocking(int sockfd);
+int set_non_blocking(int sockfd);
 
 #endif

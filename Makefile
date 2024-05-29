@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/05/29 17:58:37 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/05/29 18:02:07 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -26,7 +26,7 @@ NGINX_PORT_1 = 8000
 NGINX_PORT_2 = 8001
 
 SRC = $(SRC_DIR)/Server.cpp \
-	  $(SRC_DIR)/Config.cpp	$(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
+	  $(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
 	  $(SRC_DIR)/FileManager.cpp \
       $(SRC_DIR)/ConnectionHandler.cpp \
       $(SRC_DIR)/ErrorHandler.cpp $(SRC_DIR)/Logger.cpp $(SRC_DIR)/Utils.cpp \

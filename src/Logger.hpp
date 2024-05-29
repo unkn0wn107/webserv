@@ -6,12 +6,12 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:21:59 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/24 02:04:28 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 17:02:47 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef LOGGER_HPP
-#define LOGGER_HPP
+#ifndef LOGGER_H
+#define LOGGER_H
 
 #include <ctime>
 #include <fstream>
@@ -26,9 +26,8 @@
 
 class Logger {
  public:
-  static Logger&    getInstance();
-  void              setConfig(const Config& config);
-  const std::string getFileName() const;
+  static Logger& getInstance();
+  void           setConfig(const Config& config);
 
   void info(const std::string& message) const;
   void warning(const std::string& message) const;
@@ -51,4 +50,4 @@ class Logger {
   void _setFileName();
 };
 
-#endif /* LOGGER_CLASS_HPP */
+#endif /* LOGGER_CLASS_H */

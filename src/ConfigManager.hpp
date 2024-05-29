@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/24 03:17:16 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 16:57:32 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,8 @@ class ConfigManager {
   Logger&               _log;
   static std::string    _filePath;
 
-  static void _printTrie(const TrieNode* node, const std::string& prefix);
+  static void _printLocationsConfig(
+      const std::map<std::string, LocationConfig*> locations);
 
   ConfigManager();
 

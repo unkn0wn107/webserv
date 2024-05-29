@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/24 03:39:58 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 17:02:36 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,10 +35,6 @@ Logger::~Logger() {
     _progLogFile->close();
   }
   delete _progLogFile;
-}
-
-const std::string Logger::getFileName() const {
-  return _progLogFileName;
 }
 
 void Logger::_openLogFile() {

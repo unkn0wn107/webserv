@@ -71,17 +71,18 @@ void ConfigManager::printConfig() {
                 << " - Page: " << errorIt->second << std::endl;
     }
 
-    // Display routes using Trie traversal
     std::cout << "Routes:" << std::endl;
-    _printTrie(server.locationTrie, "");
+    _printLocationsConfig(server.locations);
   }
 }
 
-void ConfigManager::_printTrie(const TrieNode*    node,
-                               const std::string& prefix) {
-  if (node->locationConfig != NULL) {
-    const LocationConfig& locationConfig = *node->locationConfig;
-    std::cout << "========Route: " << prefix << std::endl;
+void ConfigManager::_printLocationsConfig(
+    const std::map<std::string, LocationConfig*> locations) {
+  for (std::map<std::string, LocationConfig*>::const_iterator it =
+           locations.begin();
+       it != locations.end(); ++it) {
+    const LocationConfig& locationConfig = *it->second;
+    std::cout << "========Route: " << it->first << std::endl;
     std::cout << "\tDirectory: " << locationConfig.root << std::endl;
     std::cout << "\tDefault File: " << locationConfig.index << std::endl;
     std::cout << "\tReturn code: " << locationConfig.returnCode << std::endl;
@@ -96,9 +97,5 @@ void ConfigManager::_printTrie(const TrieNode*    node,
       std::cout << *methodIt << " ";
     }
     std::cout << std::endl;
-  }
-  for (std::map<char, TrieNode*>::const_iterator it = node->children.begin();
-       it != node->children.end(); ++it) {
-    _printTrie(it->second, prefix + it->first);
   }
 }

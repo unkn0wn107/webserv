@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/29 17:39:30 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 18:24:24 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,9 +37,57 @@ typedef struct LocationConfig {
   std::string              returnUrl;
 } LocationConfig;
 
+typedef struct ListenConfig {
+  std::string address;
+  int         port;
+  bool        default_server;
+  int         backlog;
+  int         rcvbuf;
+  int         sndbuf;
+  bool        ipv6only;
+
+  bool operator<(const ListenConfig& other) const {
+    if (address < other.address)
+      return true;
+    if (address > other.address)
+      return false;
+    if (port < other.port)
+      return true;
+    if (port > other.port)
+      return false;
+    if (default_server < other.default_server)
+      return true;
+    if (default_server > other.default_server)
+      return false;
+    if (rcvbuf < other.rcvbuf)
+      return true;
+    if (rcvbuf > other.rcvbuf)
+      return false;
+    if (sndbuf < other.sndbuf)
+      return true;
+    if (sndbuf > other.sndbuf)
+      return false;
+    return ipv6only < other.ipv6only;
+  }
+  bool operator==(const ListenConfig& other) const {
+    return address == other.address && port == other.port &&
+           default_server == other.default_server && backlog == other.backlog &&
+           rcvbuf == other.rcvbuf && sndbuf == other.sndbuf &&
+           ipv6only == other.ipv6only;
+  }
+  ListenConfig() {
+    port = 80;
+    default_server = false;
+    backlog = 1000;
+    rcvbuf = 1000;
+    sndbuf = 1000;
+    ipv6only = false;
+  }
+} ListenConfig;
+
 typedef struct ServerConfig {
-  int                      listen_port;
-  std::vector<std::string> server_names;
+  std::vector<ListenConfig> listen;
+  std::vector<std::string>  server_names;
 
   // Also in location
   int                        client_max_body_size;
@@ -50,7 +98,7 @@ typedef struct ServerConfig {
   bool                       autoindex;
   std::map<int, std::string> error_pages;
 
-  std::map<std::string, LocationConfig*> locations;
+  std::map<std::string, LocationConfig> locations;
 } ServerConfig;
 
 typedef struct Config {

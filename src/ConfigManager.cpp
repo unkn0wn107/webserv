@@ -29,7 +29,7 @@ ConfigManager& ConfigManager::getInstance() {
   return *_instance;
 }
 
-const Config& ConfigManager::getConfig() const {
+Config& ConfigManager::getConfig() const {
   return _instance->_config;
 }
 
@@ -50,7 +50,18 @@ void ConfigManager::printConfig() {
   for (std::vector<ServerConfig>::const_iterator it = config.servers.begin();
        it != config.servers.end(); ++it) {
     const ServerConfig& server = *it;
-    std::cout << "====Server on port: " << server.listen_port << std::endl;
+    std::cout << "Unique Listen Configs:" << std::endl;
+    for (std::set<ListenConfig>::const_iterator it =
+             config.unique_listen_configs.begin();
+         it != config.unique_listen_configs.end(); ++it) {
+      const ListenConfig& listen = *it;
+      std::cout << "\tAddress: " << listen.address << " Port: " << listen.port
+                << " Default Server: " << (listen.default_server ? "Yes" : "No")
+                << " Backlog: " << listen.backlog
+                << " Rcvbuf: " << listen.rcvbuf << " Sndbuf: " << listen.sndbuf
+                << " IPv6 Only: " << (listen.ipv6only ? "Yes" : "No")
+                << std::endl;
+    }
     std::cout << "Server Names: ";
     for (std::vector<std::string>::const_iterator nameIt =
              server.server_names.begin();
@@ -77,11 +88,11 @@ void ConfigManager::printConfig() {
 }
 
 void ConfigManager::_printLocationsConfig(
-    const std::map<std::string, LocationConfig*> locations) {
-  for (std::map<std::string, LocationConfig*>::const_iterator it =
+    const std::map<std::string, LocationConfig> locations) {
+  for (std::map<std::string, LocationConfig>::const_iterator it =
            locations.begin();
        it != locations.end(); ++it) {
-    const LocationConfig& locationConfig = *it->second;
+    const LocationConfig& locationConfig = it->second;
     std::cout << "========Route: " << it->first << std::endl;
     std::cout << "\tDirectory: " << locationConfig.root << std::endl;
     std::cout << "\tDefault File: " << locationConfig.index << std::endl;

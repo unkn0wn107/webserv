@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/29 16:57:32 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 18:30:10 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,7 @@ class ConfigManager {
   static std::string    _filePath;
 
   static void _printLocationsConfig(
-      const std::map<std::string, LocationConfig*> locations);
+      const std::map<std::string, LocationConfig> locations);
 
   ConfigManager();
 
@@ -37,8 +37,8 @@ class ConfigManager {
    * Retrieve all config.
    * @return The configuration object.
    */
-  const Config& getConfig() const;
-  static void   printConfig();
+  Config&     getConfig() const;
+  static void printConfig();
 
   static void loadConfig(const std::string& filepath);
 

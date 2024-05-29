@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/29 17:58:26 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 18:21:26 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,12 +22,12 @@ int main(int argc, char* argv[]) {
 
   Config config;
   try {
-    ConfigLoader::loadConfig(argc == 1 ? ConfigLoader::DEFAULT_FILE_NAME
-                                       : argv[1]);
+    ConfigManager::loadConfig(argc == 1 ? ConfigManager::DEFAULT_FILE_NAME
+                                        : argv[1]);
     Logger::getInstance().info(
         "WebServ running...\n\nCurrent configuration:\n\n");
-    ConfigLoader::printConfig();
-    config = ConfigLoader::getInstance().getConfig();
+    ConfigManager::printConfig();
+    config = ConfigManager::getInstance().getConfig();
     Server server;
   } catch (const std::exception& e) {
     Logger::getInstance().error("Shutdown Error in main.cpp");

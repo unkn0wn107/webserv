@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/29 17:08:56 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 18:59:37 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,10 +30,15 @@ class ConfigParser {
   static std::string _configFilepath;
 
   static void _parseServerConfig(std::ifstream& configFile,
-                                 ServerConfig&  serverConfig);
+                                 ServerConfig&  serverConfig,
+                                 Config&        config);
+  static void _parseListenConfig(std::istringstream& lineStream,
+                                 ListenConfig*       listenConfig);
   static void _parseLocationConfig(std::ifstream&  configFile,
                                    LocationConfig& locationConfig);
 
+  static std::string              _cleanValue(std::string toClean, char c);
+  static std::string              _parseValue(std::string toParse);
   static std::string              _trim(const std::string& str);
   static std::vector<std::string> _split(const std::string& str,
                                          char               delimiter);

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/29 18:27:16 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/30 01:07:02 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,15 +46,25 @@ bool VirtualServer::isHostMatching(const std::string& host) const {
 }
 
 LocationConfig& VirtualServer::_getLocationConfig(const std::string& uri) {
-  //   for (std::vector<LocationConfig>::iterator it =
-  //            _serverConfig.locations.begin();
-  //        it != _serverConfig.locations.end(); ++it) {
-  //     if (uri == it->location) {
-  //       return *it;
-  //     }
-  //   }
-  (void)uri;
-  return _serverConfig.locations[0];
+  std::map<std::string, LocationConfig>::iterator it;
+  std::map<std::string, LocationConfig>::iterator bestMatch =
+      _serverConfig.locations.end();
+  size_t longestMatchLength = 0;
+
+  for (it = _serverConfig.locations.begin();
+       it != _serverConfig.locations.end(); ++it) {
+    if (uri.compare(0, it->first.length(), it->first) == 0) {
+      if (it->first.length() > longestMatchLength) {
+        longestMatchLength = it->first.length();
+        bestMatch = it;
+      }
+    }
+  }
+
+  if (bestMatch != _serverConfig.locations.end())
+    return bestMatch->second;
+
+  throw std::runtime_error("No matching location found for URI: " + uri);
 }
 
 int VirtualServer::checkRequest(HTTPRequest& request) {

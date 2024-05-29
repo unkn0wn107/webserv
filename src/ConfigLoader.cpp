@@ -215,7 +215,7 @@ void ConfigLoader::parseLocationConfig(std::ifstream&  configFile,
     } else if (key == "limit_except") {
       std::istringstream methods(line);
       std::string        method;
-      methods >> method;
+      // methods >> method;
       methods >> method;
       while (methods >> method && method[0] != '{') {
         method = getInstance()._cleanValue(method, ' ');

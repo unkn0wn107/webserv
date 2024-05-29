@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/24 15:48:35 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/29 09:53:32 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@
 #include <string>
 #include "Config.hpp"
 #include "Logger.hpp"
+#include "HTTPRequest.hpp"
+#include "HTTPResponse.hpp"
 
 /// @brief
 class ConfigLoader {
@@ -28,9 +30,9 @@ class ConfigLoader {
 
   // Disallow the copy constructor and copy assignment operator
   ConfigLoader(const ConfigLoader&);
-  ConfigLoader& operator=(const ConfigLoader&);
-  std::string   _parseValue(std::string value);
-  std::string   _cleanValue(std::string toClean, char c);
+  ConfigLoader&   operator=(const ConfigLoader&);
+  std::string     _parseValue(std::string value);
+  std::string     _cleanValue(std::string toClean, char c);
 
  public:
   static ConfigLoader& getInstance();

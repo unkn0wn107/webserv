@@ -6,12 +6,13 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/27 13:29:16 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/29 16:46:38 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "VirtualServer.hpp"
 #include "Utils.hpp"
+#include <algorithm>
 
 VirtualServer::VirtualServer(ServerConfig& serverConfig) :
 	_serverConfig(serverConfig),
@@ -24,10 +25,10 @@ VirtualServer::VirtualServer(ServerConfig& serverConfig) :
 bool VirtualServer::_hasDefaultListenConfig() {
     for (std::vector<ListenConfig>::const_iterator it = _serverConfig.listen.begin(); it != _serverConfig.listen.end(); ++it) {
         if (it->default_server) {
-            return true;  // Retourne vrai dès qu'un ListenConfig avec default_server à true est trouvé
+            return true;
         }
     }
-    return false;  // Retourne faux si aucun ListenConfig avec default_server à true n'est trouvé
+    return false;
 }
 
 bool VirtualServer::isDefaultServer() {
@@ -37,17 +38,45 @@ bool VirtualServer::isDefaultServer() {
 bool VirtualServer::isHostMatching(const std::string& host) const {
     for (std::vector<std::string>::const_iterator it = _hostNames.begin(); it != _hostNames.end(); ++it) {
         if (*it == host) {
-            return true;  // Retourne vrai dès qu'un nom d'hôte correspondant est trouvé
+            return true;
         }
     }
-    return false;  // Retourne faux si aucun nom d'hôte correspondant n'est trouvé
+    return false;
 }
 
-int VirtualServer::parseRequest(const std::string& request, size_t readn) {
-	_log.info("VirtualServer::parseRequest : " + _serverConfig.server_names[0]);
-	_log.info(request);
-	_log.info(Utils::to_string<size_t>(readn));
-	return 0;
+LocationConfig& VirtualServer::_getLocationConfig(const std::string& uri) {
+    for (std::vector<LocationConfig>::iterator it = _serverConfig.locations.begin(); it != _serverConfig.locations.end(); ++it) {
+        if (uri == it->location) {
+            return *it;
+        }
+    }
+    return _serverConfig.locations[0];
+}
+
+int VirtualServer::checkRequest(HTTPRequest& request) {
+	std::string protocol = request.getProtocol();
+	std::string method = request.getMethod();
+	std::string uri = request.getURI();
+    _log.info("VirtualServer::checkRequest : Protocol : " + protocol + " Method : " + method + " URI : " + uri);
+    if (protocol != "HTTP/1.1") {
+        _log.error("VirtualServer::checkRequest : Protocol not supported");
+        return 400;
+    }
+    LocationConfig location = _getLocationConfig(uri);
+    _log.info("VirtualServer::checkRequest : Location : " + location.location);
+    if (location.location == "") {
+        _log.error("VirtualServer::checkRequest : Location not found");
+        return 404;
+    }
+    LocationConfig defaultLocation = _getLocationConfig("/");
+    _log.info("VirtualServer::checkRequest : Default location : " + defaultLocation.location);
+    bool isMethodAllowedInLocation = std::find(location.allow_methods.begin(), location.allow_methods.end(), method) != location.allow_methods.end();
+    bool isMethodAllowedInDefaultLocation = std::find(defaultLocation.allow_methods.begin(), defaultLocation.allow_methods.end(), method) != defaultLocation.allow_methods.end();
+    if (!isMethodAllowedInLocation || !isMethodAllowedInDefaultLocation) {
+        _log.error("VirtualServer::checkRequest : Method not allowed");
+        return 403;  // Forbidden
+    }
+    return 0;
 }
 
 std::string VirtualServer::getServerName() const {

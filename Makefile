@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
+#    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/05/28 16:53:53 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/05/29 09:57:45 by  mchenava        ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -28,7 +28,7 @@ NGINX_PORT_2 = 8001
 SRC = $(SRC_DIR)/Server.cpp $(SRC_DIR)/ConfigLoader.cpp $(SRC_DIR)/FileManager.cpp \
       $(SRC_DIR)/ConnectionHandler.cpp \
       $(SRC_DIR)/ErrorHandler.cpp $(SRC_DIR)/Logger.cpp $(SRC_DIR)/Utils.cpp \
-      $(SRC_DIR)/HTTP1_1.cpp $(SRC_DIR)/Worker.cpp \
+   		$(SRC_DIR)/Worker.cpp \
       $(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp \
       $(SRC_DIR)/CGIHandler.cpp $(SRC_DIR)/FileHandler.cpp \
 			$(SRC_DIR)/VirtualServer.cpp $(SRC_DIR)/Common.cpp \
@@ -44,7 +44,7 @@ VPATH = $(SRC_DIR)
 all: $(NAME)
 
 $(NAME): $(OBJ) update_gitignore
-	$(CXX) $(CXXFLAGS) $(OBJ) -o $(NAME)
+	$(CXX) $(CXXFLAGS) $(OBJ) -lpthread -o $(NAME)
 	mkdir -p $(LOG_DIR)
 
 $(OBJ_DIR)/%.o: %.cpp
@@ -95,7 +95,7 @@ clean:
 	rm -f $(OBJ) $(DEBUG_OBJ)
 	rm -f $(DEPS) $(DEBUG_DEPS)
 
-fclean: clean docker-clean
+fclean: clean docker-fclean
 	rm -f $(NAME)
 	rm -rf $(OBJ_DIR) $(DEBUG_OBJ_DIR)
 

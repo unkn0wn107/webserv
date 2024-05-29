@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   FileHandler.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:37 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/22 20:40:06 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 16:12:28 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ HTTPResponse FileHandler::processRequest(const HTTPRequest& request,
                                          ServerConfig&      config) {
   (void)request;
   HTTPResponse response;
-  std::string  path = config.root + request.getUrl();
+  std::string  path = config.root + request.getURI();
   struct stat  path_stat;
   stat(path.c_str(), &path_stat);
 

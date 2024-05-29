@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGIHandler.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/04 00:58:28 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 16:10:19 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ bool CGIHandler::isScript(const std::string& url) {
 }
 
 HTTPResponse CGIHandler::processRequest(const HTTPRequest& request) {
-  return runScript(request.getUrl());
+  return runScript(request.getURI());
 }
 
 std::string CGIHandler::identifyRuntime(const std::string& scriptPath) {

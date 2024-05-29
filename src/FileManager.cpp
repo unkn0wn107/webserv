@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   FileManager.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:45 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:11:46 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 16:09:35 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,14 @@ std::string FileManager::readFile(const std::string& path) {
   file.close();
   return contents.str();
 }
+
+// size_t FileManager::size(const std::string& path) {
+//   struct stat buffer;
+//   if (stat(path.c_str(), &buffer) != 0) {
+//     return -1;
+//   }
+//   return buffer.st_size;
+// }
 
 bool FileManager::doesFileExists(const std::string& path) {
   struct stat buffer;

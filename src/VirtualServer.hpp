@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 10:22:15 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/27 13:28:59 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/29 16:13:39 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 #include "Config.hpp"
 #include "Logger.hpp"
+#include "HTTPRequest.hpp"
 
 class	VirtualServer {
 	private:
@@ -23,15 +24,15 @@ class	VirtualServer {
 		bool							_defaultServer;
 		std::vector<std::string>	_hostNames;
 
-		bool							_hasDefaultListenConfig();
-
+		bool										_hasDefaultListenConfig();
+		LocationConfig&					_getLocationConfig(const std::string& uri);
 
 	public:
 		VirtualServer(ServerConfig& serverConfig);
 		~VirtualServer();
 		bool							isDefaultServer();
 		bool							isHostMatching(const std::string& host) const;
-		int								parseRequest(const std::string& request, size_t readn);
+		int								checkRequest(HTTPRequest& request);
 		std::string				getServerName() const;
 };
 

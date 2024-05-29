@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/27 13:52:12 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/05/29 16:50:35 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,22 +85,15 @@ void ConnectionHandler::_sendResponse() {
 	_connectionStatus = CLOSED;
 }
 
-VirtualServer* ConnectionHandler::_selectVirtualServer() {
-	std::string requestHeader(_buffer, _readn);
-	std::string host = _extractHost(requestHeader);
-	_log.info(std::string("CONNECTION_HANDLER: Request header: ") + requestHeader);
+VirtualServer* ConnectionHandler::_selectVirtualServer(std::string host) {
 	_log.info(std::string("CONNECTION_HANDLER: Host extracted: ") + host);
-	if (host.empty()) {
-		return _findDefaultServer();
-	}
-
-
-	for (std::vector<VirtualServer*>::iterator it = _vservPool.begin(); it != _vservPool.end(); ++it) {
-		if ((*it)->isHostMatching(host)) {
-			return *it;
+	if (!host.empty()) {
+		for (std::vector<VirtualServer*>::iterator it = _vservPool.begin(); it != _vservPool.end(); ++it) {
+			if ((*it)->isHostMatching(host)) {
+				return *it;
+			}
 		}
 	}
-
 	return _findDefaultServer();
 }
 
@@ -141,18 +134,27 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
 }
 
 void ConnectionHandler::_processRequest() {
-	VirtualServer*	vserv = _selectVirtualServer();
-	if (vserv == NULL) {
-		_log.error("CONNECTION_HANDLER: No virtual server selected");
-		return;
-	}
-	_log.info(std::string("CONNECTION_HANDLER: Selected virtual server: ") + vserv->getServerName());
-	if (vserv->parseRequest(_buffer, _readn) == -1) {
-		_log.error("CONNECTION_HANDLER: Request parsing failed");
+	_request = new HTTPRequest(_buffer, _readn);
+	VirtualServer*	vserv = _selectVirtualServer(_request->getHost());
+	if (vserv->checkRequest(*_request) != 0) {
+		_log.error("CONNECTION_HANDLER: Request failed");
 		_connectionStatus = CLOSED;
 		return;
 	}
+	_log.info("CONNECTION_HANDLER: Request valid");
 	_connectionStatus = SENDING;
+
+	// if (vserv == NULL) {
+	// 	_log.error("CONNECTION_HANDLER: No virtual server selected");
+	// 	return;
+	// }
+	// _log.info(std::string("CONNECTION_HANDLER: Selected virtual server: ") + vserv->getServerName());
+	// if (vserv->parseRequest(_buffer, _readn) == -1) {
+	// 	_log.error("CONNECTION_HANDLER: Request parsing failed");
+	// 	_connectionStatus = CLOSED;
+	// 	return;
+	// }
+	// _connectionStatus = SENDING;
 }
 
 void ConnectionHandler::processConnection() {

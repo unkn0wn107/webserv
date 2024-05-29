@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP1_1.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:48 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 19:59:16 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/05/29 09:57:02 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,6 @@ HTTP1_1::HTTP1_1(ServerConfig& config) : HTTPProtocol(config) {
 HTTP1_1::~HTTP1_1() {}
 
 HTTPRequest HTTP1_1::parseRequest(const std::string& requestData) {
-  HTTPRequest        request;
   std::istringstream stream(requestData);
   std::string        line;
   std::getline(stream, line);

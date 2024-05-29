@@ -117,6 +117,10 @@ void ConfigParser::_parseServerConfig(std::ifstream& configFile,
         }
       } else if (key == "root") {
         serverConfig.root = _parseValue(lineStream.str());
+      } else if (key == "index") {
+        serverConfig.index = _parseValue(lineStream.str());
+      } else if (key == "autoindex") {
+        serverConfig.autoindex = (_parseValue(lineStream.str()) == "on");
       } else if (key == "client_max_body_size") {
         serverConfig.client_max_body_size =
             Utils::stoi<int>(_parseValue(lineStream.str()));
@@ -228,6 +232,9 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
       locationConfig.cgi_handler = _parseValue(lineStream.str());
     } else if (key == "accept_upload") {
       locationConfig.upload_path = _parseValue(lineStream.str());
+    } else if (key == "client_max_body_size") {
+      locationConfig.client_max_body_size =
+          Utils::stoi<int>(_parseValue(lineStream.str()));
     } else {
       _log.emerg("Unknown location directive: \"" + key + "\" in " +
                  _configFilepath);

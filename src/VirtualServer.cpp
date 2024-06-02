@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/30 01:07:02 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/02 23:10:18 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,6 +99,51 @@ int VirtualServer::checkRequest(HTTPRequest& request) {
     return 403;  // Forbidden
   }
   return 0;
+}
+
+int VirtualServer::_handleGetRequest(HTTPRequest& request) {
+  std::string uri = request.getURI();
+  _log.info("VirtualServer::_handleGetRequest : URI : " + uri);
+  LocationConfig location = _getLocationConfig(uri);
+  _log.info("VirtualServer::_handleGetRequest : Location : " + location.location);
+  
+  return 0;
+}
+
+int VirtualServer::handleRequest(HTTPRequest& request) {
+  std::string protocol = request.getProtocol();
+  std::string method = request.getMethod();
+  std::string uri = request.getURI();
+  _log.info("VirtualServer::handleRequest : Protocol : " + protocol +
+            " Method : " + method + " URI : " + uri);
+
+  if (protocol != "HTTP/1.1") {
+    _log.error("VirtualServer::handleRequest : Protocol not supported");
+    return 400;
+  }
+  if (method == "GET") {
+    return _handleGetRequest(request);
+  }
+  if (method == "POST") {
+    return _handlePostRequest(request);
+  }
+  if (method == "DELETE") {
+    return _handleDeleteRequest(request);
+  }
+  if (method == "PUT") {
+    return _handlePutRequest(request);
+  }
+  if (method == "HEAD") {
+    return _handleHeadRequest(request);
+  }
+  if (method == "CONNECT") {
+    return _handleConnectRequest(request);
+  }
+  if (method == "OPTIONS") {
+    return _handleOptionsRequest(request);
+  }
+  _log.error("VirtualServer::handleRequest : Method not allowed");
+  return 403;
 }
 
 std::string VirtualServer::getServerName() const {

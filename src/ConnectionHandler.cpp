@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/29 16:50:35 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/02 22:35:49 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -140,31 +140,31 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
 
 void ConnectionHandler::_processRequest() {
   _request = new HTTPRequest(_buffer, _readn);
+  unsigned int err;
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
-  if (vserv->checkRequest(*_request) != 0) {
+  if (vserv == NULL) {
+    _log.error("CONNECTION_HANDLER: No virtual server selected");
+    _connectionStatus = CLOSED;
+    return;
+  }
+  if (err = vserv->checkRequest(*_request) != 0) {
     _log.error("CONNECTION_HANDLER: Request failed");
     _connectionStatus = CLOSED;
     return;
   }
   _log.info("CONNECTION_HANDLER: Request valid");
+  if (err = vserv->handleRequest(*_request) != 0) {
+    _log.error("CONNECTION_HANDLER: Request failed");
+    _connectionStatus = CLOSED;
+    return;
+  }
   _connectionStatus = SENDING;
-
-  // if (vserv == NULL) {
-  // 	_log.error("CONNECTION_HANDLER: No virtual server selected");
-  // 	return;
-  // }
-  // _log.info(std::string("CONNECTION_HANDLER: Selected virtual server: ") +
-  // vserv->getServerName()); if (vserv->parseRequest(_buffer, _readn) == -1) {
-  // 	_log.error("CONNECTION_HANDLER: Request parsing failed");
-  // 	_connectionStatus = CLOSED;
-  // 	return;
-  // }
-  // _connectionStatus = SENDING;
 }
 
 void ConnectionHandler::processConnection() {
   struct epoll_event event;
   event.data.fd = _clientSocket;
+  event.data.ptr = this;
   if (_connectionStatus == READING) {
     _receiveRequest();
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
@@ -185,5 +185,6 @@ void ConnectionHandler::processConnection() {
   }
   if (_connectionStatus == CLOSED) {
     close(_clientSocket);
+    delete this;
   }
 }

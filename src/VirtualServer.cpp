@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/03 18:06:16 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 00:15:18 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -261,6 +261,10 @@ HTTPResponse  *VirtualServer::handleRequest(HTTPRequest& request) {
   if (protocol != "HTTP/1.1") {
     _log.error("VirtualServer::handleRequest : Protocol not supported");
     return new HTTPResponse(400, _getErrorPages(uri));
+  }
+  if (CGIHandler::isScript(uri)) {
+    _log.info("Handling CGI request for URI: " + uri);
+    return CGIHandler::processRequest(request);
   }
   if (method == "GET") {
     return _handleGetRequest(request);

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 21:05:43 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 01:24:49 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@
 
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "Logger.hpp"
 
 class CGIHandler {
  public:
@@ -38,7 +39,7 @@ class CGIHandler {
    * @param request The HTTP request object containing the CGI request details.
    * @return HTTPResponse object containing the response from the CGI script.
    */
-  static HTTPResponse processRequest(const HTTPRequest& request);
+  static HTTPResponse* processRequest(const HTTPRequest& request);
 
  private:
   static const std::pair<std::string, std::string> _AVAILABLE_CGIS[];

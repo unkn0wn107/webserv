@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:21:59 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/29 17:02:47 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 01:25:25 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,9 +34,10 @@ class Logger {
   void error(const std::string& message) const;
   void emerg(const std::string& message) const;
 
+  ~Logger();
+
  private:
   Logger();
-  ~Logger();
 
   static Logger* _instance;
 

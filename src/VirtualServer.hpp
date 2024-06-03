@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 10:22:15 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/03 15:12:37 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/03 23:56:40 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
+#include "CGIHandler.hpp"
 
 class VirtualServer {
  private:

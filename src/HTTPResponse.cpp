@@ -6,12 +6,14 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 10:36:01 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/03 15:15:50 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPResponse.hpp"
 #include "VirtualServer.hpp"
+#include "Utils.hpp"
+#include <sys/socket.h>
 
 const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::CONTINUE, "Continue"),
@@ -189,12 +191,20 @@ void HTTPResponse::_errorResponse() {
 
 void HTTPResponse::buildResponse() {
   _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
-              Utils::to_string(_statusMessage) + "\r\n";
+              _statusMessage + "\r\n";
   for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
       it != _headers.end(); ++it) {
     _responseBuffer += it->first + ": " + it->second + "\r\n";
   }
   _responseBuffer += "\r\n" + _body;
+}
+
+int HTTPResponse::sendResponse(int clientSocket) {
+  buildResponse();
+  if (send(clientSocket, _responseBuffer.c_str(), _responseBuffer.length(), 0) == -1) {
+    return -1;
+  }
+  return 0;
 }
 
 std::string HTTPResponse::getContentType(const std::string& path) {

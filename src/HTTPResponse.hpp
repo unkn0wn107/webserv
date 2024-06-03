@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 10:34:04 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/03 15:14:51 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,7 @@ class HTTPResponse {
   static std::string getContentType(const std::string& path);
 
   void  buildResponse();
+  int  sendResponse(int clientSocket);
   // Setters
   void setStatusCode(int code);
   void setHeaders(const std::map<std::string, std::string>& headers);

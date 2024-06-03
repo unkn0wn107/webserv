@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 09:15:34 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/03 15:24:21 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,8 +28,8 @@ ConnectionHandler::ConnectionHandler(
       _epollSocket(epollSocket),
       _readn(0),
       _vservPool(virtualServers) {
-  _buffer = new char[1024];
-  memset(_buffer, 0, 1024);
+  _buffer = new char[BUFFER_SIZE];
+  memset(_buffer, 0, BUFFER_SIZE);
   _log.info("CONNECTION_HANDLER: New connection handler created");
   _log.info("CONNECTION_HANDLER: serverPool size : " + _vservPool.size());
   for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
@@ -47,7 +47,7 @@ void ConnectionHandler::_receiveRequest() {
   bool end = false;
   while (true) {
     ssize_t bytes = recv(_clientSocket, _buffer + _readn, 1, 0);
-    if (_readn >= 1024) {
+    if (_readn >= BUFFER_SIZE) {
       _connectionStatus = CLOSED;
       return;
     }
@@ -66,24 +66,20 @@ void ConnectionHandler::_receiveRequest() {
           _buffer[_readn - 2] == '\r' && _buffer[_readn - 3] == '\n' &&
           _buffer[_readn - 4] == '\r') {
         end = true;
+        _buffer[_readn] = '\0';
         break;
       }
     }
   }
+  _log.info("CONNECTION_HANDLER: Request received: " + std::string(_buffer));
   if (!end)
     return;
   _processRequest();
 }
 
 void ConnectionHandler::_sendResponse() {
-  std::string response =
-      "HTTP/1.1 200 OK\r\nContent-Length: 20\r\nContent-Type: "
-      "text/html\r\n\r\n<h1>Hello World</h1>";
-  _log.info("CONNECTION_HANDLER: Sending response");
-  if (send(_clientSocket, response.c_str(), response.length(), 0) == -1) {
-    _log.error(std::string("CONNECTION_HANDLER: send: ") + strerror(errno));
-    _connectionStatus = CLOSED;
-    return;
+  if (_response->sendResponse(_clientSocket) == -1) {
+    _log.error("CONNECTION_HANDLER: Failed to send response");\
   }
   _connectionStatus = CLOSED;
 }

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 17:56:25 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/03 20:34:17 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,14 +24,27 @@ void HTTPRequest::parseRequest() {
   std::string        line;
   std::getline(requestStream, line);
   std::istringstream lineStream(line);
-  lineStream >> _method >> _uri >> _protocol;
-  _uri = URI::decode(_uri);
+  std::string        rawUri;
+
+  lineStream >> _method >> rawUri >> _protocol;
+
+  _uri = URI::decode(rawUri);
+  size_t pos = rawUri.find('?');
+  if (pos != std::string::npos) {
+    _queryString = rawUri.substr(pos + 1);
+    _uri = URI::decode(rawUri.substr(0, pos));
+  }
+
+  std::cout << "URI: " << _uri << std::endl;
+  std::cout << "Query String: " << _queryString << std::endl;
+
   while (std::getline(requestStream, line) && line != "\r") {
     std::size_t pos = line.find(":");
     if (pos != std::string::npos) {
       addHeader(line.substr(0, pos), line.substr(pos + 2));
     }
   }
+
   if (_method == "POST" || _method == "PUT") {
     std::stringstream bodyStream;
     bodyStream << requestStream.rdbuf();
@@ -81,6 +94,10 @@ std::string HTTPRequest::getMethod() const {
 
 std::string HTTPRequest::getURI() const {
   return _uri;
+}
+
+std::string HTTPRequest::getQueryString() const {
+  return _queryString;
 }
 
 std::map<std::string, std::string> HTTPRequest::getHeaders() const {

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 20:09:45 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/03 21:05:43 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 #include <sys/wait.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -43,12 +44,13 @@ class CGIHandler {
   static const std::pair<std::string, std::string> _AVAILABLE_CGIS[];
   static const int                                 _NUM_AVAILABLE_CGIS;
 
+  static char** _getEnvp(const HTTPRequest& request);
   /**
    * Identifies the runtime environment based on the script file extension.
    * @param scriptPath The path to the CGI script.
    * @return String representing the runtime to be used.
    */
-  static std::string identifyRuntime(const std::string& scriptPath);
+  static std::string _identifyRuntime(const std::string& scriptPath);
 
   /**
    * Executes the CGI script using the identified runtime.
@@ -56,8 +58,8 @@ class CGIHandler {
    * @param request The HTTP request object for passing to the CGI.
    * @return String containing the output from the CGI script.
    */
-  static std::string runScript(const std::string& scriptPath);
-  static std::string executeCGIScript(const std::string& scriptPath);
+  static std::string _executeCGIScript(const HTTPRequest& request,
+                                       const std::string& scriptPath);
 };
 
 #endif

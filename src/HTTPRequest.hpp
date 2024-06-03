@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 17:56:43 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/03 20:29:02 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@ class HTTPRequest {
   std::string                        getRawRequest() const;
   std::string                        getMethod() const;
   std::string                        getURI() const;
+  std::string                        getQueryString() const;
   std::map<std::string, std::string> getHeaders() const;
   std::string                        getHeader(const std::string& key) const;
   std::string                        getBody() const;
@@ -51,6 +52,7 @@ class HTTPRequest {
   size_t                             _readn;
   std::string                        _method;
   std::string                        _uri;
+  std::string                        _queryString;
   std::map<std::string, std::string> _headers;
   std::string                        _body;
   std::string                        _protocol;

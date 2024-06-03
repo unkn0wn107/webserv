@@ -114,3 +114,51 @@ bool	RequestParser::httpVersionSupported(void)
 		return (false);
 	return (true);
 }
+
+bool	RequestParser::parseHeaderField(std::string line)
+{
+	size_t		pos;
+	std::string	fieldName;
+	std::string	fieldValue;
+
+	pos = line.find(':');
+	if (pos == std::string::npos || pos == 0)
+		return (false);
+	fieldName = line.substr(0, pos);
+	fieldValue = line.substr(pos + 1);
+	if (!parseFieldName(fieldName))
+		return (false);
+	cleanFieldValue(&fieldValue);
+	this->_headers.insert(std::make_pair(fieldName, fieldValue));
+	for (std::map<std::string, std::string>::iterator it = this->_headers.begin(); it != this->_headers.end(); it++)
+	{
+		std::cout << it->first << std::endl;
+		std::cout << it->second << std::endl;
+	}
+	return (true);
+}
+
+bool	RequestParser::parseFieldName(std::string fieldName)
+{
+	if (fieldName.find_first_of("\"(),/:;<=>?@[\\]{} \t\n\v\f\r") != std::string::npos)
+		return (false);
+	return (true);
+}
+
+void	RequestParser::cleanFieldValue(std::string *fieldValue)
+{
+	size_t	posBegin;
+	size_t	posEnd;
+	size_t	len;
+
+	posBegin = 0;
+	while (isspace((*fieldValue)[posBegin]))
+		posBegin++;
+	posEnd = fieldValue->size() - 1;
+	while (posEnd != 0 && isspace((*fieldValue)[posEnd]))
+		posEnd--;
+	len = posEnd - posBegin + 1;
+	*fieldValue = fieldValue->substr(posBegin, len);
+}
+
+	

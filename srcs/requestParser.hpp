@@ -3,6 +3,7 @@
 
 # include <string>
 # include <iostream>
+# include <map>
 
 class RequestParser 
 {
@@ -24,13 +25,18 @@ class RequestParser
 		bool	parseHTTPVersionToken(void);
 		bool	httpVersionSupported(void);
 
+		bool	parseHeaderField(std::string line);
+		bool	parseFieldName(std::string line);
+		void	cleanFieldValue(std::string *fieldValue);
+
 	private :
 
 		std::string	getToken(std::string *line);
 
-		std::string	_method;
-		std::string	_requestTarget;
-		std::string	_httpVersion;
+		std::string				_method;
+		std::string				_requestTarget;
+		std::string				_httpVersion;
+		std::map<std::string, std::string>	_headers;
 };
 
 # endif

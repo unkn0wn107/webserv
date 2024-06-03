@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/02 23:10:18 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/03 10:59:59 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,7 +52,7 @@ LocationConfig& VirtualServer::_getLocationConfig(const std::string& uri) {
   size_t longestMatchLength = 0;
 
   for (it = _serverConfig.locations.begin();
-       it != _serverConfig.locations.end(); ++it) {
+      it != _serverConfig.locations.end(); ++it) {
     if (uri.compare(0, it->first.length(), it->first) == 0) {
       if (it->first.length() > longestMatchLength) {
         longestMatchLength = it->first.length();
@@ -67,7 +67,7 @@ LocationConfig& VirtualServer::_getLocationConfig(const std::string& uri) {
   throw std::runtime_error("No matching location found for URI: " + uri);
 }
 
-int VirtualServer::checkRequest(HTTPRequest& request) {
+HTTPResponse *VirtualServer::checkRequest(HTTPRequest& request) {
   std::string protocol = request.getProtocol();
   std::string method = request.getMethod();
   std::string uri = request.getURI();
@@ -75,13 +75,13 @@ int VirtualServer::checkRequest(HTTPRequest& request) {
             " Method : " + method + " URI : " + uri);
   if (protocol != "HTTP/1.1") {
     _log.error("VirtualServer::checkRequest : Protocol not supported");
-    return 400;
+    return new HTTPResponse(400, _getErrorPages(uri));
   }
   LocationConfig location = _getLocationConfig(uri);
   _log.info("VirtualServer::checkRequest : Location : " + location.location);
   if (location.location == "") {
     _log.error("VirtualServer::checkRequest : Location not found");
-    return 404;
+    return new HTTPResponse(404, _getErrorPages(uri));
   }
   LocationConfig defaultLocation = _getLocationConfig("/");
   _log.info("VirtualServer::checkRequest : Default location : " +
@@ -96,21 +96,90 @@ int VirtualServer::checkRequest(HTTPRequest& request) {
                 method) != defaultLocation.allowed_methods.end();
   if (!isMethodAllowedInLocation || !isMethodAllowedInDefaultLocation) {
     _log.error("VirtualServer::checkRequest : Method not allowed");
-    return 403;  // Forbidden
+    return new HTTPResponse(403, _getErrorPages(uri));
   }
-  return 0;
+  return NULL;
 }
 
-int VirtualServer::_handleGetRequest(HTTPRequest& request) {
+HTTPResponse  *VirtualServer::_handleGetRequest(HTTPRequest& request) {
+  HTTPResponse *response;
   std::string uri = request.getURI();
   _log.info("VirtualServer::_handleGetRequest : URI : " + uri);
   LocationConfig location = _getLocationConfig(uri);
-  _log.info("VirtualServer::_handleGetRequest : Location : " + location.location);
-  
-  return 0;
+  std::string path = location.root + uri;
+
+  struct stat statbuf;
+  if (stat(path.c_str(), &statbuf) == -1) {
+      _log.error("VirtualServer::_handleGetRequest : Path not found");
+      return new HTTPResponse(404, _getErrorPages(uri));
+  }
+
+  if (S_ISDIR(statbuf.st_mode)) {
+      std::string indexPath = path + "/index.html";
+      std::ifstream indexFile(indexPath);
+      if (indexFile && location.autoindex) {
+          std::string content((std::istreambuf_iterator<char>(indexFile)), std::istreambuf_iterator<char>());
+          HTTPResponse *response = new HTTPResponse(200);
+          response->addHeader("Content-Type", "text/html");
+          response->addHeader("Content-Length", std::to_string(content.size()));
+          response->setBody(content);
+          return response;
+      } else if (location.autoindex) {
+          // Générer une liste de fichiers et de répertoires
+          std::string directoryListing = generateDirectoryListing(path);
+          HTTPResponse *response = new HTTPResponse(200);
+          response->addHeader("Content-Type", "text/html");
+          response->addHeader("Content-Length", std::to_string(directoryListing.size()));
+          response->setBody(directoryListing);
+          return response;
+      } else {
+          _log.error("VirtualServer::_handleGetRequest : Directory index not available");
+          return new HTTPResponse(404, _getErrorPages(uri));
+      }
+  }
+
+  // Gestion des fichiers normaux
+  std::string contentType = HTTPResponse::getContentType(path);
+  std::ifstream file(path);
+  if (file) {
+      std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+      HTTPResponse *response = new HTTPResponse(200);
+      response->addHeader("Content-Type", contentType);
+      response->addHeader("Content-Length", std::to_string(content.size()));
+      response->setBody(content);
+      return response;
+  }
+
+  _log.error("VirtualServer::_handleGetRequest : File not found");
+  return new HTTPResponse(404, _getErrorPages(uri));
 }
 
-int VirtualServer::handleRequest(HTTPRequest& request) {
+std::string VirtualServer::_fillErrorPage(int status, const std::string& path) {
+  std::ifstream file(path);
+  if (!file) {
+    _log.error("VirtualServer::_fillErrorPage : File not found");
+    return defaultErrorPage(status);
+  }
+  std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  return content;
+}
+
+std::map<int, std::string> VirtualServer::_getErrorPages(const std::string& uri) {
+  std::map<int, std::string> errorPages;
+  LocationConfig location = _getLocationConfig(uri);
+  for (std::map<int, std::string>::iterator it = _serverConfig.error_pages.begin();
+      it != _serverConfig.error_pages.end(); ++it) {
+    errorPages[it->first] = _fillErrorPage(it->first, it->second);
+  }
+  for (std::map<int, std::string>::iterator it = location.error_pages.begin();
+      it != location.error_pages.end(); ++it) {
+    errorPages[it->first] = _fillErrorPage(it->first, it->second);
+  }
+  return errorPages;
+}
+
+
+HTTPResponse  *VirtualServer::handleRequest(HTTPRequest& request) {
   std::string protocol = request.getProtocol();
   std::string method = request.getMethod();
   std::string uri = request.getURI();
@@ -119,7 +188,7 @@ int VirtualServer::handleRequest(HTTPRequest& request) {
 
   if (protocol != "HTTP/1.1") {
     _log.error("VirtualServer::handleRequest : Protocol not supported");
-    return 400;
+    return new HTTPResponse(400, _getErrorPages(uri));
   }
   if (method == "GET") {
     return _handleGetRequest(request);
@@ -143,7 +212,7 @@ int VirtualServer::handleRequest(HTTPRequest& request) {
     return _handleOptionsRequest(request);
   }
   _log.error("VirtualServer::handleRequest : Method not allowed");
-  return 403;
+  return new HTTPResponse(403, _getErrorPages(uri));
 }
 
 std::string VirtualServer::getServerName() const {

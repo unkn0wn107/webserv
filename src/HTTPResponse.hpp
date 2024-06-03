@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 18:56:50 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/03 10:34:04 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,15 +21,25 @@
 class HTTPResponse {
  private:
   int                                _statusCode;
+  std::string                        _statusMessage;
   std::map<std::string, std::string> _headers;
   std::string                        _body;
   std::string                        _protocol;
+  std::map<int, std::string>          _error_pages;
+  std::string                        _responseBuffer;
+
+  void _errorResponse();
 
  public:
   HTTPResponse();
   HTTPResponse(const std::string& protocol);
+  HTTPResponse(int statusCode, std::map<int, std::string> error_pages);
+  HTTPResponse(int statusCode);
   ~HTTPResponse();
 
+  static std::string getContentType(const std::string& path);
+
+  void  buildResponse();
   // Setters
   void setStatusCode(int code);
   void setHeaders(const std::map<std::string, std::string>& headers);
@@ -44,6 +54,7 @@ class HTTPResponse {
   std::string                        generate() const;
 
   static const std::pair<int, std::string> STATUS_CODE_MESSAGES[];
+  static const std::pair<std::string, std::string> CONTENT_TYPES[];
   static const int                         NUM_STATUS_CODE_MESSAGES;
 
   static const int CONTINUE = 100;

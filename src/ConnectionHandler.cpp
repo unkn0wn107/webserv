@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/02 22:35:49 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/03 09:15:34 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ ConnectionHandler::ConnectionHandler(
   _log.info("CONNECTION_HANDLER: New connection handler created");
   _log.info("CONNECTION_HANDLER: serverPool size : " + _vservPool.size());
   for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
-       it != _vservPool.end(); ++it) {
+      it != _vservPool.end(); ++it) {
     _log.info("CONNECTION_HANDLER: serverPool name : " +
               (*it)->getServerName());
   }
@@ -92,7 +92,7 @@ VirtualServer* ConnectionHandler::_selectVirtualServer(std::string host) {
   _log.info(std::string("CONNECTION_HANDLER: Host extracted: ") + host);
   if (!host.empty()) {
     for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
-         it != _vservPool.end(); ++it) {
+        it != _vservPool.end(); ++it) {
       if ((*it)->isHostMatching(host)) {
         return *it;
       }
@@ -105,7 +105,7 @@ VirtualServer* ConnectionHandler::_findDefaultServer() {
   bool           first = true;
   VirtualServer* firstVserv = NULL;
   for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
-       it != _vservPool.end(); ++it) {
+      it != _vservPool.end(); ++it) {
     if (first) {
       firstVserv = *it;
       first = false;
@@ -140,24 +140,19 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
 
 void ConnectionHandler::_processRequest() {
   _request = new HTTPRequest(_buffer, _readn);
-  unsigned int err;
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
     _log.error("CONNECTION_HANDLER: No virtual server selected");
     _connectionStatus = CLOSED;
     return;
   }
-  if (err = vserv->checkRequest(*_request) != 0) {
+  if (vserv->checkRequest(*_request) != NULL) {
     _log.error("CONNECTION_HANDLER: Request failed");
     _connectionStatus = CLOSED;
     return;
   }
   _log.info("CONNECTION_HANDLER: Request valid");
-  if (err = vserv->handleRequest(*_request) != 0) {
-    _log.error("CONNECTION_HANDLER: Request failed");
-    _connectionStatus = CLOSED;
-    return;
-  }
+  _response = vserv->handleRequest(*_request);
   _connectionStatus = SENDING;
 }
 

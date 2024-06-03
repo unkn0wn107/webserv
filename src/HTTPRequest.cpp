@@ -3,15 +3,14 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/29 16:10:00 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/03 17:56:25 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPRequest.hpp"
-#include <iostream>
 
 HTTPRequest::HTTPRequest(std::string rawRequest, size_t readn)
     : _rawRequest(rawRequest), _readn(readn), _method(""), _uri(""), _body("") {
@@ -26,6 +25,7 @@ void HTTPRequest::parseRequest() {
   std::getline(requestStream, line);
   std::istringstream lineStream(line);
   lineStream >> _method >> _uri >> _protocol;
+  _uri = URI::decode(_uri);
   while (std::getline(requestStream, line) && line != "\r") {
     std::size_t pos = line.find(":");
     if (pos != std::string::npos) {

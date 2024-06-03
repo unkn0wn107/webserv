@@ -3,20 +3,23 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/29 16:08:27 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/03 17:56:43 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HTTPREQUEST_H
 #define HTTPREQUEST_H
 
+#include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
+
 #include "Config.hpp"
+#include "URI.hpp"
 
 class HTTPRequest {
  public:

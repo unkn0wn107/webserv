@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/03 15:34:00 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/03 18:06:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -146,7 +146,7 @@ std::string VirtualServer::_generateDirectoryListing(const std::string& path) {
           } else {
               html << "[FILE] ";
           }
-          html << "<a href=\"" << entryName << "\">" << entryName << "</a>";
+          html << "<a href=\"" << URI::encode(entryName) << "\">" << entryName << "</a>";
           html << "</li>";
       }
       closedir(dir);

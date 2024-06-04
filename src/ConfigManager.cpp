@@ -74,13 +74,6 @@ void ConfigManager::printConfig() {
               << std::endl;
 
     // Display error pages
-    std::cout << "====Error Pages:" << std::endl;
-    for (std::map<int, std::string>::const_iterator errorIt =
-             server.error_pages.begin();
-         errorIt != server.error_pages.end(); ++errorIt) {
-      std::cout << " \tError Code: " << errorIt->first
-                << " - Page: " << errorIt->second << std::endl;
-    }
 
     std::cout << "Routes:" << std::endl;
     _printLocationsConfig(server.locations);
@@ -93,14 +86,15 @@ void ConfigManager::_printLocationsConfig(
            locations.begin();
        it != locations.end(); ++it) {
     const LocationConfig& locationConfig = it->second;
-    std::cout << "========Route: " << it->first << std::endl;
+    std::cout << "====Route: " << it->first << std::endl;
     std::cout << "\tDirectory: " << locationConfig.root << std::endl;
     std::cout << "\tDefault File: " << locationConfig.index << std::endl;
     std::cout << "\tReturn code: " << locationConfig.returnCode << std::endl;
     std::cout << "\tReturn url: " << locationConfig.returnUrl << std::endl;
     std::cout << "\tDirectory Listing: "
               << (locationConfig.autoindex ? "on" : "off") << std::endl;
-    std::cout << "\tUpload Path: " << locationConfig.upload_path << std::endl;
+    std::cout << "\tUpload: " << (locationConfig.upload ? "on" : "off") << std::endl;
+    std::cout << "\tCGI: " << (locationConfig.cgi ? "on" : "off") << std::endl;
     std::cout << "\tAllowed Methods: ";
     for (std::vector<std::string>::const_iterator methodIt =
              locationConfig.allowed_methods.begin();
@@ -108,5 +102,12 @@ void ConfigManager::_printLocationsConfig(
       std::cout << *methodIt << " ";
     }
     std::cout << std::endl;
+    std::cout << "======Error Pages:" << std::endl;
+    for (std::map<int, std::string>::const_iterator errorIt =
+             locationConfig.error_pages.begin();
+         errorIt != locationConfig.error_pages.end(); ++errorIt) {
+      std::cout << " \tError Code: " << errorIt->first
+                << " - Page: " << errorIt->second << std::endl;
+    }
   }
 }

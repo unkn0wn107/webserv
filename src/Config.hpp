@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/29 18:24:24 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 13:48:17 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,8 +26,8 @@ typedef struct LocationConfig {
   int                        client_max_body_size;
   std::string                root;
   std::string                index;
-  std::string                upload_path;
-  std::string                cgi_handler;
+  bool                       upload;
+  bool                       cgi;
   bool                       autoindex;
   std::map<int, std::string> error_pages;
 
@@ -35,6 +35,13 @@ typedef struct LocationConfig {
   std::vector<std::string> allowed_methods;
   int                      returnCode;
   std::string              returnUrl;
+
+  LocationConfig() {
+    client_max_body_size = 1000;
+    upload = false;
+    cgi = false;
+    autoindex = false;
+  }
 } LocationConfig;
 
 typedef struct ListenConfig {
@@ -93,12 +100,19 @@ typedef struct ServerConfig {
   int                        client_max_body_size;
   std::string                root;
   std::string                index;
-  std::string                upload_path;
-  std::string                cgi_handler;
+  bool                       upload;
+  bool                       cgi;
   bool                       autoindex;
   std::map<int, std::string> error_pages;
 
   std::map<std::string, LocationConfig> locations;
+
+  ServerConfig() {
+    client_max_body_size = 1000;
+    upload = false;
+    cgi = false;
+    autoindex = false;
+  }
 } ServerConfig;
 
 typedef struct Config {

@@ -93,7 +93,7 @@ void ConfigParser::_parseServerConfig(std::ifstream& configFile,
       LocationConfig locationConfig;
       locationConfig.location = _parseValue(lineStream.str());
       if (afterValue == "{") {
-        _parseLocationConfig(configFile, locationConfig);
+        _parseLocationConfig(configFile, locationConfig, serverConfig);
         serverConfig.locations[value] = locationConfig;
         _log.info(">>>>>>>>>>>>>>>>>>>>> new route config add to server");
       } else {
@@ -121,6 +121,10 @@ void ConfigParser::_parseServerConfig(std::ifstream& configFile,
         serverConfig.index = _parseValue(lineStream.str());
       } else if (key == "autoindex") {
         serverConfig.autoindex = (_parseValue(lineStream.str()) == "on");
+      } else if (key == "cgi") {
+        serverConfig.cgi = (_parseValue(lineStream.str()) == "on");
+      } else if (key == "accept_upload") {
+        serverConfig.upload = (_parseValue(lineStream.str()) == "on");
       } else if (key == "client_max_body_size") {
         serverConfig.client_max_body_size =
             Utils::stoi<int>(_parseValue(lineStream.str()));
@@ -181,24 +185,38 @@ void ConfigParser::_parseListenConfig(std::istringstream& lineStream,
   }
 }
 
+void ConfigParser::_fillLocationDefinedByServerConfig(
+    LocationConfig& locationConfig, ServerConfig& serverConfig) {
+  locationConfig.root = serverConfig.root;
+  locationConfig.index = serverConfig.index;
+  locationConfig.client_max_body_size = serverConfig.client_max_body_size;
+  locationConfig.autoindex = serverConfig.autoindex;
+  locationConfig.cgi = serverConfig.cgi;
+  locationConfig.upload = serverConfig.upload;
+  locationConfig.error_pages = serverConfig.error_pages;
+}
+
 void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
-                                        LocationConfig& locationConfig) {
+                                        LocationConfig& locationConfig,
+                                        ServerConfig&   serverConfig) {
   std::string line;
   std::string key;
+  std::string value;
+  std::string afterValue;
 
   locationConfig.returnCode = 0;
   bool firstReturnEncountered = false;
+  _fillLocationDefinedByServerConfig(locationConfig, serverConfig);
 
   while (key != "}" && getline(configFile, line)) {
     std::istringstream lineStream(line);
-    lineStream >> key;
+    lineStream >> key >> value >> afterValue;
     if (key.empty() || key[0] == '#' || key == "}") {
       _log.info("route block Skip empty or comment line :" + line);
       continue;
     }
     _log.info(" ====== Parsing route block line: key = " + key +
               " line = " + line);
-    std::string value;
     if (key == "root") {
       locationConfig.root = _parseValue(lineStream.str());
     } else if (key == "index") {
@@ -206,7 +224,6 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
     } else if (key == "limit_except") {
       std::istringstream methods(line);
       std::string        method;
-      // methods >> method;
       methods >> method;
       while (methods >> method && method[0] != '{') {
         method = _cleanValue(method, ' ');
@@ -215,8 +232,6 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
     } else if (key == "return") {
       if (firstReturnEncountered)
         continue;
-
-      lineStream >> value;
       locationConfig.returnCode = Utils::stoi<int>(value);
       std::string            urlValue;
       std::string::size_type pos =
@@ -229,12 +244,20 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
     } else if (key == "autoindex") {
       locationConfig.autoindex = (_parseValue(lineStream.str()) == "on");
     } else if (key == "cgi") {
-      locationConfig.cgi_handler = _parseValue(lineStream.str());
+      locationConfig.cgi = (_parseValue(lineStream.str()) == "on");
     } else if (key == "accept_upload") {
-      locationConfig.upload_path = _parseValue(lineStream.str());
+      locationConfig.upload = (_parseValue(lineStream.str()) == "on");
     } else if (key == "client_max_body_size") {
       locationConfig.client_max_body_size =
           Utils::stoi<int>(_parseValue(lineStream.str()));
+    } else if (key == "error_page") {
+      int         errorCode;
+      std::string errorPage;
+      errorCode = Utils::stoi<int>(value);
+      _log.info("Server block find error_page: errorCode = " +
+                  Utils::to_string(errorCode) + " errorPage = " + afterValue);
+      errorPage = _cleanValue(afterValue, ';');
+      locationConfig.error_pages[errorCode] = errorPage;
     } else {
       _log.emerg("Unknown location directive: \"" + key + "\" in " +
                  _configFilepath);

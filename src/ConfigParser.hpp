@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 10:45:52 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/04 13:39:39 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,7 +35,10 @@ class ConfigParser {
     static void _parseListenConfig(std::istringstream& lineStream,
                                     ListenConfig*       listenConfig);
     static void _parseLocationConfig(std::ifstream&  configFile,
-                                      LocationConfig& locationConfig);
+                                      LocationConfig& locationConfig,
+                                      ServerConfig&   serverConfig);
+    static void _fillLocationDefinedByServerConfig(
+        LocationConfig& locationConfig, ServerConfig& serverConfig);
 
     static std::string              _cleanValue(std::string toClean, char c);
     static std::string              _parseValue(std::string toParse);

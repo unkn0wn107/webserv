@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/04 14:43:23 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/04 16:17:42 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,7 +50,7 @@ std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(
          lit != it->listen.end(); ++lit) {
       if (*lit == listenConfig) {
         _log.info("WORKER: Associate VirtualServer to a conn: " +
-                  it->server_names[0]);
+                  it->server_names[0] + "\n");
         virtualServers.push_back(new VirtualServer(*it));
         break;
       }

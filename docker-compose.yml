@@ -4,21 +4,21 @@ services:
     ports:
       - "8080:8080"
       - "8081:8081"
+    volumes:
+      - type: bind
+        source: ./site
+        target: /var/www/html
+        uid: ${UID}
+        gid: ${GID}
     build: .
-    command: make debug && ./webserv
     develop:
       watch:
         - action: rebuild
-          path: .
-          target: /app
-          ignore:
-            - default.conf
-            - Dockerfile
-            - docker-compose.yml
-            - webserv
-            - obj
-            - nginx
-            - logs
+          path: ./src
+          target: /app/
+        - action: rebuild
+          path: ./Makefile
+          target: /app/
         - action: sync+restart
           path: ./default.conf
-          target: /app
+          target: /app/default.conf

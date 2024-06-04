@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 15:23:14 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/04 14:40:21 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,7 @@ class ConnectionHandler {
  public:
   ConnectionHandler(int                          clientSocket,
                     int                          epollSocket,
-                    ListenConfig&                listenConfig,
+                    // ListenConfig&                listenConfig,
                     std::vector<VirtualServer*>& virtualServers);
   ~ConnectionHandler();
 
@@ -39,7 +39,7 @@ class ConnectionHandler {
 
  private:
   Logger&                     _log;
-  ListenConfig&               _listenConfig;
+  // ListenConfig&               _listenConfig;
   int                         _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;

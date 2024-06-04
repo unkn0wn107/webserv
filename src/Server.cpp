@@ -33,7 +33,7 @@ Server::~Server() {
 
 void Server::_setupWorkers() {
   for (int i = 0; i < _config.worker_processes; i++) {
-    _workers.push_back(new Worker(&_epollMutex));
+    _workers.push_back(new Worker());
   }
 }
 

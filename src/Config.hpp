@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/04 13:48:17 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/04 14:37:58 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ typedef struct LocationConfig {
   std::string location;
 
   // Also in server
-  int                        client_max_body_size;
+  unsigned int               client_max_body_size;
   std::string                root;
   std::string                index;
   bool                       upload;

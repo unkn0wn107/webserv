@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/29 18:28:17 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 14:43:23 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,12 +15,11 @@
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 
-Worker::Worker(pthread_mutex_t* epollMutex)
+Worker::Worker()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       _maxConnections(_config.worker_connections),
-      _currentConnections(0),
-      _epollMutex(epollMutex) {
+      _currentConnections(0) {
   _log.info("Worker constructor called");
   _setupEpoll();
   if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0) {
@@ -126,7 +125,7 @@ void Worker::_acceptNewConnection(int fd) {
     }
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     ConnectionHandler* handler = new ConnectionHandler(
-        new_socket, _epollSocket, _listenConfigs[fd], _virtualServers[fd]);
+        new_socket, _epollSocket, /*_listenConfigs[fd],*/ _virtualServers[fd]);
     _handlers[new_socket] = handler;
     event.data.ptr = handler;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {

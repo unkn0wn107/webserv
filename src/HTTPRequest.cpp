@@ -3,17 +3,18 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 20:34:17 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 14:47:08 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPRequest.hpp"
+#include "Utils.hpp"
 
-HTTPRequest::HTTPRequest(std::string rawRequest, size_t readn)
-    : _rawRequest(rawRequest), _readn(readn), _method(""), _uri(""), _body("") {
+HTTPRequest::HTTPRequest(std::string rawRequest/*, size_t readn*/)
+    : _rawRequest(rawRequest), /*_readn(readn),*/ _method(""), _uri(""), _body("") {
   parseRequest();
 }
 
@@ -74,6 +75,14 @@ void HTTPRequest::addHeader(const std::string& key, const std::string& value) {
 
 void HTTPRequest::setBody(const std::string& body) {
   _body = body;
+}
+
+int HTTPRequest::getContentLength() const {
+  std::string contentLength = getHeader("Content-Length");
+  if (contentLength.empty()) {
+    return 0;
+  }
+  return Utils::stoi<int>(contentLength);
 }
 
 std::string HTTPRequest::getProtocol() const {

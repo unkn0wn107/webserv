@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:32 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:20:35 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 14:44:16 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,5 +53,6 @@ template double Utils::stoi<double>(const std::string& str);
 
 template std::string Utils::to_string<size_t>(const size_t& num);
 template std::string Utils::to_string<int>(const int& num);
+template std::string Utils::to_string<unsigned int>(const unsigned int& num);
 template std::string Utils::to_string<float>(const float& num);
 template std::string Utils::to_string<double>(const double& num);

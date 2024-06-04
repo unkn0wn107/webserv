@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 15:24:21 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/04 14:42:33 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,14 +15,15 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include "Utils.hpp"
 
 ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
-    ListenConfig&                listenConfig,
+    // ListenConfig&                listenConfig,
     std::vector<VirtualServer*>& virtualServers)
     : _log(Logger::getInstance()),
-      _listenConfig(listenConfig),
+      // _listenConfig(listenConfig),
       _connectionStatus(READING),
       _clientSocket(clientSocket),
       _epollSocket(epollSocket),
@@ -31,7 +32,7 @@ ConnectionHandler::ConnectionHandler(
   _buffer = new char[BUFFER_SIZE];
   memset(_buffer, 0, BUFFER_SIZE);
   _log.info("CONNECTION_HANDLER: New connection handler created");
-  _log.info("CONNECTION_HANDLER: serverPool size : " + _vservPool.size());
+  _log.info("CONNECTION_HANDLER: serverPool size : " + Utils::to_string(_vservPool.size()));
   for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
       it != _vservPool.end(); ++it) {
     _log.info("CONNECTION_HANDLER: serverPool name : " +
@@ -51,29 +52,22 @@ void ConnectionHandler::_receiveRequest() {
       _connectionStatus = CLOSED;
       return;
     }
-    if (bytes < 0) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        break;
-      } else {
+    if (bytes <= 0 ) {
         _log.error(std::string("CONNECTION_HANDLER: recv: ") + strerror(errno));
+        _connectionStatus = CLOSED;
         break;
-      }
-    } else if (bytes == 0) {
+    }
+    _readn++;
+    if (_readn >= 4 && _buffer[_readn - 1] == '\n' &&
+    _buffer[_readn - 2] == '\r' && _buffer[_readn - 3] == '\n' &&
+    _buffer[_readn - 4] == '\r') {
+      end = true;
+      _buffer[_readn] = '\0';
       break;
-    } else {
-      _readn++;
-      if (_readn >= 4 && _buffer[_readn - 1] == '\n' &&
-          _buffer[_readn - 2] == '\r' && _buffer[_readn - 3] == '\n' &&
-          _buffer[_readn - 4] == '\r') {
-        end = true;
-        _buffer[_readn] = '\0';
-        break;
-      }
     }
   }
   _log.info("CONNECTION_HANDLER: Request received: " + std::string(_buffer));
-  if (!end)
-    return;
+  if (!end) return;
   _processRequest();
 }
 
@@ -135,7 +129,7 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
 }
 
 void ConnectionHandler::_processRequest() {
-  _request = new HTTPRequest(_buffer, _readn);
+  _request = new HTTPRequest(_buffer/*, _readn*/);
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
     _log.error("CONNECTION_HANDLER: No virtual server selected");

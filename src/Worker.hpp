@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/28 08:39:28 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/04 14:41:40 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,6 @@ class Worker {
   std::vector<int>                            _listenSockets;
   int                                         _maxConnections;
   int                                         _currentConnections;
-  pthread_mutex_t*                            _epollMutex;
 
   static void* _workerRoutine(void* ref);
 
@@ -52,7 +51,7 @@ class Worker {
   void _handleIncomingConnection(struct epoll_event& event);
 
  public:
-  Worker(pthread_mutex_t* epollMutex);
+  Worker();
   ~Worker();
   void assignConnection(int clientSocket, const ListenConfig& listenConfig);
 };

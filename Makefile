@@ -3,16 +3,16 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
+#    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/03 17:55:00 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/04 14:35:31 by mchenava         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = webserv
 
-CXX = g++
+CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
 DEBUGFLAGS = -g3
 

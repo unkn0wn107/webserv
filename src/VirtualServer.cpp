@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/04 00:15:18 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 14:48:01 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,8 +91,9 @@ HTTPResponse *VirtualServer::checkRequest(HTTPRequest& request) {
   std::string protocol = request.getProtocol();
   std::string method = request.getMethod();
   std::string uri = request.getURI();
+  unsigned int contentLength = request.getContentLength();
   _log.info("VirtualServer::checkRequest : Protocol : " + protocol +
-            " Method : " + method + " URI : " + uri);
+            " Method : " + method + " URI : " + uri + " Content Length : " + Utils::to_string(contentLength));
   if (protocol != "HTTP/1.1") {
     _log.error("VirtualServer::checkRequest : Protocol not supported");
     return new HTTPResponse(400, _getErrorPages(uri));
@@ -103,21 +104,19 @@ HTTPResponse *VirtualServer::checkRequest(HTTPRequest& request) {
     _log.error("VirtualServer::checkRequest : Location not found");
     return new HTTPResponse(404, _getErrorPages(uri));
   }
-  LocationConfig defaultLocation = _getLocationConfig("/");
-  _log.info("VirtualServer::checkRequest : Default location : " +
-            defaultLocation.location);
   bool isMethodAllowedInLocation =
       std::find(location.allowed_methods.begin(),
                 location.allowed_methods.end(),
                 method) != location.allowed_methods.end();
-  bool isMethodAllowedInDefaultLocation =
-      std::find(defaultLocation.allowed_methods.begin(),
-                defaultLocation.allowed_methods.end(),
-                method) != defaultLocation.allowed_methods.end();
-  if (!isMethodAllowedInLocation || !isMethodAllowedInDefaultLocation) {
+  if (!isMethodAllowedInLocation) {
     _log.error("VirtualServer::checkRequest : Method not allowed");
     return new HTTPResponse(403, _getErrorPages(uri));
   }
+  if (contentLength > location.client_max_body_size || contentLength > request.getBody().length()) {
+    _log.error("VirtualServer::checkRequest : Content length too big");
+    return new HTTPResponse(413, _getErrorPages(uri));
+  }
+
   return NULL;
 }
 

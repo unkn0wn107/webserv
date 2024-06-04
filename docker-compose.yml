@@ -1,0 +1,24 @@
+services:
+  webserv:
+    container_name: webserv
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    build: .
+    command: make debug && ./webserv
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+          target: /app
+          ignore:
+            - default.conf
+            - Dockerfile
+            - docker-compose.yml
+            - webserv
+            - obj
+            - nginx
+            - logs
+        - action: sync+restart
+          path: ./default.conf
+          target: /app

@@ -3,20 +3,23 @@
 /*                                                        :::      ::::::::   */
 /*   CGIHandler.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 01:26:31 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 11:27:47 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "CGIHandler.hpp"
+#include <string>
+
+Logger& CGIHandler::_log = Logger::getInstance();
 
 CGIHandler::CGIHandler() {}
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
     std::make_pair(".php", "/usr/bin/php-cgi"),
-    std::make_pair(".py", "/usr/bin/python")};
+    std::make_pair(".py", "/usr/bin/python3")};
 
 const int CGIHandler::_NUM_AVAILABLE_CGIS =
     sizeof(CGIHandler::_AVAILABLE_CGIS) /
@@ -62,18 +65,17 @@ std::string CGIHandler::_identifyRuntime(const std::string& scriptPath) {
 
 std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
                                           const std::string& scriptPath) {
-  Logger log = Logger::getInstance();
 
   int pipefd[2];
   if (pipe(pipefd) == -1) {
-    log.error("Failed to create pipe: " + std::string(strerror(errno)));
+    _log.error("Failed to create pipe: " + std::string(strerror(errno)));
     return "";
   }
 
   pid_t pid = 0;
   pid = fork();
   if (pid == -1) {
-    log.error("Failed to fork process: " + std::string(strerror(errno)));
+    _log.error("Failed to fork process: " + std::string(strerror(errno)));
     close(pipefd[0]);
     close(pipefd[1]);
     return "";
@@ -81,25 +83,26 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
 
   if (pid == 0) {                                // Child process
     close(pipefd[0]);                            // Close unused read end
-    if (dup2(pipefd[1], STDOUT_FILENO) == -1) {  // Redirect stdout to pipe
-      log.error("Failed to redirect stdout to pipe: " +
-                std::string(strerror(errno)));
-      exit(EXIT_FAILURE);
-    }
+    // if (dup2(pipefd[1], STDOUT_FILENO) == -1) {  // Redirect stdout to pipe
+    //   log.error("Failed to redirect stdout to pipe: " +
+    //             std::string(strerror(errno)));
+    //   exit(EXIT_FAILURE);
+    // }
     close(pipefd[1]);  // Close write end of the pipe
 
     // Prepare arguments
     std::vector<char*> argv;
     argv.push_back(const_cast<char*>(scriptPath.c_str()));  // Script path
-    log.info("Script path: " + scriptPath);
-    log.info("Request URI: " + request.getURI());
-    argv.push_back(const_cast<char*>(
-        ("/home/user/webserv/site/" + request.getURI()).c_str()));
+    _log.info("Script path: " + scriptPath);
+    _log.info("Request URI: " + request.getURI());
+    char *path = strdup((("/home/mchenava/webserv/site" + request.getURI()).c_str()));
+    _log.info("Path: " + std::string(path));
+    argv.push_back(path);
     argv.push_back(NULL);
 
     // Execute CGI script
     execve(scriptPath.c_str(), &argv[0], _getEnvp(request));
-    log.error("Failed to execute CGI script: " + std::string(strerror(errno)));
+    _log.error("Failed to execute CGI script: " + std::string(strerror(errno)));
     exit(EXIT_FAILURE);
   } else {             // Parent process
     close(pipefd[1]);  // Close unused write end
@@ -118,7 +121,7 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
     if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS) {
       return oss.str();
     } else {
-      log.error("CGI script exited with error");
+      _log.error("CGI script exited with error");
       return "";
     }
   }

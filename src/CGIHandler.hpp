@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGIHandler.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 01:24:49 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 11:26:26 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,8 @@ class CGIHandler {
   static HTTPResponse* processRequest(const HTTPRequest& request);
 
  private:
+  static Logger& _log;
+
   static const std::pair<std::string, std::string> _AVAILABLE_CGIS[];
   static const int                                 _NUM_AVAILABLE_CGIS;
 

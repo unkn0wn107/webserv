@@ -4,67 +4,54 @@ HOST1="localhost:8000"
 HOST2="localhost:8080"
 HOST_IPV6="::1"
 
-test_get() {
+# Function to test GET requests and compare responses
+test_get_compare() {
     URL=$1
-    HOST=$2
-    EXPECTED_STATUS=$3
-    echo "Testing GET $URL on $HOST expecting $EXPECTED_STATUS"
-    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "http://$HOST$URL")
-    if [ "$RESPONSE" != "$EXPECTED_STATUS" ]; then
-        echo "FAIL: $URL on $HOST Expected $EXPECTED_STATUS but got $RESPONSE"
+    HOST_REF=$2
+    HOST_TEST=$3
+    echo "Comparing GET $URL between $HOST_REF and $HOST_TEST"
+    echo ""
+    curl -s "http://$HOST_REF$URL" > response_ref.txt
+    curl -s "http://$HOST_TEST$URL" > response_test.txt
+    if ! diff response_ref.txt response_test.txt > /dev/null; then
+        echo "!!! FAIL !!! GET $URL on $HOST_TEST differs from $HOST_REF"
+        diff --color=auto response_ref.txt response_test.txt
+    else
+        echo "PASS: GET $URL on $HOST_TEST matches $HOST_REF"
     fi
+    rm response_ref.txt response_test.txt
+    echo ""
+    echo ""
 }
 
-test_post() {
+# Function to test POST requests and compare responses
+test_post_compare() {
     URL=$1
-    HOST=$2
-    EXPECTED_STATUS=$3
+    HOST_REF=$2
+    HOST_TEST=$3
     DATA=$4
-    echo "Testing POST $URL on $HOST with data $DATA expecting $EXPECTED_STATUS"
-    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -d $DATA -X POST "http://$HOST$URL")
-    if [ "$RESPONSE" != "$EXPECTED_STATUS" ]; then
-        echo "FAIL: $URL on $HOST Expected $EXPECTED_STATUS but got $RESPONSE"
+    echo "Comparing POST $URL between $HOST_REF and $HOST_TEST with data $DATA"
+    echo ""
+    curl -s -d $DATA -X POST "http://$HOST_REF$URL" > response_ref.txt
+    curl -s -d $DATA -X POST "http://$HOST_TEST$URL" > response_test.txt
+    if ! diff response_ref.txt response_test.txt > /dev/null; then
+        echo "!!! FAIL !!! POST $URL on $HOST_TEST differs from $HOST_REF"
+        diff --color=auto response_ref.txt response_test.txt
+    else
+        echo "PASS: POST $URL on $HOST_TEST matches $HOST_REF"
     fi
+    rm response_ref.txt response_test.txt
+    echo ""
+    echo ""
 }
 
-test_get_ipv6() {
-    URL=$1
-    HOST=$2
-    EXPECTED_STATUS=$3
-    echo "Testing GET $URL on $HOST (IPv6) expecting $EXPECTED_STATUS"
-    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -g "http://[$HOST]$URL")
-    if [ "$RESPONSE" != "$EXPECTED_STATUS" ]; then
-        echo "FAIL: $URL on $HOST (IPv6) Expected $EXPECTED_STATUS but got $RESPONSE"
-    fi
-}
+echo ""
+# Run comparisons
+test_get_compare "/" $HOST1 $HOST2
+test_post_compare "/submit" $HOST1 $HOST2 "name=example&value=test"
 
-test_post_ipv6() {
-    URL=$1
-    HOST=$2
-    EXPECTED_STATUS=$3
-    DATA=$4
-    echo "Testing POST $URL on $HOST (IPv6) with data $DATA expecting $EXPECTED_STATUS"
-    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -d $DATA -X POST -g "http://[$HOST]$URL")
-    if [ "$RESPONSE" != "$EXPECTED_STATUS" ]; then
-        echo "FAIL: $URL on $HOST (IPv6) Expected $EXPECTED_STATUS but got $RESPONSE"
-    fi
-}
-
-REF_STATUS_GET=$(test_get "/" $HOST1 "200" &> /dev/null; echo $?)
-REF_STATUS_POST=$(test_post "/submit" $HOST1 "200" "name=example&value=test" &> /dev/null; echo $?)
-
-test_get "/" $HOST2 "200"
-if [ $? != $REF_STATUS_GET ]; then
-    echo "FAIL: / on $HOST2 differs from $HOST1"
-fi
-
-test_post "/submit" $HOST2 "200" "name=example&value=test"
-if [ $? != $REF_STATUS_POST ]; then
-    echo "FAIL: /submit on $HOST2 differs from $HOST1"
-fi
-
-# test_get_ipv6 "/" $HOST_IPV6 "200"
-# test_get_ipv6 "/nonexistent" $HOST_IPV6 "404"
-# test_post_ipv6 "/submit" $HOST_IPV6 "200" "name=example&value=test"
+# Uncomment to test IPv6 comparisons
+# test_get_compare "/" $HOST1 $HOST_IPV6
+# test_post_compare "/submit" $HOST1 $HOST_IPV6 "name=example&value=test"
 
 wait

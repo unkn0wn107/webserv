@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/04 23:21:02 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/05 00:19:40 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -54,10 +54,14 @@ $(OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-test: $(NAME)
-	@$(MAKE) run_webserv &
-	@$(MAKE) run_tests
-	@kill $$(pgrep -f './webserv')
+run:
+	MY_UID=$(id -u) MY_GID=$(id -g) docker compose up --build -d
+
+test: docker-stop
+	@$(MAKE) run
+	@$(MAKE) nginxd
+	./test_compare.sh
+	@$(MAKE) docker-stop
 
 update_gitignore:
 	@if ! grep -q "$(LOG_FILE_EXT)" .gitignore; then \
@@ -81,11 +85,20 @@ nginx: nginx-build
 		-v ./default.conf:/etc/nginx/conf.d/default.conf:ro \
 		-v ./site:/var/www/html nginx
 
+nginxd: nginx-build
+	docker run --rm --name nginx -d -p $(NGINX_PORT_1):8080 -p $(NGINX_PORT_2):8081 \
+		-v ./default.conf:/etc/nginx/conf.d/default.conf:ro \
+		-v ./site:/var/www/html nginx
+
+docker-stop:
+	-docker stop nginx webserv
+
 docker-fclean:
 	docker system prune --all --volumes -f
 
 run_tests:
 	@./test.sh
+	@./test_compare.sh
 
 debug: $(DEBUG_OBJ)
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) $(DEBUG_OBJ) -o $(NAME)
@@ -97,7 +110,7 @@ $(DEBUG_OBJ_DIR)/%.o: %.cpp
 -include $(DEPS)
 -include $(DEBUG_DEPS)
 
-clean:
+clean: docker-stop
 	rm -f $(OBJ) $(DEBUG_OBJ)
 	rm -f $(DEPS) $(DEBUG_DEPS)
 
@@ -108,4 +121,4 @@ fclean: clean docker-fclean
 re: fclean all
 debug_re: fclean debug
 
-.PHONY: all clean fclean re debug debug_re update_gitignore dev logs nginx-build nginx docker-fclean run_tests
+.PHONY: all clean fclean re debug debug_re update_gitignore dev logs nginx-build nginx docker-fclean run_tests test

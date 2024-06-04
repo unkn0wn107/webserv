@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 15:15:50 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/04 16:38:02 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include "VirtualServer.hpp"
 #include "Utils.hpp"
 #include <sys/socket.h>
+#include <sys/sendfile.h>
 
 const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::CONTINUE, "Continue"),
@@ -152,19 +153,41 @@ const std::pair<std::string, std::string> HTTPResponse::CONTENT_TYPES[] = {
     std::make_pair("7z", "application/x-7z-compressed")
 };
 
-HTTPResponse::HTTPResponse() : _statusCode(HTTPResponse::OK) {
+std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
+  std::make_pair(400, std::string(ERR_PAGE_400)),
+  std::make_pair(403, std::string(ERR_PAGE_403)),
+  std::make_pair(404, std::string(ERR_PAGE_404)),
+  std::make_pair(405, std::string(ERR_PAGE_405)),
+  std::make_pair(500, std::string(ERR_PAGE_500)),
+  std::make_pair(501, std::string(ERR_PAGE_501)),
+  std::make_pair(502, std::string(ERR_PAGE_502)),
+  std::make_pair(503, std::string(ERR_PAGE_503)),
+  std::make_pair(504, std::string(ERR_PAGE_504)),
+  std::make_pair(505, std::string(ERR_PAGE_505))
+};
+
+HTTPResponse::HTTPResponse() : _log(Logger::getInstance()), _statusCode(HTTPResponse::OK) {
   _protocol = "HTTP/1.1";
 }
 
 HTTPResponse::~HTTPResponse() {}
 
 HTTPResponse::HTTPResponse(const std::string& protocol)
-    : _statusCode(HTTPResponse::OK) {
+    : _log(Logger::getInstance()),
+      _statusCode(HTTPResponse::OK) {
   _protocol = protocol;
 }
 
 HTTPResponse::HTTPResponse(int statusCode, std::map<int, std::string> error_pages)
-    : _statusCode(statusCode), _statusMessage(getStatusMessage(statusCode)), _protocol("HTTP/1.1"), _error_pages(error_pages) {
+    : _log(Logger::getInstance()),
+      _statusCode(statusCode),
+      _statusMessage(getStatusMessage(statusCode)),
+      _headers(std::map<std::string, std::string>()),
+      _body(""),
+      _file(""),
+      _protocol("HTTP/1.1"),
+      _error_pages(error_pages)
+{
   if (statusCode < 100 || statusCode > 599) {
     throw std::invalid_argument("Invalid status code");
   }
@@ -172,7 +195,14 @@ HTTPResponse::HTTPResponse(int statusCode, std::map<int, std::string> error_page
 }
 
 HTTPResponse::HTTPResponse(int statusCode)
-    : _statusCode(statusCode), _statusMessage(getStatusMessage(statusCode)), _protocol("HTTP/1.1") {
+    : _log(Logger::getInstance()),
+      _statusCode(statusCode),
+      _statusMessage(getStatusMessage(statusCode)),
+      _headers(std::map<std::string, std::string>()),
+      _body(""),
+      _file(""),
+      _protocol("HTTP/1.1"),
+      _error_pages(std::map<int, std::string>()) {
   if (statusCode != 200) {
     throw std::invalid_argument("Invalid status code");
   }
@@ -181,10 +211,10 @@ HTTPResponse::HTTPResponse(int statusCode)
 void HTTPResponse::_errorResponse() {
   if (_statusCode >= 400) {
     if (_error_pages.find(_statusCode) != _error_pages.end()) {
-      _body = _error_pages[_statusCode];
+      _file = _error_pages[_statusCode];
     }
     else {
-      _body = VirtualServer::defaultErrorPage(_statusCode);
+      _body = HTTPResponse::defaultErrorPage(_statusCode);
     }
   }
 }
@@ -199,9 +229,47 @@ void HTTPResponse::buildResponse() {
   _responseBuffer += "\r\n" + _body;
 }
 
+
+std::string HTTPResponse::defaultErrorPage(int status) {
+  for (int i = 0; i < NUM_STATUS_CODE_MESSAGES; i++) {
+    if (_defaultErrorPages[i].first == status) {
+      return std::string(_defaultErrorPages[i].second);
+    }
+  }
+  return std::string("");
+}
+
 int HTTPResponse::sendResponse(int clientSocket) {
   buildResponse();
   if (send(clientSocket, _responseBuffer.c_str(), _responseBuffer.length(), 0) == -1) {
+    return -1;
+  }
+  if (_file.empty()) return 0;
+  _log.info("Sending file: " + _file);
+  FILE *file = fopen(_file.c_str(), "r");
+  fseek(file, 0, SEEK_END);
+  int file_length = ftell(file);
+  fseek(file, 0, SEEK_SET);
+  if (file) {
+    if (sendfile(clientSocket, fileno(file), 0, file_length) == -1) {
+      return -1;
+    }
+    fclose(file);
+  }
+  else {
+    sendResponse(404, clientSocket);
+    return -1;
+  }
+  return 0;
+}
+
+int HTTPResponse::sendResponse(int statusCode, int clientSocket) {
+  std::string statusLine = "HTTP/1.1 " + Utils::to_string(statusCode) + " " + getStatusMessage(statusCode) + "\r\n";
+  std::string headers = "Content-Type: text/html\r\n";
+  headers += "Content-Length: " + Utils::to_string(defaultErrorPage(statusCode).length()) + "\r\n\r\n";
+  std::string body = defaultErrorPage(statusCode);
+  std::string response = statusLine + headers + body;
+  if (send(clientSocket, response.c_str(), response.length(), 0) == -1) {
     return -1;
   }
   return 0;
@@ -221,6 +289,10 @@ std::string HTTPResponse::getContentType(const std::string& path) {
 
 void HTTPResponse::setStatusCode(int code) {
   _statusCode = code;
+}
+
+void HTTPResponse::setFile(const std::string& path) {
+  _file = path;
 }
 
 void HTTPResponse::setHeaders(const std::map<std::string, std::string>& hdrs) {
@@ -247,7 +319,7 @@ std::string HTTPResponse::getBody() const {
   return _body;
 }
 
-std::string HTTPResponse::getStatusMessage(int code) const {
+std::string HTTPResponse::getStatusMessage(int code) {
   for (int i = 0; i < HTTPResponse::NUM_STATUS_CODE_MESSAGES; ++i) {
     if (HTTPResponse::STATUS_CODE_MESSAGES[i].first == code) {
       return HTTPResponse::STATUS_CODE_MESSAGES[i].second;

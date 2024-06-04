@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 10:22:15 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/03 23:56:40 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/04 16:03:22 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,15 +25,12 @@ class VirtualServer {
   Logger&                  _log;
   bool                     _defaultServer;
   std::vector<std::string>    _hostNames;
-  static std::map<int, std::string>  _defaultErrorPages;
 
   bool            _hasDefaultListenConfig();
   LocationConfig& _getLocationConfig(const std::string& uri);
   HTTPResponse *_handleGetRequest(HTTPRequest& request);
   std::map<int, std::string> _getErrorPages(const std::string& uri);
-  std::string     _fillErrorPage(int status, const std::string& path);
-  static void _initializeErrorPages();
-  HTTPResponse*  _autoindex(const std::string& path, LocationConfig& location, const std::string& uri);
+  HTTPResponse*  _autoindex(const std::string& path, LocationConfig& location);
   std::string _generateDirectoryListing(const std::string& path);
   std::string _getPath(const std::string& uri, LocationConfig& location);
 
@@ -45,7 +42,6 @@ class VirtualServer {
   HTTPResponse *checkRequest(HTTPRequest& request);
   std::string getServerName() const;
   HTTPResponse *handleRequest(HTTPRequest& request);
-  static std::string defaultErrorPage(int status);
 };
 
 #endif

@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 14:42:33 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/04 15:36:49 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 #include "Utils.hpp"
+
 
 ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
@@ -133,12 +134,13 @@ void ConnectionHandler::_processRequest() {
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
     _log.error("CONNECTION_HANDLER: No virtual server selected");
+    HTTPResponse::sendResponse(500, _clientSocket);
     _connectionStatus = CLOSED;
     return;
   }
-  if (vserv->checkRequest(*_request) != NULL) {
+  if ((_response = vserv->checkRequest(*_request)) != NULL) {
     _log.error("CONNECTION_HANDLER: Request failed");
-    _connectionStatus = CLOSED;
+    _connectionStatus = SENDING;
     return;
   }
   _log.info("CONNECTION_HANDLER: Request valid");

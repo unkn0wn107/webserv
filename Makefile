@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
+#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/04 14:35:31 by mchenava         ###   ########.fr        #
+#    Updated: 2024/06/04 23:21:02 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -67,8 +67,11 @@ update_gitignore:
 		echo "$(LOG_FILE_EXT) already in .gitignore"; \
 	fi
 
-run_webserv:
-	@./webserv
+dev:
+	MY_UID=$(id -u) MY_GID=$(id -g) docker compose watch
+
+logs:
+	docker compose logs -f
 
 nginx-build:
 	docker build -t nginx nginx/
@@ -105,4 +108,4 @@ fclean: clean docker-fclean
 re: fclean all
 debug_re: fclean debug
 
-.PHONY: all clean fclean re debug debug_re
+.PHONY: all clean fclean re debug debug_re update_gitignore dev logs nginx-build nginx docker-fclean run_tests

@@ -5,4 +5,5 @@ COPY ./run.sh /app/
 COPY ./src/ ./Makefile ./default.conf /app/
 WORKDIR /app
 RUN make debug
+ENTRYPOINT [ "./run.sh" ]
 CMD ["./webserv"]

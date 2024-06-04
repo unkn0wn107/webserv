@@ -8,9 +8,10 @@ services:
       - type: bind
         source: ./site
         target: /var/www/html
-        uid: ${UID}
-        gid: ${GID}
     build: .
+    environment:
+      UID: ${MY_UID}
+      GID: ${MY_GID}
     develop:
       watch:
         - action: rebuild

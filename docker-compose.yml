@@ -10,6 +10,7 @@ services:
     environment:
       UID: ${MY_UID}
       GID: ${MY_GID}
+    restart: unless-stopped
     develop:
       watch:
         - action: rebuild

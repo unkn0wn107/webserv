@@ -11,8 +11,8 @@ test_get_compare() {
     HOST_TEST=$3
     echo "Comparing GET $URL between $HOST_REF and $HOST_TEST"
     echo ""
-    curl -s "http://$HOST_REF$URL" > response_ref.txt
-    curl -s "http://$HOST_TEST$URL" > response_test.txt
+    curl -i -s "http://$HOST_REF$URL" > response_ref.txt
+    curl -i -s "http://$HOST_TEST$URL" > response_test.txt
     if ! diff response_ref.txt response_test.txt > /dev/null; then
         echo "!!! FAIL !!! GET $URL on $HOST_TEST differs from $HOST_REF"
         diff --color=auto response_ref.txt response_test.txt
@@ -32,8 +32,8 @@ test_post_compare() {
     DATA=$4
     echo "Comparing POST $URL between $HOST_REF and $HOST_TEST with data $DATA"
     echo ""
-    curl -s -d $DATA -X POST "http://$HOST_REF$URL" > response_ref.txt
-    curl -s -d $DATA -X POST "http://$HOST_TEST$URL" > response_test.txt
+    curl -i -s -d $DATA -X POST "http://$HOST_REF$URL" > response_ref.txt
+    curl -i -s -d $DATA -X POST "http://$HOST_TEST$URL" > response_test.txt
     if ! diff response_ref.txt response_test.txt > /dev/null; then
         echo "!!! FAIL !!! POST $URL on $HOST_TEST differs from $HOST_REF"
         diff --color=auto response_ref.txt response_test.txt

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 14:20:28 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/05 21:07:29 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,8 +48,27 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
               << std::endl;
     return new HTTPResponse(500);
   }
-  HTTPResponse* response = new HTTPResponse(200);
-  response->setBody(_executeCGIScript(request, runtime));
+  std::string        cgiOutStr = _executeCGIScript(request, runtime);
+  std::istringstream cgiOut(cgiOutStr);
+  HTTPResponse*      response = new HTTPResponse();
+
+  std::stringstream headers;
+  std::string       line;
+  while (std::getline(cgiOut, line) && line != "\r") {
+    headers << line << "\n";
+    std::size_t pos = line.find(":");
+    _log.info("Header from CGI output: " + line.substr(0, pos) + ":" +
+              line.substr(pos + 2));
+    if (pos != std::string::npos) {
+      response->addHeader(line.substr(0, pos), line.substr(pos + 2));
+    }
+  }
+
+  std::stringstream body;
+  body << cgiOutStr.substr(headers.str().size());
+
+  response->setStatusCode(200);  // TODO: detect errors
+  response->setBody(body.str());
   return response;
 }
 
@@ -64,16 +83,14 @@ std::string CGIHandler::_identifyRuntime(const std::string& scriptPath) {
 }
 
 std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
-                                          const std::string& scriptPath) {
-
+                                          const std::string& runtimePath) {
   int pipefd[2];
   if (pipe(pipefd) == -1) {
     _log.error("Failed to create pipe: " + std::string(strerror(errno)));
     return "";
   }
 
-  pid_t pid = 0;
-  pid = fork();
+  pid_t pid = fork();
   if (pid == -1) {
     _log.error("Failed to fork process: " + std::string(strerror(errno)));
     close(pipefd[0]);
@@ -83,25 +100,22 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
 
   if (pid == 0) {                                // Child process
     close(pipefd[0]);                            // Close unused read end
-    // if (dup2(pipefd[1], STDOUT_FILENO) == -1) {  // Redirect stdout to pipe
-    //   log.error("Failed to redirect stdout to pipe: " +
-    //             std::string(strerror(errno)));
-    //   exit(EXIT_FAILURE);
-    // }
+    if (dup2(pipefd[1], STDOUT_FILENO) == -1) {  // Redirect stdout to pipe
+      _log.error("Failed to redirect stdout to pipe: " +
+                 std::string(strerror(errno)));
+      exit(EXIT_FAILURE);
+    }
     close(pipefd[1]);  // Close write end of the pipe
 
     // Prepare arguments
     std::vector<char*> argv;
-    argv.push_back(const_cast<char*>(scriptPath.c_str()));  // Script path
-    _log.info("Script path: " + scriptPath);
-    _log.info("Request URI: " + request.getURI());
-    char *path = strdup((("/home/mchenava/webserv/site" + request.getURI()).c_str()));
-    _log.info("Path: " + std::string(path));
-    argv.push_back(path);
+    argv.push_back(const_cast<char*>(runtimePath.c_str()));  // Script path
+    std::string scriptPath = "/var/www/html" + request.getURI();
+    argv.push_back(const_cast<char*>(scriptPath.c_str()));
     argv.push_back(NULL);
 
     // Execute CGI script
-    execve(scriptPath.c_str(), &argv[0], _getEnvp(request));
+    execve(runtimePath.c_str(), &argv[0], _getEnvp(request));
     _log.error("Failed to execute CGI script: " + std::string(strerror(errno)));
     exit(EXIT_FAILURE);
   } else {             // Parent process

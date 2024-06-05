@@ -1,26 +1,44 @@
-import cgi
-import cgitb
+import base64
+import os
+import sys
+from urllib.parse import parse_qsl
 
-# Enable debugging
-cgitb.enable()
-
-print("Content-Type: text/html")    # HTML is following
-print()                             # blank line, end of headers
-
-form = cgi.FieldStorage()           # parse form data
+print("Content-Type: text/html\r\n\r\n")
 
 print("<html>")
 print("<head>")
-print("<title>Hello - Second CGI Program</title>")
+print("<title>Hello - CGI Python Script</title>")
 print("</head>")
 print("<body>")
-print("<h2>Hello CGI Program</h2>")
+print("<h2>Hello CGI</h2>")
 
-if "name" in form:
-    name = form["name"].value
-    print("<h3>Hello {}!</h3>".format(name))
+print("<h3>Environment Variables:</h3>")
+print("<pre>")
+for var_name, var_value in os.environ.items():
+    print(f"{var_name} = {var_value}")
+print("</pre>")
+
+# Get form data from QUERY_STRING environment variable
+query_string = os.environ.get('QUERY_STRING', '')
+if query_string:
+    form_pairs = parse_qsl(query_string)  # Parse query string into key-value pairs
+    form_dict = dict(form_pairs)  # Convert key-value pairs into a dictionary
+
+    # Print query strings
+    print("<h3>Query Strings:</h3>")
+    print("<pre>")  # Use <pre> tag to preserve formatting
+    for key, value in form_pairs:
+        print(f"{key} = {value}")
+    print("</pre>")
+
+    # Check if name is in the form data
+    if "name" in form_dict:
+        name = form_dict["name"]
+        print("<h3>Hello {}!</h3>".format(name))
+    else:
+        print("<h3>Error: name not provided!</h3>")
 else:
-    print("<h3>Error: name not provided!</h3>")
+    print("<h3>Error: no data received!</h3>")
 
 print("</body>")
 print("</html>")

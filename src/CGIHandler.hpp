@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGIHandler.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 11:26:26 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/05 19:47:59 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,12 +57,12 @@ class CGIHandler {
 
   /**
    * Executes the CGI script using the identified runtime.
-   * @param scriptPath The path to the CGI script.
    * @param request The HTTP request object for passing to the CGI.
+   * @param runtimePath The path to the CGI runtime.
    * @return String containing the output from the CGI script.
    */
   static std::string _executeCGIScript(const HTTPRequest& request,
-                                       const std::string& scriptPath);
+                                       const std::string& runtimePath);
 };
 
 #endif

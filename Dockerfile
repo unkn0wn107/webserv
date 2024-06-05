@@ -1,5 +1,5 @@
 FROM alpine:3.20
-RUN apk add --no-cache make clang
+RUN apk add --no-cache make clang python3
 RUN ln -sf /usr/bin/clang++ /usr/bin/c++ && mkdir -p /var/www/html
 COPY ./run.sh /app/
 COPY ./src/ ./Makefile ./default.conf /app/

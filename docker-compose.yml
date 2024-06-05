@@ -19,6 +19,8 @@ services:
         - action: rebuild
           path: ./Makefile
           target: /app/
+        - action: rebuild
+          path: ./Dockerfile
         - action: sync+restart
           path: ./default.conf
           target: /app/default.conf

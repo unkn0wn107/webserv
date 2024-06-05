@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/05 22:58:12 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/05 23:18:30 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -101,13 +101,36 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
   }
 
   if (pid == 0) {                                // Child process
-    close(pipefd[0]);                            // Close unused read end
     if (dup2(pipefd[1], STDOUT_FILENO) == -1) {  // Redirect stdout to pipe
       _log.error("Failed to redirect stdout to pipe: " +
                  std::string(strerror(errno)));
       exit(EXIT_FAILURE);
     }
     close(pipefd[1]);  // Close write end of the pipe
+
+    if (request.getMethod() == "POST") {
+      if (dup2(pipefd[0], STDIN_FILENO) == -1) {  // Redirect stdin to pipe
+        _log.error("Failed to redirect stdin to pipe: " +
+                   std::string(strerror(errno)));
+        exit(EXIT_FAILURE);
+      }
+      close(pipefd[0]);  // Close read end of the pipe
+
+      pid_t pid2 = fork();
+      if (pid2 == -1) {
+        _log.error("Failed to fork process: " + std::string(strerror(errno)));
+        exit(EXIT_FAILURE);
+      }
+
+      if (pid2 == 0) {     // Child process 2
+        close(pipefd[1]);  // Close unused write end
+        write(pipefd[0], request.getBody().c_str(), request.getBody().length());
+        close(pipefd[0]);  // Close write end of the pipe
+        exit(EXIT_SUCCESS);
+      } else {                   // Parent process
+        waitpid(pid2, NULL, 0);  // Wait for child process 2 to finish
+      }
+    }
 
     std::string scriptUri = request.getURI();
     std::string pathInfo = "";

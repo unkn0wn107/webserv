@@ -96,7 +96,13 @@ HTTPResponse *VirtualServer::checkRequest(HTTPRequest& request) {
     _log.error("VirtualServer::checkRequest : Method not allowed");
     return new HTTPResponse(403, location.error_pages);
   }
-  if (contentLength > location.client_max_body_size || contentLength > request.getBody().length()) {
+  // TODO : To fix
+  // if (contentLength > location.client_max_body_size ||
+  //     contentLength > request.getBody().length()) {
+  //   _log.error("VirtualServer::checkRequest : Content length too big");
+  //   return new HTTPResponse(413, location.error_pages);
+  // }
+  if (contentLength > location.client_max_body_size) {
     _log.error("VirtualServer::checkRequest : Content length too big");
     return new HTTPResponse(413, location.error_pages);
   }

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/05 21:07:29 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/05 22:58:12 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,19 +26,9 @@ const int CGIHandler::_NUM_AVAILABLE_CGIS =
     sizeof(std::pair<std::string, std::string>);
 
 bool CGIHandler::isScript(const std::string& url) {
-  size_t      lastDotPos = url.find_last_of('.');
-  std::string extension;
-  if (lastDotPos != std::string::npos)
-    extension = url.substr(lastDotPos);
-  else
-    extension = "";
-
-  for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
-    if (CGIHandler::_AVAILABLE_CGIS[i].first == extension) {
-      return true;
-    }
-  }
-  return false;
+  if (_identifyRuntime(url).empty())
+    return false;
+  return true;
 }
 
 HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
@@ -73,7 +63,19 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
 }
 
 std::string CGIHandler::_identifyRuntime(const std::string& scriptPath) {
-  std::string extension = scriptPath.substr(scriptPath.find_last_of('.'));
+  size_t      lastDotPos = scriptPath.find_last_of('.');
+  size_t      nextSlashPos = scriptPath.find_first_of("/", lastDotPos);
+  std::string extension;
+
+  if (lastDotPos != std::string::npos && nextSlashPos == std::string::npos) {
+    extension = scriptPath.substr(lastDotPos);
+  } else if (lastDotPos != std::string::npos &&
+             nextSlashPos != std::string::npos && nextSlashPos > lastDotPos) {
+    extension = scriptPath.substr(lastDotPos, nextSlashPos - lastDotPos);
+  } else {
+    extension = "";
+  }
+
   for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
     if (CGIHandler::_AVAILABLE_CGIS[i].first == extension) {
       return CGIHandler::_AVAILABLE_CGIS[i].second;
@@ -107,10 +109,21 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
     }
     close(pipefd[1]);  // Close write end of the pipe
 
+    std::string scriptUri = request.getURI();
+    std::string pathInfo = "";
+    size_t      scriptDot = scriptUri.find_last_of('.');
+    size_t      nextSlash = scriptUri.substr(scriptDot).find_first_of("/");
+    std::string scriptName;
+    if (nextSlash != std::string::npos) {
+      scriptName = scriptUri.substr(0, scriptDot + nextSlash);
+    } else {
+      scriptName = scriptUri;
+    }
+
     // Prepare arguments
     std::vector<char*> argv;
     argv.push_back(const_cast<char*>(runtimePath.c_str()));  // Script path
-    std::string scriptPath = "/var/www/html" + request.getURI();
+    std::string scriptPath = "/home/agaley/webserv/site" + scriptName;
     argv.push_back(const_cast<char*>(scriptPath.c_str()));
     argv.push_back(NULL);
 
@@ -141,17 +154,34 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
   }
 }
 
+char* alloc_string(const std::string& str) {
+  char* result = new char[str.length() + 1];
+  std::strcpy(result, str.c_str());
+  return result;
+}
+
 char** CGIHandler::_getEnvp(const HTTPRequest& request) {
   std::vector<char*>                       env;
   const std::map<std::string, std::string> headers = request.getHeaders();
 
-  env.push_back(const_cast<char*>(("SCRIPT_NAME=" + request.getURI()).c_str()));
-  env.push_back(
-      const_cast<char*>(("REQUEST_METHOD=" + request.getMethod()).c_str()));
-  env.push_back(
-      const_cast<char*>(("QUERY_STRING=" + request.getQueryString()).c_str()));
-  env.push_back(const_cast<char*>("REMOTE_HOST=localhost"));
-  env.push_back(const_cast<char*>(
+  std::string scriptUri = request.getURI();
+  size_t      scriptDot = scriptUri.find_last_of('.');
+  size_t      nextSlash = scriptUri.substr(scriptDot).find_first_of("/");
+  std::string scriptName;
+  std::string pathInfo;
+  if (nextSlash != std::string::npos) {
+    scriptName = scriptUri.substr(0, scriptDot + nextSlash);
+    pathInfo = scriptUri.substr(scriptDot + nextSlash);
+  } else {
+    scriptName = scriptUri;
+  }
+
+  env.push_back(alloc_string("SCRIPT_NAME=" + scriptName));
+  env.push_back(alloc_string("PATH_INFO=" + pathInfo));
+  env.push_back(alloc_string("REQUEST_METHOD=" + request.getMethod()));
+  env.push_back(alloc_string("QUERY_STRING=" + request.getQueryString()));
+  env.push_back(alloc_string("REMOTE_HOST=localhost"));
+  env.push_back(alloc_string(
       ("CONTENT_LENGTH=" + Utils::to_string(request.getBody().length()))
           .c_str()));
 
@@ -161,7 +191,7 @@ char** CGIHandler::_getEnvp(const HTTPRequest& request) {
     std::replace(envName.begin(), envName.end(), '-', '_');
     std::transform(envName.begin(), envName.end(), envName.begin(), ::toupper);
     std::string envLine = envName + "=" + hd->second;
-    env.push_back(const_cast<char*>(envLine.c_str()));
+    env.push_back(alloc_string(envLine));
   }
 
   env.push_back(NULL);
@@ -170,6 +200,7 @@ char** CGIHandler::_getEnvp(const HTTPRequest& request) {
   for (size_t i = 0; i < env.size(); ++i) {
     envp[i] = env[i];
   }
+  envp[env.size()] = NULL;
 
   return envp;
 }

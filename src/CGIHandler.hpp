@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/05 19:47:59 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 01:03:57 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,31 @@ class CGIHandler {
    * @return HTTPResponse object containing the response from the CGI script.
    */
   static HTTPResponse* processRequest(const HTTPRequest& request);
+
+  class Exception : public std::exception {
+   protected:
+    std::string _message;
+
+   public:
+    Exception(const std::string& message) : _message(message) {}
+    virtual ~Exception() throw() {}
+    virtual const char* what() const throw() { return _message.c_str(); }
+  };
+
+  class RuntimeError : public Exception {
+   public:
+    RuntimeError(const std::string& message) : Exception(message) {}
+  };
+
+  class PipeFailure : public Exception {
+   public:
+    PipeFailure(const std::string& message) : Exception(message) {}
+  };
+
+  class ForkFailure : public Exception {
+   public:
+    ForkFailure(const std::string& message) : Exception(message) {}
+  };
 
  private:
   static Logger& _log;

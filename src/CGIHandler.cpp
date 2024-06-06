@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/05 23:18:30 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 01:10:53 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,34 +32,38 @@ bool CGIHandler::isScript(const std::string& url) {
 }
 
 HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
-  std::string runtime = _identifyRuntime(request.getURI());
-  if (runtime.empty()) {
-    std::cerr << "No suitable runtime found for script: " << request.getURI()
-              << std::endl;
-    return new HTTPResponse(500);
-  }
-  std::string        cgiOutStr = _executeCGIScript(request, runtime);
-  std::istringstream cgiOut(cgiOutStr);
-  HTTPResponse*      response = new HTTPResponse();
-
-  std::stringstream headers;
-  std::string       line;
-  while (std::getline(cgiOut, line) && line != "\r") {
-    headers << line << "\n";
-    std::size_t pos = line.find(":");
-    _log.info("Header from CGI output: " + line.substr(0, pos) + ":" +
-              line.substr(pos + 2));
-    if (pos != std::string::npos) {
-      response->addHeader(line.substr(0, pos), line.substr(pos + 2));
+  try {
+    std::string runtime = _identifyRuntime(request.getURI());
+    if (runtime.empty()) {
+      throw RuntimeError("No suitable runtime found for script: " +
+                         request.getURI());
     }
+    std::string        cgiOutStr = _executeCGIScript(request, runtime);
+    std::istringstream cgiOut(cgiOutStr);
+    HTTPResponse*      response = new HTTPResponse();
+
+    std::stringstream headers;
+    std::string       line;
+    while (std::getline(cgiOut, line) && line != "\r") {
+      headers << line << "\n";
+      std::size_t pos = line.find(":");
+      _log.info("Header from CGI output: " + line.substr(0, pos) + ":" +
+                line.substr(pos + 2));
+      if (pos != std::string::npos) {
+        response->addHeader(line.substr(0, pos), line.substr(pos + 2));
+      }
+    }
+
+    std::stringstream body;
+    body << cgiOutStr.substr(headers.str().size());
+
+    response->setStatusCode(200);  // TODO: detect errors
+    response->setBody(body.str());
+    return response;
+  } catch (const CGIHandler::Exception& e) {
+    _log.error(e.what());
+    return new HTTPResponse(500);  // Internal Server Error
   }
-
-  std::stringstream body;
-  body << cgiOutStr.substr(headers.str().size());
-
-  response->setStatusCode(200);  // TODO: detect errors
-  response->setBody(body.str());
-  return response;
 }
 
 std::string CGIHandler::_identifyRuntime(const std::string& scriptPath) {
@@ -88,16 +92,15 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
                                           const std::string& runtimePath) {
   int pipefd[2];
   if (pipe(pipefd) == -1) {
-    _log.error("Failed to create pipe: " + std::string(strerror(errno)));
-    return "";
+    throw PipeFailure("Failed to create pipe: " + std::string(strerror(errno)));
   }
 
   pid_t pid = fork();
   if (pid == -1) {
-    _log.error("Failed to fork process: " + std::string(strerror(errno)));
     close(pipefd[0]);
     close(pipefd[1]);
-    return "";
+    throw ForkFailure("Failed to fork process: " +
+                      std::string(strerror(errno)));
   }
 
   if (pid == 0) {                                // Child process
@@ -146,13 +149,14 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
     // Prepare arguments
     std::vector<char*> argv;
     argv.push_back(const_cast<char*>(runtimePath.c_str()));  // Script path
-    std::string scriptPath = "/home/agaley/webserv/site" + scriptName;
+    std::string scriptPath = "/var/www/html" + scriptName;
     argv.push_back(const_cast<char*>(scriptPath.c_str()));
     argv.push_back(NULL);
 
     // Execute CGI script
     execve(runtimePath.c_str(), &argv[0], _getEnvp(request));
-    _log.error("Failed to execute CGI script: " + std::string(strerror(errno)));
+    throw RuntimeError("Failed to execute CGI script: " +
+                       std::string(strerror(errno)));
     exit(EXIT_FAILURE);
   } else {             // Parent process
     close(pipefd[1]);  // Close unused write end
@@ -168,12 +172,10 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
     int status;
     waitpid(pid, &status, 0);  // Wait for child process to finish
 
-    if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS) {
-      return oss.str();
-    } else {
-      _log.error("CGI script exited with error");
-      return "";
+    if (WIFEXITED(status) && WEXITSTATUS(status) != EXIT_SUCCESS) {
+      throw RuntimeError("CGI script exited with error");
     }
+    return oss.str();
   }
 }
 

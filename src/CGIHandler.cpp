@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 04:13:21 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 04:36:35 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,10 +32,9 @@ bool CGIHandler::isScript(const HTTPRequest& request) {
 
 HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
   std::string runtime = _identifyRuntime(request);
-  if (runtime.empty()) {
-    throw RuntimeError("No suitable runtime found for script: " +
-                       request.getURI());
-  }
+  if (runtime.empty())
+    throw NoRuntimeError("No suitable runtime found for script: " +
+                         request.getURI());
 
   std::string        cgiOutStr = _executeCGIScript(request, runtime);
   std::istringstream cgiOut(cgiOutStr);
@@ -161,9 +160,13 @@ const std::string CGIHandler::_executeChildProcess(
 
   // Prepare arguments
   std::vector<char*> argv;
-  argv.push_back(const_cast<char*>(runtimePath.c_str()));  // Script path
+  argv.push_back(const_cast<char*>(runtimePath.c_str()));
   std::string scriptPath =
       "/var/www/html" + request.getURIComponents().scriptName;
+  if (!FileManager::doesFileExists(scriptPath))
+    throw ScriptNotFound("Script not found: " + scriptPath);
+  if (!FileManager::isFileExecutable(scriptPath))
+    throw ScriptNotExecutable("Script not executable: " + scriptPath);
   argv.push_back(const_cast<char*>(scriptPath.c_str()));
   argv.push_back(NULL);
 

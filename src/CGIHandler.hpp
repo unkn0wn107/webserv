@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 04:08:47 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 04:31:13 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "Exception.hpp"
+#include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
@@ -50,9 +51,24 @@ class CGIHandler {
    */
   static HTTPResponse* processRequest(const HTTPRequest& request);
 
+  class NoRuntimeError : public Exception {
+   public:
+    NoRuntimeError(const std::string& message) : Exception(message) {}
+  };
+
   class RuntimeError : public Exception {
    public:
     RuntimeError(const std::string& message) : Exception(message) {}
+  };
+
+  class ScriptNotFound : public Exception {
+   public:
+    ScriptNotFound(const std::string& message) : Exception(message) {}
+  };
+
+  class ScriptNotExecutable : public Exception {
+   public:
+    ScriptNotExecutable(const std::string& message) : Exception(message) {}
   };
 
   class PipeFailure : public Exception {

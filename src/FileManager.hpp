@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:51 by agaley            #+#    #+#             */
-/*   Updated: 2024/04/30 16:11:52 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 03:12:38 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,11 +21,14 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "Exception.hpp"
 #include "Logger.hpp"
 
 class FileManager {
  public:
   static bool                     doesFileExists(const std::string& path);
+  static bool                     isFileExecutable(const std::string& path);
   static bool                     isDirectory(const std::string& path);
   static std::vector<std::string> listDirectory(const std::string& path);
 
@@ -46,6 +49,31 @@ class FileManager {
   static void writeFile(const std::string& filePath, const std::string& data);
 
   void deleteFile(const std::string& path);
+
+  class FileOpenException : public Exception {
+   public:
+    FileOpenException(const std::string& message) : Exception(message) {}
+  };
+
+  class FileReadException : public Exception {
+   public:
+    FileReadException(const std::string& message) : Exception(message) {}
+  };
+
+  class FileWriteException : public Exception {
+   public:
+    FileWriteException(const std::string& message) : Exception(message) {}
+  };
+
+  class FileDeleteException : public Exception {
+   public:
+    FileDeleteException(const std::string& message) : Exception(message) {}
+  };
+
+  class DirectoryOpenException : public Exception {
+   public:
+    DirectoryOpenException(const std::string& message) : Exception(message) {}
+  };
 
  private:
   FileManager();

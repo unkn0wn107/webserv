@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   FileManager.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:45 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/29 16:09:35 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/07 03:19:00 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,12 +19,15 @@ FileManager::FileManager() : _log(Logger::getInstance()) {}
 std::string FileManager::readFile(const std::string& path) {
   std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
   if (!file) {
-    throw std::runtime_error("FileManager::readFile: Cannot open file: " +
-                             path);
+    throw FileOpenException("FileManager::readFile: Cannot open file: " + path);
   }
 
   std::ostringstream contents;
   contents << file.rdbuf();
+  if (contents.fail()) {
+    throw FileReadException(
+        "FileManager::readFile: Failed to read from file: " + path);
+  }
   file.close();
   return contents.str();
 }
@@ -42,6 +45,15 @@ bool FileManager::doesFileExists(const std::string& path) {
   return (stat(path.c_str(), &buffer) == 0);
 }
 
+bool FileManager::isFileExecutable(const std::string& path) {
+  struct stat buffer;
+  if (stat(path.c_str(), &buffer) != 0) {
+    return false;
+  }
+  return (buffer.st_mode & S_IXUSR) || (buffer.st_mode & S_IXGRP) ||
+         (buffer.st_mode & S_IXOTH);
+}
+
 bool FileManager::isDirectory(const std::string& path) {
   struct stat buffer;
   if (stat(path.c_str(), &buffer) != 0) {
@@ -53,10 +65,9 @@ bool FileManager::isDirectory(const std::string& path) {
 std::vector<std::string> FileManager::listDirectory(const std::string& path) {
   std::vector<std::string> files;
   DIR*                     dirp = opendir(path.c_str());
-  if (dirp == NULL) {
-    throw std::runtime_error(
+  if (dirp == NULL)
+    throw DirectoryOpenException(
         "FileManager::listDirectory: Cannot open directory: " + path);
-  }
 
   struct dirent* dp;
   while ((dp = readdir(dirp)) != NULL) {
@@ -73,13 +84,13 @@ void FileManager::writeFile(const std::string& path,
                             const std::string& content) {
   std::ofstream file(path.c_str(), std::ios::out | std::ios::binary);
   if (!file) {
-    throw std::runtime_error(
+    throw FileOpenException(
         "FileManager::writeFile: Cannot open file for writing: " + path);
   }
 
   file.write(content.c_str(), content.size());
   if (!file.good()) {
-    throw std::runtime_error(
+    throw FileWriteException(
         "FileManager::writeFile: Failed to write to file: " + path);
   }
 
@@ -88,7 +99,7 @@ void FileManager::writeFile(const std::string& path,
 
 void FileManager::deleteFile(const std::string& path) {
   if (remove(path.c_str()) != 0) {
-    throw std::runtime_error(
+    throw FileDeleteException(
         "FileManager::deleteFile: Failed to delete file: " + path);
   }
 }

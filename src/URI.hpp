@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/03 17:01:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 18:25:24 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 02:45:13 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,14 @@ class URI {
   static std::string _toHex(char c);
 
  public:
+  struct Components {
+    std::string extension;
+    std::string scriptName;
+    std::string pathInfo;
+    std::string queryString;
+  };
+
+  static Components                         parse(const std::string& uri);
   static std::string                        encode(const std::string& uri);
   static std::string                        decode(const std::string& uri);
   static std::map<std::string, std::string> getParams(const std::string& uri);

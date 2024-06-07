@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 01:49:17 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 04:08:47 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 
+#include "Exception.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
@@ -37,10 +38,10 @@ class CGIHandler {
 
   /**
    * Check if url has an executable file extension.
-   * @param url The URL to check.
+   * @param request The HTTP request object.
    * @return true if the URL ends with a registered CGI script extension.
    */
-  static bool isScript(const std::string& url);
+  static bool isScript(const HTTPRequest& request);
 
   /**
    * Processes the CGI request and generates an HTTP response.
@@ -48,16 +49,6 @@ class CGIHandler {
    * @return HTTPResponse object containing the response from the CGI script.
    */
   static HTTPResponse* processRequest(const HTTPRequest& request);
-
-  class Exception : public std::exception {
-   protected:
-    std::string _message;
-
-   public:
-    Exception(const std::string& message) : _message(message) {}
-    virtual ~Exception() throw() {}
-    virtual const char* what() const throw() { return _message.c_str(); }
-  };
 
   class RuntimeError : public Exception {
    public:
@@ -99,10 +90,10 @@ class CGIHandler {
 
   /**
    * Identifies the runtime environment based on the script file extension.
-   * @param scriptPath The path to the CGI script.
+   * @param request The HTTP request object.
    * @return String representing the runtime to be used.
    */
-  static std::string _identifyRuntime(const std::string& scriptPath);
+  static const std::string _identifyRuntime(const HTTPRequest& request);
 
   /**
    * Executes the CGI script using the identified runtime.
@@ -110,8 +101,8 @@ class CGIHandler {
    * @param runtimePath The path to the CGI runtime.
    * @return String containing the output from the CGI script.
    */
-  static std::string _executeCGIScript(const HTTPRequest& request,
-                                       const std::string& runtimePath);
+  static const std::string _executeCGIScript(const HTTPRequest& request,
+                                             const std::string& runtimePath);
 
   /**
    * Sets up a pipe and forks the process to handle CGI script execution.
@@ -127,16 +118,16 @@ class CGIHandler {
    * @param pipefd Array holding file descriptors for the pipe.
    * @return String containing the output from the CGI script.
    */
-  static std::string _executeChildProcess(const HTTPRequest& request,
-                                          const std::string& runtimePath,
-                                          int                pipefd[2]);
+  static const std::string _executeChildProcess(const HTTPRequest& request,
+                                                const std::string& runtimePath,
+                                                int                pipefd[2]);
 
   /**
    * Reads output from the pipe connected to the child process.
    * @param pipefd File descriptor for the read end of the pipe.
    * @return String containing the output read from the pipe.
    */
-  static std::string _readFromPipe(int pipefd[0]);
+  static const std::string _readFromPipe(int pipefd[0]);
 };
 
 #endif

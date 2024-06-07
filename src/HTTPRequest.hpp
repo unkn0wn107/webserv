@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 14:42:09 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/07 02:44:35 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@
 
 class HTTPRequest {
  public:
-  HTTPRequest(std::string rawRequest/*, size_t readn*/);
+  HTTPRequest(std::string rawRequest /*, size_t readn*/);
   ~HTTPRequest();
 
   void parseRequest();
@@ -32,13 +32,13 @@ class HTTPRequest {
   std::string                        getRawRequest() const;
   std::string                        getMethod() const;
   std::string                        getURI() const;
-  std::string                        getQueryString() const;
+  URI::Components                    getURIComponents() const;
   std::map<std::string, std::string> getHeaders() const;
   std::string                        getHeader(const std::string& key) const;
   std::string                        getBody() const;
   std::string                        getProtocol() const;
   std::string                        getHost() const;
-  int                                 getContentLength() const;
+  int                                getContentLength() const;
   void                               configure(ServerConfig& config);
 
   // SETTERS
@@ -49,11 +49,11 @@ class HTTPRequest {
   void setBody(const std::string& body);
 
  private:
-  std::string                        _rawRequest;
+  std::string _rawRequest;
   // size_t                             _readn;
   std::string                        _method;
   std::string                        _uri;
-  std::string                        _queryString;
+  URI::Components                    _uriComponents;
   std::map<std::string, std::string> _headers;
   std::string                        _body;
   std::string                        _protocol;

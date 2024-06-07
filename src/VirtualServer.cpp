@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/04 16:34:41 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/07 04:18:02 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -231,9 +231,17 @@ HTTPResponse  *VirtualServer::handleRequest(HTTPRequest& request) {
     _log.error("VirtualServer::handleRequest : Protocol not supported");
     return new HTTPResponse(400, location.error_pages);
   }
-  if (CGIHandler::isScript(uri)) {
-    _log.info("Handling CGI request for URI: " + uri);
-    return CGIHandler::processRequest(request);
+  if (CGIHandler::isScript(request)) {
+    _log.info("Handling CGI request for URI: " + request.getURI());
+    try {
+      return CGIHandler::processRequest(request);
+    } catch (const CGIHandler::TimeoutException& e) {
+      return new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT,
+                              location.error_pages);
+    } catch (const Exception& e) {
+      return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR,
+                              location.error_pages);
+    }
   }
   if (method == "GET") {
     return _handleGetRequest(request);

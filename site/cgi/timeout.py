@@ -1,6 +1,6 @@
 import time
 
-timeout = 9
+timeout = 15
 
 start_time = time.time()
 end_time = start_time + timeout

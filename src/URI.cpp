@@ -6,11 +6,42 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/03 17:01:22 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/03 18:26:31 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 02:49:59 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "URI.hpp"
+
+URI::Components URI::parse(const std::string& uri) {
+  size_t lastDotPos = uri.find_last_of('.');
+  size_t nextSlashPos = uri.find('/', lastDotPos);
+  size_t queryPos = uri.find('?');
+
+  Components components;
+
+  if (lastDotPos != std::string::npos) {
+    if (nextSlashPos != std::string::npos) {
+      components.extension = uri.substr(lastDotPos, nextSlashPos - lastDotPos);
+      if (queryPos != std::string::npos && queryPos > nextSlashPos) {
+        components.pathInfo = uri.substr(nextSlashPos, queryPos - nextSlashPos);
+        components.queryString = uri.substr(queryPos + 1);
+      } else {
+        components.pathInfo = uri.substr(nextSlashPos);
+      }
+      components.scriptName = uri.substr(0, nextSlashPos);
+    } else {
+      if (queryPos != std::string::npos) {
+        components.extension = uri.substr(lastDotPos, queryPos - lastDotPos);
+        components.queryString = uri.substr(queryPos + 1);
+      } else {
+        components.extension = uri.substr(lastDotPos);
+      }
+      components.scriptName = uri.substr(0, lastDotPos) + components.extension;
+    }
+  }
+
+  return components;
+}
 
 std::string URI::encode(const std::string& uri) {
   std::string encodedURI = "";

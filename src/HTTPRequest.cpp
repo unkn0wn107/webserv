@@ -3,18 +3,21 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 14:47:08 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/07 02:43:40 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPRequest.hpp"
 #include "Utils.hpp"
 
-HTTPRequest::HTTPRequest(std::string rawRequest/*, size_t readn*/)
-    : _rawRequest(rawRequest), /*_readn(readn),*/ _method(""), _uri(""), _body("") {
+HTTPRequest::HTTPRequest(std::string rawRequest /*, size_t readn*/)
+    : _rawRequest(rawRequest),
+      /*_readn(readn),*/ _method(""),
+      _uri(""),
+      _body("") {
   parseRequest();
 }
 
@@ -30,14 +33,16 @@ void HTTPRequest::parseRequest() {
   lineStream >> _method >> rawUri >> _protocol;
 
   _uri = URI::decode(rawUri);
-  size_t pos = rawUri.find('?');
-  if (pos != std::string::npos) {
-    _queryString = rawUri.substr(pos + 1);
-    _uri = URI::decode(rawUri.substr(0, pos));
-  }
+  _uriComponents = URI::parse(rawUri);
 
   std::cout << "URI: " << _uri << std::endl;
-  std::cout << "Query String: " << _queryString << std::endl;
+  std::cout << "Method: " << _method << std::endl;
+  std::cout << "Protocol: " << _protocol << std::endl;
+  std::cout << "URI Components:" << std::endl;
+  std::cout << "  Extension: " << _uriComponents.extension << std::endl;
+  std::cout << "  Script Name: " << _uriComponents.scriptName << std::endl;
+  std::cout << "  Path Info: " << _uriComponents.pathInfo << std::endl;
+  std::cout << "  Query String: " << _uriComponents.queryString << std::endl;
 
   while (std::getline(requestStream, line) && line != "\r") {
     std::size_t pos = line.find(":");
@@ -105,8 +110,8 @@ std::string HTTPRequest::getURI() const {
   return _uri;
 }
 
-std::string HTTPRequest::getQueryString() const {
-  return _queryString;
+URI::Components HTTPRequest::getURIComponents() const {
+  return _uriComponents;
 }
 
 std::map<std::string, std::string> HTTPRequest::getHeaders() const {

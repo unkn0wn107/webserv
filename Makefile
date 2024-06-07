@@ -35,6 +35,7 @@ SRC = $(SRC_DIR)/Server.cpp \
 		$(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp \
 		$(SRC_DIR)/CGIHandler.cpp $(SRC_DIR)/FileHandler.cpp \
 		$(SRC_DIR)/VirtualServer.cpp $(SRC_DIR)/Common.cpp \
+		$(SRC_DIR)/Exception.cpp \
 		$(SRC_DIR)/main.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))

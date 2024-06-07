@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 01:33:50 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 02:13:29 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,31 +37,33 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
       throw RuntimeError("No suitable runtime found for script: " +
                          request.getURI());
     }
+
     std::string        cgiOutStr = _executeCGIScript(request, runtime);
     std::istringstream cgiOut(cgiOutStr);
-    HTTPResponse*      response = new HTTPResponse();
 
-    std::stringstream headers;
-    std::string       line;
+    std::map<std::string, std::string> headers;
+    std::string                        line;
+    std::size_t                        bodyStartPos = 0;
     while (std::getline(cgiOut, line) && line != "\r") {
-      headers << line << "\n";
+      bodyStartPos += line.length() + 1;
       std::size_t pos = line.find(":");
-      _log.info("Header from CGI output: " + line.substr(0, pos) + ":" +
-                line.substr(pos + 2));
       if (pos != std::string::npos) {
-        response->addHeader(line.substr(0, pos), line.substr(pos + 2));
+        const std::string key = line.substr(0, pos);
+        const std::string value = line.substr(pos + 2);
+        headers[key] = value;
+        _log.info("Header from CGI output: " + key + ":" + value);
       }
     }
 
-    std::stringstream body;
-    body << cgiOutStr.substr(headers.str().size());
+    const std::string bodyContent = cgiOutStr.substr(bodyStartPos);
 
-    response->setStatusCode(200);  // TODO: detect errors
-    response->setBody(body.str());
-    return response;
+    return new HTTPResponse(HTTPResponse::OK, headers, bodyContent);
+  } catch (const TimeoutException& e) {
+    _log.error(e.what());
+    return new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT);
   } catch (const CGIHandler::Exception& e) {
     _log.error(e.what());
-    return new HTTPResponse(500);  // Internal Server Error
+    return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -97,14 +99,32 @@ std::string CGIHandler::_executeCGIScript(const HTTPRequest& request,
     return _executeChildProcess(request, runtimePath, pipefd);
   } else {             // Parent process
     close(pipefd[1]);  // Close unused write end
-    std::string output = _readFromPipe(&pipefd[0]);
 
-    int status;
-    waitpid(pid, &status, 0);  // Wait for child process to finish
-    if (WIFEXITED(status) && WEXITSTATUS(status) != EXIT_SUCCESS) {
-      throw RuntimeError("CGI script exited with error");
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    FD_SET(pipefd[0], &read_fds);
+
+    struct timeval timeout;
+    timeout.tv_sec = CGI_TIMEOUT_SEC;
+    timeout.tv_usec = 0;
+
+    int retval = select(pipefd[0] + 1, &read_fds, NULL, NULL, &timeout);
+    if (retval == -1) {
+      throw RuntimeError("Select error: " + std::string(strerror(errno)));
+    } else if (retval == 0) {
+      kill(pid, SIGKILL);
+      throw TimeoutException("CGI script execution timed out : " +
+                             Utils::to_string(CGI_TIMEOUT_SEC) + "s");
+    } else {
+      std::string output = _readFromPipe(&pipefd[0]);
+
+      int status;
+      waitpid(pid, &status, 0);  // Wait for child process to finish
+      if (WIFEXITED(status) && WEXITSTATUS(status) != EXIT_SUCCESS) {
+        throw RuntimeError("CGI script exited with error");
+      }
+      return output;
     }
-    return output;
   }
 }
 

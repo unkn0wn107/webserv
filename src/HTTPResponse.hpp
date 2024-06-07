@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 16:35:53 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/07 02:10:30 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,29 +19,53 @@
 #include "Logger.hpp"
 #include "Utils.hpp"
 
-#define ERR_PAGE_400 "<!DOCTYPE html><html><body><h1>400 Bad Request</h1><p>Your browser sent a request that this server could not understand.</p></body></html>"
-#define ERR_PAGE_403 "<!DOCTYPE html><html><body><h1>403 Forbidden</h1><p>You don't have permission to access this resource.</p></body></html>"
-#define ERR_PAGE_404 "<!DOCTYPE html><html><body><h1>404 Not Found</h1><p>The requested resource could not be found on this server.</p></body></html>"
-#define ERR_PAGE_405 "<!DOCTYPE html><html><body><h1>405 Method Not Allowed</h1><p>The request method is not supported for the requested resource.</p></body></html>"
-#define ERR_PAGE_500 "<!DOCTYPE html><html><body><h1>500 Internal Server Error</h1><p>The server encountered an internal error and was unable to complete your request.</p></body></html>"
-#define ERR_PAGE_501 "<!DOCTYPE html><html><body><h1>501 Not Implemented</h1><p>The server does not support the functionality required to fulfill the request.</p></body></html>"
-#define ERR_PAGE_502 "<!DOCTYPE html><html><body><h1>502 Bad Gateway</h1><p>The server received an invalid response from the upstream server.</p></body></html>"
-#define ERR_PAGE_503 "<!DOCTYPE html><html><body><h1>503 Service Unavailable</h1><p>The server is currently unable to handle the request due to temporary overloading or maintenance of the server.</p></body></html>"
-#define ERR_PAGE_504 "<!DOCTYPE html><html><body><h1>504 Gateway Timeout</h1><p>The server did not receive a timely response from the upstream server.</p></body></html>"
-#define ERR_PAGE_505 "<!DOCTYPE html><html><body><h1>505 HTTP Version Not Supported</h1><p>The server does not support the HTTP protocol version used in the request.</p></body></html>"
+#define ERR_PAGE_400                                                           \
+  "<!DOCTYPE html><html><body><h1>400 Bad Request</h1><p>Your browser sent a " \
+  "request that this server could not understand.</p></body></html>"
+#define ERR_PAGE_403                                                    \
+  "<!DOCTYPE html><html><body><h1>403 Forbidden</h1><p>You don't have " \
+  "permission to access this resource.</p></body></html>"
+#define ERR_PAGE_404                                                   \
+  "<!DOCTYPE html><html><body><h1>404 Not Found</h1><p>The requested " \
+  "resource could not be found on this server.</p></body></html>"
+#define ERR_PAGE_405                                                          \
+  "<!DOCTYPE html><html><body><h1>405 Method Not Allowed</h1><p>The request " \
+  "method is not supported for the requested resource.</p></body></html>"
+#define ERR_PAGE_500                                                      \
+  "<!DOCTYPE html><html><body><h1>500 Internal Server Error</h1><p>The "  \
+  "server encountered an internal error and was unable to complete your " \
+  "request.</p></body></html>"
+#define ERR_PAGE_501                                                           \
+  "<!DOCTYPE html><html><body><h1>501 Not Implemented</h1><p>The server does " \
+  "not support the functionality required to fulfill the "                     \
+  "request.</p></body></html>"
+#define ERR_PAGE_502                                                           \
+  "<!DOCTYPE html><html><body><h1>502 Bad Gateway</h1><p>The server received " \
+  "an invalid response from the upstream server.</p></body></html>"
+#define ERR_PAGE_503                                                           \
+  "<!DOCTYPE html><html><body><h1>503 Service Unavailable</h1><p>The server "  \
+  "is currently unable to handle the request due to temporary overloading or " \
+  "maintenance of the server.</p></body></html>"
+#define ERR_PAGE_504                                                          \
+  "<!DOCTYPE html><html><body><h1>504 Gateway Timeout</h1><p>The server did " \
+  "not receive a timely response from the upstream server.</p></body></html>"
+#define ERR_PAGE_505                                                          \
+  "<!DOCTYPE html><html><body><h1>505 HTTP Version Not Supported</h1><p>The " \
+  "server does not support the HTTP protocol version used in the "            \
+  "request.</p></body></html>"
 
 class HTTPResponse {
  private:
-  Logger&                              _log;
+  Logger&                            _log;
   int                                _statusCode;
   std::string                        _statusMessage;
   std::map<std::string, std::string> _headers;
   std::string                        _body;
   std::string                        _file;
   std::string                        _protocol;
-  std::map<int, std::string>          _error_pages;
-  std::string                                 _responseBuffer;
-  static std::pair<int, std::string>          _defaultErrorPages[];
+  std::map<int, std::string>         _error_pages;
+  std::string                        _responseBuffer;
+  static std::pair<int, std::string> _defaultErrorPages[];
 
   void _errorResponse();
 
@@ -50,13 +74,16 @@ class HTTPResponse {
   HTTPResponse(const std::string& protocol);
   HTTPResponse(int statusCode, std::map<int, std::string> error_pages);
   HTTPResponse(int statusCode);
+  HTTPResponse(int                                statusCode,
+               std::map<std::string, std::string> headers,
+               std::string                        body);
   ~HTTPResponse();
 
   static std::string getContentType(const std::string& path);
 
-  void  buildResponse();
-  int  sendResponse(int clientSocket);
-  static int  sendResponse(int statusCode, int clientSocket);
+  void               buildResponse();
+  int                sendResponse(int clientSocket);
+  static int         sendResponse(int statusCode, int clientSocket);
   static std::string defaultErrorPage(int status);
   // Setters
   void setStatusCode(int code);
@@ -72,9 +99,9 @@ class HTTPResponse {
   static std::string                 getStatusMessage(int code);
   std::string                        generate() const;
 
-  static const std::pair<int, std::string> STATUS_CODE_MESSAGES[];
+  static const std::pair<int, std::string>         STATUS_CODE_MESSAGES[];
   static const std::pair<std::string, std::string> CONTENT_TYPES[];
-  static const int                         NUM_STATUS_CODE_MESSAGES;
+  static const int                                 NUM_STATUS_CODE_MESSAGES;
 
   static const int CONTINUE = 100;
   static const int SWITCHING_PROTOCOLS = 101;

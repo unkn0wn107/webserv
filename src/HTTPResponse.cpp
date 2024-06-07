@@ -3,18 +3,18 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 16:38:02 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/07 02:11:08 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPResponse.hpp"
-#include "VirtualServer.hpp"
-#include "Utils.hpp"
-#include <sys/socket.h>
 #include <sys/sendfile.h>
+#include <sys/socket.h>
+#include "Utils.hpp"
+#include "VirtualServer.hpp"
 
 const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::CONTINUE, "Continue"),
@@ -90,7 +90,10 @@ const std::pair<std::string, std::string> HTTPResponse::CONTENT_TYPES[] = {
     std::make_pair("css", "text/css"),
     std::make_pair("csv", "text/csv"),
     std::make_pair("doc", "application/msword"),
-    std::make_pair("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    std::make_pair(
+        "docx",
+        "application/"
+        "vnd.openxmlformats-officedocument.wordprocessingml.document"),
     std::make_pair("eot", "application/vnd.ms-fontobject"),
     std::make_pair("epub", "application/epub+zip"),
     std::make_pair("gz", "application/gzip"),
@@ -124,7 +127,10 @@ const std::pair<std::string, std::string> HTTPResponse::CONTENT_TYPES[] = {
     std::make_pair("pdf", "application/pdf"),
     std::make_pair("php", "application/x-httpd-php"),
     std::make_pair("ppt", "application/vnd.ms-powerpoint"),
-    std::make_pair("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+    std::make_pair(
+        "pptx",
+        "application/"
+        "vnd.openxmlformats-officedocument.presentationml.presentation"),
     std::make_pair("rar", "application/vnd.rar"),
     std::make_pair("rtf", "application/rtf"),
     std::make_pair("sh", "application/x-sh"),
@@ -144,41 +150,42 @@ const std::pair<std::string, std::string> HTTPResponse::CONTENT_TYPES[] = {
     std::make_pair("woff2", "font/woff2"),
     std::make_pair("xhtml", "application/xhtml+xml"),
     std::make_pair("xls", "application/vnd.ms-excel"),
-    std::make_pair("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    std::make_pair(
+        "xlsx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
     std::make_pair("xml", "application/xml"),
     std::make_pair("xul", "application/vnd.mozilla.xul+xml"),
     std::make_pair("zip", "application/zip"),
     std::make_pair("3gp", "video/3gpp"),
     std::make_pair("3g2", "video/3gpp2"),
-    std::make_pair("7z", "application/x-7z-compressed")
-};
+    std::make_pair("7z", "application/x-7z-compressed")};
 
 std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
-  std::make_pair(400, std::string(ERR_PAGE_400)),
-  std::make_pair(403, std::string(ERR_PAGE_403)),
-  std::make_pair(404, std::string(ERR_PAGE_404)),
-  std::make_pair(405, std::string(ERR_PAGE_405)),
-  std::make_pair(500, std::string(ERR_PAGE_500)),
-  std::make_pair(501, std::string(ERR_PAGE_501)),
-  std::make_pair(502, std::string(ERR_PAGE_502)),
-  std::make_pair(503, std::string(ERR_PAGE_503)),
-  std::make_pair(504, std::string(ERR_PAGE_504)),
-  std::make_pair(505, std::string(ERR_PAGE_505))
-};
+    std::make_pair(400, std::string(ERR_PAGE_400)),
+    std::make_pair(403, std::string(ERR_PAGE_403)),
+    std::make_pair(404, std::string(ERR_PAGE_404)),
+    std::make_pair(405, std::string(ERR_PAGE_405)),
+    std::make_pair(500, std::string(ERR_PAGE_500)),
+    std::make_pair(501, std::string(ERR_PAGE_501)),
+    std::make_pair(502, std::string(ERR_PAGE_502)),
+    std::make_pair(503, std::string(ERR_PAGE_503)),
+    std::make_pair(504, std::string(ERR_PAGE_504)),
+    std::make_pair(505, std::string(ERR_PAGE_505))};
 
-HTTPResponse::HTTPResponse() : _log(Logger::getInstance()), _statusCode(HTTPResponse::OK) {
+HTTPResponse::HTTPResponse()
+    : _log(Logger::getInstance()), _statusCode(HTTPResponse::OK) {
   _protocol = "HTTP/1.1";
 }
 
 HTTPResponse::~HTTPResponse() {}
 
 HTTPResponse::HTTPResponse(const std::string& protocol)
-    : _log(Logger::getInstance()),
-      _statusCode(HTTPResponse::OK) {
+    : _log(Logger::getInstance()), _statusCode(HTTPResponse::OK) {
   _protocol = protocol;
 }
 
-HTTPResponse::HTTPResponse(int statusCode, std::map<int, std::string> error_pages)
+HTTPResponse::HTTPResponse(int                        statusCode,
+                           std::map<int, std::string> error_pages)
     : _log(Logger::getInstance()),
       _statusCode(statusCode),
       _statusMessage(getStatusMessage(statusCode)),
@@ -186,8 +193,7 @@ HTTPResponse::HTTPResponse(int statusCode, std::map<int, std::string> error_page
       _body(""),
       _file(""),
       _protocol("HTTP/1.1"),
-      _error_pages(error_pages)
-{
+      _error_pages(error_pages) {
   if (statusCode < 100 || statusCode > 599) {
     throw std::invalid_argument("Invalid status code");
   }
@@ -208,12 +214,23 @@ HTTPResponse::HTTPResponse(int statusCode)
   }
 }
 
+HTTPResponse::HTTPResponse(int                                statusCode,
+                           std::map<std::string, std::string> headers,
+                           std::string                        body)
+    : _log(Logger::getInstance()),
+      _statusCode(statusCode),
+      _statusMessage(getStatusMessage(statusCode)),
+      _headers(headers),
+      _body(body),
+      _file(""),
+      _protocol("HTTP/1.1"),
+      _error_pages(std::map<int, std::string>()) {}
+
 void HTTPResponse::_errorResponse() {
   if (_statusCode >= 400) {
     if (_error_pages.find(_statusCode) != _error_pages.end()) {
       _file = _error_pages[_statusCode];
-    }
-    else {
+    } else {
       _body = HTTPResponse::defaultErrorPage(_statusCode);
     }
   }
@@ -221,14 +238,13 @@ void HTTPResponse::_errorResponse() {
 
 void HTTPResponse::buildResponse() {
   _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
-              _statusMessage + "\r\n";
+                    _statusMessage + "\r\n";
   for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
-      it != _headers.end(); ++it) {
+       it != _headers.end(); ++it) {
     _responseBuffer += it->first + ": " + it->second + "\r\n";
   }
   _responseBuffer += "\r\n" + _body;
 }
-
 
 std::string HTTPResponse::defaultErrorPage(int status) {
   for (int i = 0; i < NUM_STATUS_CODE_MESSAGES; i++) {
@@ -241,12 +257,14 @@ std::string HTTPResponse::defaultErrorPage(int status) {
 
 int HTTPResponse::sendResponse(int clientSocket) {
   buildResponse();
-  if (send(clientSocket, _responseBuffer.c_str(), _responseBuffer.length(), 0) == -1) {
+  if (send(clientSocket, _responseBuffer.c_str(), _responseBuffer.length(),
+           0) == -1) {
     return -1;
   }
-  if (_file.empty()) return 0;
+  if (_file.empty())
+    return 0;
   _log.info("Sending file: " + _file);
-  FILE *file = fopen(_file.c_str(), "r");
+  FILE* file = fopen(_file.c_str(), "r");
   fseek(file, 0, SEEK_END);
   int file_length = ftell(file);
   fseek(file, 0, SEEK_SET);
@@ -255,8 +273,7 @@ int HTTPResponse::sendResponse(int clientSocket) {
       return -1;
     }
     fclose(file);
-  }
-  else {
+  } else {
     sendResponse(404, clientSocket);
     return -1;
   }
@@ -264,9 +281,12 @@ int HTTPResponse::sendResponse(int clientSocket) {
 }
 
 int HTTPResponse::sendResponse(int statusCode, int clientSocket) {
-  std::string statusLine = "HTTP/1.1 " + Utils::to_string(statusCode) + " " + getStatusMessage(statusCode) + "\r\n";
+  std::string statusLine = "HTTP/1.1 " + Utils::to_string(statusCode) + " " +
+                           getStatusMessage(statusCode) + "\r\n";
   std::string headers = "Content-Type: text/html\r\n";
-  headers += "Content-Length: " + Utils::to_string(defaultErrorPage(statusCode).length()) + "\r\n\r\n";
+  headers += "Content-Length: " +
+             Utils::to_string(defaultErrorPage(statusCode).length()) +
+             "\r\n\r\n";
   std::string body = defaultErrorPage(statusCode);
   std::string response = statusLine + headers + body;
   if (send(clientSocket, response.c_str(), response.length(), 0) == -1) {
@@ -276,8 +296,9 @@ int HTTPResponse::sendResponse(int statusCode, int clientSocket) {
 }
 
 std::string HTTPResponse::getContentType(const std::string& path) {
-  std::string extension = path.substr(path.find_last_of('.') + 1);
-  const size_t numContentTypes = sizeof(CONTENT_TYPES) / sizeof(CONTENT_TYPES[0]);
+  std::string  extension = path.substr(path.find_last_of('.') + 1);
+  const size_t numContentTypes =
+      sizeof(CONTENT_TYPES) / sizeof(CONTENT_TYPES[0]);
 
   for (size_t i = 0; i < numContentTypes; ++i) {
     if (CONTENT_TYPES[i].first == extension) {

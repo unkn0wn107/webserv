@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 01:25:32 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 01:49:17 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,8 @@
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
+
+#define CGI_TIMEOUT_SEC 10
 
 class CGIHandler {
  public:
@@ -70,6 +72,11 @@ class CGIHandler {
   class ForkFailure : public Exception {
    public:
     ForkFailure(const std::string& message) : Exception(message) {}
+  };
+
+  class TimeoutException : public Exception {
+   public:
+    TimeoutException(const std::string& message) : Exception(message) {}
   };
 
  private:

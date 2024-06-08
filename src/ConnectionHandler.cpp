@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 15:36:49 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/08 19:43:22 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -130,6 +130,7 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
 }
 
 void ConnectionHandler::_processRequest() {
+  // TODO : Initialize request with  location config and change LocationConfig&
   _request = new HTTPRequest(_buffer/*, _readn*/);
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 02:44:35 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 16:20:32 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,7 @@ class HTTPRequest {
 
   // GETTERS
   std::string                        getRawRequest() const;
+  LocationConfig*                    getConfig() const;
   std::string                        getMethod() const;
   std::string                        getURI() const;
   URI::Components                    getURIComponents() const;
@@ -39,9 +40,9 @@ class HTTPRequest {
   std::string                        getProtocol() const;
   std::string                        getHost() const;
   int                                getContentLength() const;
-  void                               configure(ServerConfig& config);
 
   // SETTERS
+  void setConfig(LocationConfig* config);
   void setMethod(const std::string& method);
   void setURI(const std::string& uri);
   void setHeaders(const std::map<std::string, std::string>& headers);
@@ -57,7 +58,7 @@ class HTTPRequest {
   std::map<std::string, std::string> _headers;
   std::string                        _body;
   std::string                        _protocol;
-  ServerConfig                       _config;
+  LocationConfig*                    _config;
 };
 
 #endif

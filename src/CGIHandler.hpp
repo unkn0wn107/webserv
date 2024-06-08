@@ -61,6 +61,11 @@ class CGIHandler {
     RuntimeError(const std::string& message) : Exception(message) {}
   };
 
+  class CGIDisabled : public Exception {
+   public:
+    CGIDisabled(const std::string& message) : Exception(message) {}
+  };
+
   class ScriptNotFound : public Exception {
    public:
     ScriptNotFound(const std::string& message) : Exception(message) {}

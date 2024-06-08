@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 04:36:35 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 16:28:47 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,9 @@ bool CGIHandler::isScript(const HTTPRequest& request) {
 }
 
 HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
+  if (!request.getConfig()->cgi)
+    throw CGIDisabled("Execution forbidden by config: " + request.getURI());
+
   std::string runtime = _identifyRuntime(request);
   if (runtime.empty())
     throw NoRuntimeError("No suitable runtime found for script: " +
@@ -162,7 +165,7 @@ const std::string CGIHandler::_executeChildProcess(
   std::vector<char*> argv;
   argv.push_back(const_cast<char*>(runtimePath.c_str()));
   std::string scriptPath =
-      "/var/www/html" + request.getURIComponents().scriptName;
+      request.getConfig()->root + request.getURIComponents().scriptName;
   if (!FileManager::doesFileExists(scriptPath))
     throw ScriptNotFound("Script not found: " + scriptPath);
   if (!FileManager::isFileExecutable(scriptPath))

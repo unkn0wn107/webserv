@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 02:43:40 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/07 16:21:20 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,7 @@ void HTTPRequest::parseRequest() {
   }
 }
 
-void HTTPRequest::configure(ServerConfig& config) {
+void HTTPRequest::setConfig(LocationConfig* config) {
   _config = config;
 }
 
@@ -100,6 +100,10 @@ std::string HTTPRequest::getHost() const {
 
 std::string HTTPRequest::getRawRequest() const {
   return _rawRequest;
+}
+
+LocationConfig* HTTPRequest::getConfig() const {
+  return _config;
 }
 
 std::string HTTPRequest::getMethod() const {

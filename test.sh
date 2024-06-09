@@ -54,12 +54,33 @@ test_post_ipv6() {
     fi
 }
 
-test_get "/" "200" &
-test_get "/nonexistent" "404" &
-# test_post "/submit" "200" "name=example&value=test" &
+test_cgi_hello() {
+    URL="/cgi/hello.py"
+    EXPECTED_STATUS="200"
+    EXPECTED_CONTENT_TYPE="text/html"
+    echo "Testing GET $URL expecting $EXPECTED_STATUS and Content-Type $EXPECTED_CONTENT_TYPE"
+    RESPONSE=$(curl -i -s -o response.txt -w "%{http_code}" http://$HOST:$PORT$URL)
+    if [ -f response.txt ]; then
+        CONTENT_TYPE=$(curl -i -s http://$HOST:$PORT$URL | grep 'Content-Type' | cut -d ':' -f2- | tr -d ' \r\n\t')
+        if [ "$RESPONSE" == "$EXPECTED_STATUS" ] && [[ "$CONTENT_TYPE" == *"$EXPECTED_CONTENT_TYPE"* ]]; then
+            echo "PASS: $URL"
+        else
+            echo "FAIL: $URL Expected $EXPECTED_STATUS and $EXPECTED_CONTENT_TYPE but got $RESPONSE and $CONTENT_TYPE"
+            cat response.txt
+        fi
+        rm response.txt
+    else
+        echo "FAIL: $URL - No response received"
+    fi
+}
 
-test_get_ipv6 "/" "200" &
-test_get_ipv6 "/nonexistent" "404" &
-# test_post_ipv6 "/submit" "200" "name=example&value=test" &
+test_get "/" "200"
+test_get "/nonexistent" "404"
+# test_post "/submit" "200" "name=example&value=test"
 
+test_get_ipv6 "/" "200"
+test_get_ipv6 "/nonexistent" "404"
+# test_post_ipv6 "/submit" "200" "name=example&value=test"
+
+test_cgi_hello
 wait

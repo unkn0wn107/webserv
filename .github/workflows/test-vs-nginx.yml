@@ -1,0 +1,19 @@
+name: e2e tests vs nginx
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup C++ Environment
+        uses: actions/setup-cpp@v2
+        with:
+          compiler: llvm
+          version: '17'
+
+      - name: Run Tests
+        run: make test-compare

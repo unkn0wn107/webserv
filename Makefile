@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/07 03:54:12 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/09 04:19:06 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -58,7 +58,10 @@ $(OBJ_DIR)/%.o: %.cpp
 run:
 	MY_UID=$(id -u) MY_GID=$(id -g) docker compose up --build -d
 
-test: docker-stop
+test: run
+	./test.sh
+
+test-compare: docker-stop
 	@$(MAKE) run
 	@$(MAKE) nginxd
 	./test_compare.sh

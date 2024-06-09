@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/07 16:29:31 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/09 03:38:53 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,7 +52,7 @@ bool VirtualServer::isHostMatching(const std::string& host) const {
 LocationConfig& VirtualServer::_getLocationConfig(const std::string& uri) {
   std::map<std::string, LocationConfig>::iterator it;
   std::map<std::string, LocationConfig>::iterator bestMatch =
-      _serverConfig.locations.end();
+      _serverConfig.locations.find("/");
   size_t longestMatchLength = 0;
 
   for (it = _serverConfig.locations.begin();
@@ -151,7 +151,7 @@ std::string VirtualServer::_generateDirectoryListing(const std::string& path) {
 
 HTTPResponse* VirtualServer::_autoindex(const std::string& path,
                                         LocationConfig&    location) {
-  std::string   indexPath = path + "/index.html";
+  std::string   indexPath = path + "/" + location.index;
   std::ifstream indexFile(indexPath.c_str());
   if (indexFile && location.autoindex) {
     std::string   content((std::istreambuf_iterator<char>(indexFile)),

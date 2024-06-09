@@ -10,7 +10,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup C++ Environment
-        uses: aminya/setup-cpp
+        uses: aminya/setup-cpp@v0.37.0
         with:
           compiler: llvm
           version: '17'

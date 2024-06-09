@@ -1,12 +1,15 @@
 services:
   webserv:
-    container_name: webserv
+    container_name: webserv-${BUILD_TYPE}
     ports:
       - "8080:8080"
       - "8081:8081"
     volumes:
       - ./site:/var/www/html
-    build: .
+    build:
+      context: .
+      args:
+        BUILD_TYPE: ${BUILD_TYPE}
     environment:
       UID: ${MY_UID}
       GID: ${MY_GID}

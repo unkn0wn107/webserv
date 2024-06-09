@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/09 04:19:06 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/09 04:53:38 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -56,10 +56,18 @@ $(OBJ_DIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 run:
-	MY_UID=$(id -u) MY_GID=$(id -g) docker compose up --build -d
+	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d
+
+run-debug:
+	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d
+
+stop:
+	docker compose stop
 
 test: run
+	sleep 5
 	./test.sh
+	$(MAKE) stop
 
 test-compare: docker-stop
 	@$(MAKE) run

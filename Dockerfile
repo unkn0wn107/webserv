@@ -7,7 +7,13 @@ WORKDIR /app
 
 COPY ./Makefile .
 COPY ./src/ ./src/
-RUN make debug
+
+ARG BUILD_TYPE
+RUN if [ "$BUILD_TYPE" = "debug" ]; then \
+        make debug; \
+    else \
+        make; \
+    fi
 
 COPY ./default.conf .
 COPY ./run.sh .

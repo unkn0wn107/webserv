@@ -88,12 +88,16 @@ void ConfigManager::_printLocationsConfig(
     const LocationConfig& locationConfig = it->second;
     std::cout << "====Route: " << it->first << std::endl;
     std::cout << "\tDirectory: " << locationConfig.root << std::endl;
-    std::cout << "\tDefault File: " << locationConfig.index << std::endl;
+    std::cout << "\tIndex File: " << locationConfig.index << std::endl;
+    std::cout << "\tRoot Directory: " << locationConfig.root << std::endl;
+    std::cout << "\tClient Max Body Size: "
+              << locationConfig.client_max_body_size << std::endl;
     std::cout << "\tReturn code: " << locationConfig.returnCode << std::endl;
     std::cout << "\tReturn url: " << locationConfig.returnUrl << std::endl;
     std::cout << "\tDirectory Listing: "
               << (locationConfig.autoindex ? "on" : "off") << std::endl;
-    std::cout << "\tUpload: " << (locationConfig.upload ? "on" : "off") << std::endl;
+    std::cout << "\tUpload: " << (locationConfig.upload ? "on" : "off")
+              << std::endl;
     std::cout << "\tCGI: " << (locationConfig.cgi ? "on" : "off") << std::endl;
     std::cout << "\tAllowed Methods: ";
     for (std::vector<std::string>::const_iterator methodIt =

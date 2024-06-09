@@ -16,6 +16,7 @@ const std::string ConfigParser::DEFAULT_HOST = "127.0.0.1";
 const std::string ConfigParser::DEFAULT_PORT = "8080";
 const std::string ConfigParser::DEFAULT_ROOT = "./site";
 const std::string ConfigParser::DEFAULT_MAX_CLIENT_BODY_SIZE = "8192";
+const std::string ConfigParser::DEFAULT_INDEX = "index.html";
 
 std::string ConfigParser::_configFilepath = "";
 
@@ -186,10 +187,16 @@ void ConfigParser::_parseListenConfig(std::istringstream& lineStream,
 }
 
 void ConfigParser::_fillLocationDefinedByServerConfig(
-    LocationConfig& locationConfig, ServerConfig& serverConfig) {
-  locationConfig.root = serverConfig.root;
-  locationConfig.index = serverConfig.index;
-  locationConfig.client_max_body_size = serverConfig.client_max_body_size;
+    LocationConfig& locationConfig,
+    ServerConfig&   serverConfig) {
+  locationConfig.root =
+      serverConfig.root.empty() ? DEFAULT_ROOT : serverConfig.root;
+  locationConfig.index =
+      serverConfig.index.empty() ? DEFAULT_INDEX : serverConfig.index;
+  locationConfig.client_max_body_size =
+      serverConfig.client_max_body_size == 0
+          ? Utils::stoi<unsigned int>(DEFAULT_MAX_CLIENT_BODY_SIZE)
+          : serverConfig.client_max_body_size;
   locationConfig.autoindex = serverConfig.autoindex;
   locationConfig.cgi = serverConfig.cgi;
   locationConfig.upload = serverConfig.upload;
@@ -255,7 +262,7 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
       std::string errorPage;
       errorCode = Utils::stoi<int>(value);
       _log.info("Server block find error_page: errorCode = " +
-                  Utils::to_string(errorCode) + " errorPage = " + afterValue);
+                Utils::to_string(errorCode) + " errorPage = " + afterValue);
       errorPage = _cleanValue(afterValue, ';');
       locationConfig.error_pages[errorCode] = errorPage;
     } else {

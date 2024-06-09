@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/04 14:40:21 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/09 03:26:18 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,8 +28,8 @@ enum ConnectionStatus { READING, SENDING, CLOSED };
 
 class ConnectionHandler {
  public:
-  ConnectionHandler(int                          clientSocket,
-                    int                          epollSocket,
+  ConnectionHandler(int clientSocket,
+                    int epollSocket,
                     // ListenConfig&                listenConfig,
                     std::vector<VirtualServer*>& virtualServers);
   ~ConnectionHandler();
@@ -37,13 +37,33 @@ class ConnectionHandler {
   // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
   void processConnection();
 
+  class ConnectionException : public Exception {
+   public:
+    ConnectionException(const std::string& message) : Exception(message) {}
+  };
+
+  class ReadException : public ConnectionException {
+   public:
+    ReadException(const std::string& message) : ConnectionException(message) {}
+  };
+
+  class WriteException : public ConnectionException {
+   public:
+    WriteException(const std::string& message) : ConnectionException(message) {}
+  };
+
+  class ServerSelectionException : public ConnectionException {
+   public:
+    ServerSelectionException(const std::string& message)
+        : ConnectionException(message) {}
+  };
+
  private:
-  Logger&                     _log;
+  Logger& _log;
   // ListenConfig&               _listenConfig;
   int                         _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
-  int                         _readn;
   char*                       _buffer;
   std::vector<VirtualServer*> _vservPool;
   HTTPRequest*                _request;

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/08 19:43:22 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/09 02:04:18 by agaley           ###   ########.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,10 +17,9 @@
 #include <string>
 #include "Utils.hpp"
 
-
 ConnectionHandler::ConnectionHandler(
-    int                          clientSocket,
-    int                          epollSocket,
+    int clientSocket,
+    int epollSocket,
     // ListenConfig&                listenConfig,
     std::vector<VirtualServer*>& virtualServers)
     : _log(Logger::getInstance()),
@@ -28,14 +27,14 @@ ConnectionHandler::ConnectionHandler(
       _connectionStatus(READING),
       _clientSocket(clientSocket),
       _epollSocket(epollSocket),
-      _readn(0),
       _vservPool(virtualServers) {
   _buffer = new char[BUFFER_SIZE];
   memset(_buffer, 0, BUFFER_SIZE);
   _log.info("CONNECTION_HANDLER: New connection handler created");
-  _log.info("CONNECTION_HANDLER: serverPool size : " + Utils::to_string(_vservPool.size()));
+  _log.info("CONNECTION_HANDLER: serverPool size : " +
+            Utils::to_string(_vservPool.size()));
   for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
-      it != _vservPool.end(); ++it) {
+       it != _vservPool.end(); ++it) {
     _log.info("CONNECTION_HANDLER: serverPool name : " +
               (*it)->getServerName());
   }
@@ -46,36 +45,34 @@ ConnectionHandler::~ConnectionHandler() {
 }
 
 void ConnectionHandler::_receiveRequest() {
-  bool end = false;
-  while (true) {
-    ssize_t bytes = recv(_clientSocket, _buffer + _readn, 1, 0);
-    if (_readn >= BUFFER_SIZE) {
-      _connectionStatus = CLOSED;
-      return;
-    }
-    if (bytes <= 0 ) {
-        _log.error(std::string("CONNECTION_HANDLER: recv: ") + strerror(errno));
-        _connectionStatus = CLOSED;
-        break;
-    }
-    _readn++;
-    if (_readn >= 4 && _buffer[_readn - 1] == '\n' &&
-    _buffer[_readn - 2] == '\r' && _buffer[_readn - 3] == '\n' &&
-    _buffer[_readn - 4] == '\r') {
-      end = true;
-      _buffer[_readn] = '\0';
-      break;
+  std::vector<char>  buffer(1024);
+  std::ostringstream requestStream;
+  ssize_t            bytesRead;
+  bool               headerComplete = false;
+
+  while ((bytesRead = recv(_clientSocket, &buffer[0], buffer.size(), 0)) > 0) {
+    requestStream.write(&buffer[0], bytesRead);
+    if (requestStream.str().find("\r\n\r\n") != std::string::npos) {
+      headerComplete = true;
+      break;  // End of request header
     }
   }
-  _log.info("CONNECTION_HANDLER: Request received: " + std::string(_buffer));
-  if (!end) return;
+
+  if (bytesRead == -1) {
+    throw ReadException("CONNECTION_HANDLER: recv error -1 with errno: " +
+                        Utils::to_string(errno));
+  }
+
+  if (!headerComplete)
+    throw ReadException(
+        "CONNECTION_HANDLER: Incomplete request header received.");
+  _request = new HTTPRequest(requestStream.str());
   _processRequest();
 }
 
 void ConnectionHandler::_sendResponse() {
-  if (_response->sendResponse(_clientSocket) == -1) {
-    _log.error("CONNECTION_HANDLER: Failed to send response");\
-  }
+  if (_response->sendResponse(_clientSocket) == -1)
+    throw WriteException("CONNECTION_HANDLER: Failed to send response");
   _connectionStatus = CLOSED;
 }
 
@@ -83,20 +80,25 @@ VirtualServer* ConnectionHandler::_selectVirtualServer(std::string host) {
   _log.info(std::string("CONNECTION_HANDLER: Host extracted: ") + host);
   if (!host.empty()) {
     for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
-        it != _vservPool.end(); ++it) {
+         it != _vservPool.end(); ++it) {
       if ((*it)->isHostMatching(host)) {
         return *it;
       }
     }
   }
-  return _findDefaultServer();
+  VirtualServer* serv = _findDefaultServer();
+  if (serv == NULL)
+    throw ServerSelectionException(
+        "CONNECTION_HANDLER: No matching virtual server found for host: " +
+        host);
+  return serv;
 }
 
 VirtualServer* ConnectionHandler::_findDefaultServer() {
   bool           first = true;
   VirtualServer* firstVserv = NULL;
   for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
-      it != _vservPool.end(); ++it) {
+       it != _vservPool.end(); ++it) {
     if (first) {
       firstVserv = *it;
       first = false;
@@ -130,8 +132,9 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
 }
 
 void ConnectionHandler::_processRequest() {
-  // TODO : Initialize request with  location config and change LocationConfig&
-  _request = new HTTPRequest(_buffer/*, _readn*/);
+  // TODO ? : Initialize request with  location config and change
+  // LocationConfig&
+  // _request = new HTTPRequest(_buffer);
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
     _log.error("CONNECTION_HANDLER: No virtual server selected");
@@ -154,7 +157,13 @@ void ConnectionHandler::processConnection() {
   event.data.fd = _clientSocket;
   event.data.ptr = this;
   if (_connectionStatus == READING) {
-    _receiveRequest();
+    try {
+      _receiveRequest();
+    } catch (const Exception& e) {
+      _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +
+                 e.what());
+      return;
+    }
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
@@ -163,7 +172,14 @@ void ConnectionHandler::processConnection() {
     }
   }
   if (_connectionStatus == SENDING) {
-    _sendResponse();
+    try {
+      _sendResponse();
+    } catch (const Exception& e) {
+      _log.error(
+          std::string("CONNECTION_HANDLER: Exception caught while sending: ") +
+          e.what());
+      return;
+    }
     event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/10 02:31:20 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/10 17:02:10 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,15 +34,18 @@ class Server {
   std::vector<Worker*>        _workers;
   int                         _workerIndex;
   std::map<ListenConfig, int> _listenSockets;
-  pthread_mutex_t             _epollMutex;
 
   void _setupServerSockets();
   void _setupWorkers();
+  static void _signalHandler(int signum);
 
  public:
   Server();
+  static Server& getInstance();
   ~Server();
-  static void _signalHandler(int signum);
+
+  void start();
+  void stop(int signum);
 };
 
 #endif

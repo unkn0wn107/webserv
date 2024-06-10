@@ -19,32 +19,35 @@ Worker::Worker()
       _log(Logger::getInstance()),
       _maxConnections(_config.worker_connections),
       _currentConnections(0),
-      _shouldStop(false) {
+      _shouldStop(false),
+      _started(false) 
+{
   _log.info("Worker constructor called");
-  pthread_mutex_init(&_stopMutex, NULL);
   _setupEpoll();
-  if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0) {
-    _log.error("WORKER : Failed to create thread proc");
-  }
 }
 
 Worker::~Worker() {
-  _stop();
-  pthread_join(_thread, NULL);
-  pthread_mutex_destroy(&_stopMutex);
+  // _stop();
+  
+  // pthread_mutex_destroy(&_stopMutex);
 }
 
-void Worker::_stop() {
-  pthread_mutex_lock(&_stopMutex);
+void  Worker::start() {
+  if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0) {
+    _log.error("WORKER : Failed to create thread proc");
+  }
+  pthread_join(_thread, NULL);
+}
+
+void Worker::stop() {
   _shouldStop = true;
-  pthread_mutex_unlock(&_stopMutex);
 }
 
 void Worker::_setupEpoll() {
   _epollSocket = epoll_create1(0);
   if (_epollSocket <= 0) {
     _log.error(std::string("WORKER: Failed \"epoll_create1\": ") +
-               strerror(errno));
+        strerror(errno));
     exit(EXIT_FAILURE);
   }
 }
@@ -99,7 +102,7 @@ void Worker::_runEventLoop() {
   timeout.tv_sec = WORKER_TIME_TO_STOP;
   timeout.tv_usec = 0;
 
-  while (true) {
+  while (!_shouldStop) {
     select(0, NULL, NULL, NULL, &timeout);
 
     nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
@@ -115,13 +118,7 @@ void Worker::_runEventLoop() {
       else
         _handleIncomingConnection(events[n]);
     }
-
-    pthread_mutex_lock(&_stopMutex);
-    bool shouldStop = _shouldStop;
-    pthread_mutex_unlock(&_stopMutex);
-    if (shouldStop)
-      break;
-  }
+  } 
 }
 
 void Worker::_acceptNewConnection(int fd) {

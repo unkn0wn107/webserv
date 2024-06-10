@@ -21,34 +21,38 @@ Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       _workerIndex(0) {
-  Server::_instance = this;
 
-  struct sigaction sigHandler;
-  sigHandler.sa_handler = _signalHandler;
-  sigemptyset(&sigHandler.sa_mask);
-  sigHandler.sa_flags = 0;
-
-  sigaction(SIGINT, &sigHandler, NULL);
-  sigaction(SIGTERM, &sigHandler, NULL);
-
-  pthread_mutex_init(&_epollMutex, NULL);
   _setupWorkers();
   _setupServerSockets();
 }
 
 Server::~Server() {
   for (size_t i = 0; i < _workers.size(); i++) {
+    _workers[i]->stop();
     delete _workers[i];
   }
   _workers.clear();
-  pthread_mutex_destroy(&_epollMutex);
   Server::_instance = NULL;
 }
 
-void Server::_signalHandler(int signum) {
+Server& Server::getInstance() {
+  if (Server::_instance == NULL) {
+    Server::_instance = new Server();
+  }
+  return *Server::_instance;
+}
+
+void Server::start() {
+  for (size_t i = 0; i < _workers.size(); i++) {
+    _workers[i]->start();
+  }
+}
+
+void Server::stop(int signum) {
   if (signum == SIGINT || signum == SIGTERM) {
+    Server::_instance->_log.info("Server stopped from signal " + Utils::to_string(signum));
     delete Server::_instance;
-    // Server::_instance = NULL;
+    Server::_instance = NULL;
     throw std::runtime_error("Server stopped");
   }
 }
@@ -68,8 +72,8 @@ void Server::_setupServerSockets() {
     int                 sock = socket(AF_INET6, SOCK_STREAM, 0);
     if (sock < 0) {
       _log.error("(" + listenConfig.address + ":" +
-                 Utils::to_string(listenConfig.port) +
-                 ") Failed to create socket");
+      Utils::to_string(listenConfig.port) +
+      ") Failed to create socket");
       continue;
     }
 

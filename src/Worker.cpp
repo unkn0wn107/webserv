@@ -6,12 +6,11 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/04 16:17:42 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/10 02:53:21 by agaley           ###   ########.lyon.fr */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Worker.hpp"
-#include <algorithm>
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 
@@ -19,8 +18,10 @@ Worker::Worker()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       _maxConnections(_config.worker_connections),
-      _currentConnections(0) {
+      _currentConnections(0),
+      _shouldStop(false) {
   _log.info("Worker constructor called");
+  pthread_mutex_init(&_stopMutex, NULL);
   _setupEpoll();
   if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0) {
     _log.error("WORKER : Failed to create thread proc");
@@ -28,7 +29,15 @@ Worker::Worker()
 }
 
 Worker::~Worker() {
+  _stop();
   pthread_join(_thread, NULL);
+  pthread_mutex_destroy(&_stopMutex);
+}
+
+void Worker::_stop() {
+  pthread_mutex_lock(&_stopMutex);
+  _shouldStop = true;
+  pthread_mutex_unlock(&_stopMutex);
 }
 
 void Worker::_setupEpoll() {
@@ -86,7 +95,13 @@ void Worker::_runEventLoop() {
   struct epoll_event events[MAX_EVENTS];
   int                nfds;
 
+  struct timeval timeout;
+  timeout.tv_sec = WORKER_TIME_TO_STOP;
+  timeout.tv_usec = 0;
+
   while (true) {
+    select(0, NULL, NULL, NULL, &timeout);
+
     nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
     if (nfds <= 0) {
       _log.error("Erreur lors de l'attente des événements epoll");
@@ -100,6 +115,12 @@ void Worker::_runEventLoop() {
       else
         _handleIncomingConnection(events[n]);
     }
+
+    pthread_mutex_lock(&_stopMutex);
+    bool shouldStop = _shouldStop;
+    pthread_mutex_unlock(&_stopMutex);
+    if (shouldStop)
+      break;
   }
 }
 

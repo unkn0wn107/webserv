@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/04 14:41:40 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/10 02:59:56 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,16 +15,20 @@
 
 #include <pthread.h>
 #include <sys/epoll.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
+
 #include "ConnectionHandler.hpp"
 #include "Logger.hpp"
 #include "Utils.hpp"
 #include "VirtualServer.hpp"
 
 #define MAX_EVENTS 10
+#define WORKER_TIME_TO_STOP 2
 
 class ConnectionHandler;
 
@@ -40,8 +44,11 @@ class Worker {
   std::vector<int>                            _listenSockets;
   int                                         _maxConnections;
   int                                         _currentConnections;
+  bool                                        _shouldStop;
+  pthread_mutex_t                             _stopMutex;
 
   static void* _workerRoutine(void* ref);
+  void         _stop();
 
   void                        _setupEpoll();
   std::vector<VirtualServer*> _setupAssociateVirtualServer(

@@ -15,10 +15,22 @@
 #include "ConfigManager.hpp"
 #include "Utils.hpp"
 
+Server* Server::_instance = NULL;
+
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       _workerIndex(0) {
+  Server::_instance = this;
+
+  struct sigaction sigHandler;
+  sigHandler.sa_handler = _signalHandler;
+  sigemptyset(&sigHandler.sa_mask);
+  sigHandler.sa_flags = 0;
+
+  sigaction(SIGINT, &sigHandler, NULL);
+  sigaction(SIGTERM, &sigHandler, NULL);
+
   pthread_mutex_init(&_epollMutex, NULL);
   _setupWorkers();
   _setupServerSockets();
@@ -28,7 +40,17 @@ Server::~Server() {
   for (size_t i = 0; i < _workers.size(); i++) {
     delete _workers[i];
   }
+  _workers.clear();
   pthread_mutex_destroy(&_epollMutex);
+  Server::_instance = NULL;
+}
+
+void Server::_signalHandler(int signum) {
+  if (signum == SIGINT || signum == SIGTERM) {
+    delete Server::_instance;
+    // Server::_instance = NULL;
+    throw std::runtime_error("Server stopped");
+  }
 }
 
 void Server::_setupWorkers() {

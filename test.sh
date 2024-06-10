@@ -73,7 +73,14 @@ test_cgi_hello() {
         echo "FAIL: $URL - No response received"
     fi
 }
+return_failure_if_test_fails() {
+    if [ "$1" != "0" ]; then
+        echo "One or more tests failed."
+        exit 1
+    fi
+}
 
+# Run tests and capture their exit status
 test_get "/" "200"
 test_get "/nonexistent" "404"
 # test_post "/submit" "200" "name=example&value=test"
@@ -83,4 +90,6 @@ test_get_ipv6 "/nonexistent" "404"
 # test_post_ipv6 "/submit" "200" "name=example&value=test"
 
 test_cgi_hello
-wait
+
+# Check if any test failed
+return_failure_if_test_fails $?

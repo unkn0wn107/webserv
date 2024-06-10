@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/09 04:53:38 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/10 02:33:14 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -61,6 +61,15 @@ run:
 run-debug:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d
 
+dev:
+	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose watch
+
+build:
+	docker compose exec webserv* make -C /app/ 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
+
+logs:
+	docker compose logs -f
+
 stop:
 	docker compose stop
 
@@ -82,12 +91,6 @@ update_gitignore:
 	else \
 		echo "$(LOG_FILE_EXT) already in .gitignore"; \
 	fi
-
-dev:
-	MY_UID=$(id -u) MY_GID=$(id -g) docker compose watch
-
-logs:
-	docker compose logs -f
 
 nginx-build:
 	docker build -t nginx nginx/

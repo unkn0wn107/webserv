@@ -13,6 +13,7 @@ services:
     environment:
       UID: ${MY_UID}
       GID: ${MY_GID}
+      BUILD_TYPE: ${BUILD_TYPE}
     restart: unless-stopped
     develop:
       watch:

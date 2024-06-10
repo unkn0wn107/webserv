@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 16:28:47 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/10 00:45:22 by agaley           ###   ########.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,6 +39,11 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
     throw NoRuntimeError("No suitable runtime found for script: " +
                          request.getURI());
 
+  if (!FileManager::doesFileExists(runtime))
+    throw CGINotFound("CGI not found: " + runtime);
+  if (!FileManager::isFileExecutable(runtime))
+    throw CGINotExecutable("CGI not executable: " + runtime);
+
   std::string        cgiOutStr = _executeCGIScript(request, runtime);
   std::istringstream cgiOut(cgiOutStr);
 
@@ -57,6 +62,12 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
   }
 
   const std::string bodyContent = cgiOutStr.substr(bodyStartPos);
+
+  // if (headers.find("Content-Length") == headers.end()) {
+  //   headers["Content-Length"] = Utils::to_string(bodyContent.length());
+  //   // headers["Content-Length"] =
+  //   // Utils::to_string(Utils::utf8_length(bodyContent));
+  // }
 
   return new HTTPResponse(HTTPResponse::OK, headers, bodyContent);
 }
@@ -104,8 +115,16 @@ const std::string CGIHandler::_executeCGIScript(
 
       int status;
       waitpid(pid, &status, 0);  // Wait for child process to finish
-      if (WIFEXITED(status) && WEXITSTATUS(status) != EXIT_SUCCESS) {
-        throw RuntimeError("CGI script exited with error");
+      if (WIFEXITED(status)) {
+        int exitStatus = WEXITSTATUS(status);
+        if (exitStatus != EXIT_SUCCESS) {
+          throw RuntimeError("CGI script exited with error, status code: " +
+                             Utils::to_string(exitStatus));
+        }
+      } else if (WIFSIGNALED(status)) {
+        int signal = WTERMSIG(status);
+        throw RuntimeError("CGI script killed by signal: " +
+                           Utils::to_string(signal));
       }
       return output;
     }
@@ -172,9 +191,26 @@ const std::string CGIHandler::_executeChildProcess(
     throw ScriptNotExecutable("Script not executable: " + scriptPath);
   argv.push_back(const_cast<char*>(scriptPath.c_str()));
   argv.push_back(NULL);
+  if (argv.empty()) {
+    std::cerr << "Argument vector is empty, cannot execute CGI script."
+              << std::endl;
+  } else {
+    std::string argsDebugInfo = "Executing CGI script with arguments: ";
+    for (size_t i = 0; i < argv.size(); ++i) {
+      if (argv[i] != NULL) {
+        argsDebugInfo += std::string(argv[i]) + " ";
+      }
+    }
+    std::cerr << argsDebugInfo << std::endl;
+  }
 
-  // Execute CGI script
-  execve(runtimePath.c_str(), &argv[0], _getEnvp(request));
+  // Execute CGI script - TODO : remove stderr
+  char** envp = _getEnvp(request);
+  std::cerr << "Environment variables for CGI script:" << std::endl;
+  for (char** env = envp; *env != NULL; ++env) {
+    std::cerr << *env << std::endl;
+  }
+  execve(runtimePath.c_str(), &argv[0], envp);
   throw RuntimeError("Failed to execute CGI script: " +
                      std::string(strerror(errno)));
   exit(EXIT_FAILURE);
@@ -202,6 +238,9 @@ char** CGIHandler::_getEnvp(const HTTPRequest& request) {
   const std::map<std::string, std::string> headers = request.getHeaders();
   const URI::Components uriComponents = request.getURIComponents();
 
+  env.push_back(alloc_string("REDIRECT_STATUS=200"));  // For php-cgi at least
+  env.push_back(alloc_string("SCRIPT_FILENAME=" + request.getConfig()->root +
+                             uriComponents.scriptName));
   env.push_back(alloc_string("SCRIPT_NAME=" + uriComponents.scriptName));
   env.push_back(alloc_string("PATH_INFO=" + uriComponents.pathInfo));
   env.push_back(alloc_string("REQUEST_METHOD=" + request.getMethod()));

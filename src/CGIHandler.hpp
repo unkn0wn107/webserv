@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 04:31:13 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/10 00:45:32 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,6 +64,16 @@ class CGIHandler {
   class CGIDisabled : public Exception {
    public:
     CGIDisabled(const std::string& message) : Exception(message) {}
+  };
+
+  class CGINotFound : public Exception {
+   public:
+    CGINotFound(const std::string& message) : Exception(message) {}
+  };
+
+  class CGINotExecutable : public Exception {
+   public:
+    CGINotExecutable(const std::string& message) : Exception(message) {}
   };
 
   class ScriptNotFound : public Exception {

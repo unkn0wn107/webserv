@@ -5,17 +5,6 @@ RUN ln -sf /usr/bin/clang++ /usr/bin/c++ && mkdir -p /var/www/html \
 
 WORKDIR /app
 
-COPY ./Makefile .
-COPY ./src/ ./src/
-
-ARG BUILD_TYPE
-RUN if [ "$BUILD_TYPE" = "debug" ]; then \
-        make debug; \
-    else \
-        make; \
-    fi
-
-COPY ./default.conf .
 COPY ./run.sh .
 
 ENTRYPOINT [ "./run.sh" ]

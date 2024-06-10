@@ -6,6 +6,9 @@ services:
       - "8081:8081"
     volumes:
       - ./site:/var/www/html
+      - ./src/:/app/src/
+      - ./default.conf:/app/default.conf
+      - ./Makefile:/app/Makefile
     build:
       context: .
       args:

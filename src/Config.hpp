@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/04 14:37:58 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/11 14:47:29 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@ typedef struct LocationConfig {
   std::string                root;
   std::string                index;
   bool                       upload;
+  bool                       delete_;
   bool                       cgi;
   bool                       autoindex;
   std::map<int, std::string> error_pages;
@@ -101,6 +102,7 @@ typedef struct ServerConfig {
   std::string                root;
   std::string                index;
   bool                       upload;
+  bool                       delete_;
   bool                       cgi;
   bool                       autoindex;
   std::map<int, std::string> error_pages;

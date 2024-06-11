@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/11 12:19:43 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/11 15:05:30 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -264,6 +264,7 @@ int HTTPResponse::sendResponse(int clientSocket) {
   if (_file.empty())
     return 0;
   _log.info("Sending file: " + _file);
+  if (!FileManager::doesFileExists(_file)) return sendResponse(404, clientSocket);
   FILE* file = fopen(_file.c_str(), "r");
   fseek(file, 0, SEEK_END);
   int file_length = ftell(file);

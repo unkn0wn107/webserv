@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/11 12:46:33 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/11 14:52:05 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -147,6 +147,49 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 	return new HTTPResponse(500, location.error_pages);
 }
 
+HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
+	LocationConfig location = _server.getLocationConfig(request.getURI());
+	if (location.delete_ == false) {
+		return new HTTPResponse(403, location.error_pages);
+	}
+	std::string path = _getPath(request.getURI(), location);
+	if (remove(path.c_str()) == 0) {
+    HTTPResponse* response = new HTTPResponse(200);
+    response->addHeader("Content-Type", "text/html");
+    response->addHeader("Content-Length", Utils::to_string(path.size() + 66));
+    response->setBody("<html><body>File deleted successfully. File path: " + path + "</body></html>");
+		return response;
+	} else {
+		return new HTTPResponse(500, location.error_pages);
+	}
+}
+
+HTTPResponse* HTTPMethods::_handleHeadRequest(HTTPRequest& request) {
+	HTTPResponse* response = _handleGetRequest(request);
+	response->setBody("");
+	return response;
+}
+
+// HTTPResponse* HTTPMethods::_handlePutRequest(HTTPRequest& request) {
+// 	LocationConfig location = _server.getLocationConfig(request.getURI());
+// 	if (location.put == false) {
+// 		return new HTTPResponse(403, location.error_pages);
+// 	}
+//   std::string path = _getPath(request.getURI(), location);
+//   std::ofstream file(path.c_str());
+//   if (file) {
+//     if (!file.write(request.getBody().c_str(), request.getBody().size())) {
+//       return new HTTPResponse(500, location.error_pages);
+//     }
+//     HTTPResponse* response = new HTTPResponse(200);
+//     response->addHeader("Content-Type", "text/html");
+//     response->addHeader("Content-Length", Utils::to_string(path.size() + 66));
+//     response->setBody("<html><body>File put successfully. File path: " + path + "</body></html>");
+//     return response;
+//   }
+//   return new HTTPResponse(500, location.error_pages);
+// }
+
 HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
 	std::string    protocol = request.getProtocol();
   std::string    method = request.getMethod();
@@ -180,21 +223,12 @@ HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
   if (method == "POST") {
     return _handlePostRequest(request);
   }
-  // if (method == "DELETE") {
-  //   return _handleDeleteRequest(request);
-  // }
-  // if (method == "PUT") {
-  //   return _handlePutRequest(request);
-  // }
-  // if (method == "HEAD") {
-  //   return _handleHeadRequest(request);
-  // }
-  // if (method == "CONNECT") {
-  //   return _handleConnectRequest(request);
-  // }
-  // if (method == "OPTIONS") {
-  //   return _handleOptionsRequest(request);
-  // }
+  if (method == "DELETE") {
+    return _handleDeleteRequest(request);
+  }
+  if (method == "HEAD") {
+    return _handleHeadRequest(request);
+  }
   _log.error("HTTPMethods::handleRequest : Method not allowed");
   return new HTTPResponse(403, location.error_pages);
 }

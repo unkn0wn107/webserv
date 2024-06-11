@@ -126,6 +126,8 @@ void ConfigParser::_parseServerConfig(std::ifstream& configFile,
         serverConfig.cgi = (_parseValue(lineStream.str()) == "on");
       } else if (key == "accept_upload") {
         serverConfig.upload = (_parseValue(lineStream.str()) == "on");
+      } else if (key == "accept_delete") {
+        serverConfig.delete_ = (_parseValue(lineStream.str()) == "on");
       } else if (key == "client_max_body_size") {
         serverConfig.client_max_body_size =
             Utils::stoi<int>(_parseValue(lineStream.str()));
@@ -254,6 +256,8 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
       locationConfig.cgi = (_parseValue(lineStream.str()) == "on");
     } else if (key == "accept_upload") {
       locationConfig.upload = (_parseValue(lineStream.str()) == "on");
+    } else if (key == "accept_delete") {
+      locationConfig.delete_ = (_parseValue(lineStream.str()) == "on");
     } else if (key == "client_max_body_size") {
       locationConfig.client_max_body_size =
           Utils::stoi<int>(_parseValue(lineStream.str()));

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 02:10:30 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/11 12:20:31 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,6 +80,7 @@ class HTTPResponse {
   ~HTTPResponse();
 
   static std::string getContentType(const std::string& path);
+  static std::string getExtensionFromContentType(const std::string& contentType);
 
   void               buildResponse();
   int                sendResponse(int clientSocket);

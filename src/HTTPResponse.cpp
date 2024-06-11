@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 02:11:08 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/11 12:19:43 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -293,6 +293,15 @@ int HTTPResponse::sendResponse(int statusCode, int clientSocket) {
     return -1;
   }
   return 0;
+}
+
+std::string HTTPResponse::getExtensionFromContentType(const std::string& contentType) {
+  for (size_t i = 0; i < sizeof(CONTENT_TYPES) / sizeof(CONTENT_TYPES[0]); ++i) {
+    if (CONTENT_TYPES[i].second == contentType) {
+      return CONTENT_TYPES[i].first;
+    }
+  }
+  return "";
 }
 
 std::string HTTPResponse::getContentType(const std::string& path) {

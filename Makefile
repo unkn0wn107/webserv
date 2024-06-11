@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
+#    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/10 02:33:14 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/11 12:34:52 by  mchenava        ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -34,7 +34,7 @@ SRC = $(SRC_DIR)/Server.cpp \
 		$(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp $(SRC_DIR)/URI.cpp \
 		$(SRC_DIR)/CGIHandler.cpp $(SRC_DIR)/FileHandler.cpp \
 		$(SRC_DIR)/VirtualServer.cpp $(SRC_DIR)/Common.cpp \
-		$(SRC_DIR)/Exception.cpp \
+		$(SRC_DIR)/Exception.cpp $(SRC_DIR)/HTTPMethods.cpp \
 		$(SRC_DIR)/ErrorHandler.cpp $(SRC_DIR)/Logger.cpp $(SRC_DIR)/Utils.cpp \
 		$(SRC_DIR)/main.cpp
 

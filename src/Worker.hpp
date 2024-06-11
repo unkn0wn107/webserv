@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/04 14:41:40 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/10 18:41:23 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,16 +15,20 @@
 
 #include <pthread.h>
 #include <sys/epoll.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
+
 #include "ConnectionHandler.hpp"
 #include "Logger.hpp"
 #include "Utils.hpp"
 #include "VirtualServer.hpp"
 
 #define MAX_EVENTS 10
+#define WORKER_TIME_TO_STOP 2
 
 class ConnectionHandler;
 
@@ -40,6 +44,8 @@ class Worker {
   std::vector<int>                            _listenSockets;
   int                                         _maxConnections;
   int                                         _currentConnections;
+  bool                                        _shouldStop;
+  bool                                        _started;
 
   static void* _workerRoutine(void* ref);
 
@@ -54,6 +60,8 @@ class Worker {
   Worker();
   ~Worker();
   void assignConnection(int clientSocket, const ListenConfig& listenConfig);
+  void stop();
+  void start();
 };
 
 #endif

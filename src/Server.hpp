@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/29 18:29:41 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/10 17:02:10 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,8 +16,10 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <signal.h>
 #include <string.h>
 #include <sys/socket.h>
+
 #include "Config.hpp"
 #include "Logger.hpp"
 #include "Worker.hpp"
@@ -26,19 +28,24 @@ class Worker;
 
 class Server {
  private:
+  static Server*              _instance;
   Config&                     _config;
   Logger&                     _log;
   std::vector<Worker*>        _workers;
   int                         _workerIndex;
   std::map<ListenConfig, int> _listenSockets;
-  pthread_mutex_t             _epollMutex;
 
   void _setupServerSockets();
   void _setupWorkers();
+  static void _signalHandler(int signum);
 
  public:
   Server();
+  static Server& getInstance();
   ~Server();
+
+  void start();
+  void stop(int signum);
 };
 
 #endif

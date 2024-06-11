@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 11:09:02 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/05/24 11:09:06 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/10 16:58:59 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,5 +14,6 @@
 #define COMMON_HPP
 
 int set_non_blocking(int sockfd);
+void  signalHandler(int signum);
 
 #endif

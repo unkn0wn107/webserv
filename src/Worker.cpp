@@ -6,12 +6,11 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/04 16:17:42 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/10 02:53:21 by agaley           ###   ########.lyon.fr */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Worker.hpp"
-#include <algorithm>
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 
@@ -19,23 +18,36 @@ Worker::Worker()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       _maxConnections(_config.worker_connections),
-      _currentConnections(0) {
+      _currentConnections(0),
+      _shouldStop(false),
+      _started(false) 
+{
   _log.info("Worker constructor called");
   _setupEpoll();
-  if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0) {
-    _log.error("WORKER : Failed to create thread proc");
-  }
 }
 
 Worker::~Worker() {
+  // _stop();
+  
+  // pthread_mutex_destroy(&_stopMutex);
+}
+
+void  Worker::start() {
+  if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0) {
+    _log.error("WORKER : Failed to create thread proc");
+  }
   pthread_join(_thread, NULL);
+}
+
+void Worker::stop() {
+  _shouldStop = true;
 }
 
 void Worker::_setupEpoll() {
   _epollSocket = epoll_create1(0);
   if (_epollSocket <= 0) {
     _log.error(std::string("WORKER: Failed \"epoll_create1\": ") +
-               strerror(errno));
+        strerror(errno));
     exit(EXIT_FAILURE);
   }
 }
@@ -86,7 +98,13 @@ void Worker::_runEventLoop() {
   struct epoll_event events[MAX_EVENTS];
   int                nfds;
 
-  while (true) {
+  struct timeval timeout;
+  timeout.tv_sec = WORKER_TIME_TO_STOP;
+  timeout.tv_usec = 0;
+
+  while (!_shouldStop) {
+    select(0, NULL, NULL, NULL, &timeout);
+
     nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
     if (nfds <= 0) {
       _log.error("Erreur lors de l'attente des événements epoll");
@@ -100,7 +118,7 @@ void Worker::_runEventLoop() {
       else
         _handleIncomingConnection(events[n]);
     }
-  }
+  } 
 }
 
 void Worker::_acceptNewConnection(int fd) {

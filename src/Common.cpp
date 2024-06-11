@@ -6,13 +6,14 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 11:06:33 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/10 16:59:47 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/11 15:53:55 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <fcntl.h>
 #include <string.h>
 #include "Logger.hpp"
+#include "Utils.hpp"
 #include "Server.hpp"
 
 int set_non_blocking(int sockfd) {
@@ -35,5 +36,6 @@ int set_non_blocking(int sockfd) {
 
 
 void  signalHandler(int signum) {
+  Logger::getInstance().info("Signal received: " + Utils::to_string(signum));
   Server::getInstance().stop(signum);
 }

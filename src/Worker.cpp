@@ -19,8 +19,7 @@ Worker::Worker()
       _log(Logger::getInstance()),
       _maxConnections(_config.worker_connections),
       _currentConnections(0),
-      _shouldStop(false),
-      _started(false) 
+      _shouldStop(false)
 {
   _log.info("Worker constructor called");
   _setupEpoll();
@@ -112,6 +111,7 @@ void Worker::_runEventLoop() {
     }
 
     for (int n = 0; n < nfds; ++n) {
+      _log.info("WORKER: Event loop : " + Utils::to_string(events[n].data.fd));
       if (std::find(_listenSockets.begin(), _listenSockets.end(),
                     events[n].data.fd) != _listenSockets.end())
         _acceptNewConnection(events[n].data.fd);
@@ -127,6 +127,7 @@ void Worker::_acceptNewConnection(int fd) {
   int                new_socket;
   struct epoll_event event;
 
+  _log.info("WORKER: \"accept\"");
   while (true) {
     new_socket = accept(fd, &address, &addrlen);
     if (new_socket < 0) {

@@ -6,7 +6,7 @@
 #    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/11 15:35:47 by  mchenava        ###   ########.fr        #
+#    Updated: 2024/06/11 16:03:30 by  mchenava        ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -57,6 +57,7 @@ $(OBJ_DIR)/%.o: %.cpp
 
 run:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d
+	@make build
 
 run-debug:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d
@@ -66,6 +67,7 @@ dev:
 
 build:
 	docker compose exec webserv* make -C /app/ 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
+	-docker compose exec webserv* kill 1 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
 
 logs:
 	docker compose logs -f

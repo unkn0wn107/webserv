@@ -158,6 +158,7 @@ void ConnectionHandler::processConnection() {
   event.data.ptr = this;
   if (_connectionStatus == READING) {
     try {
+                  _log.info(std::string("CONNECTION_HANDLER: receive req: "));
       _receiveRequest();
     } catch (const Exception& e) {
       _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +

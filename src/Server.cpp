@@ -49,7 +49,7 @@ void Server::start() {
 }
 
 void Server::stop(int signum) {
-  if (signum == SIGINT || signum == SIGTERM) {
+  if (signum == SIGINT || signum == SIGTERM || signum == SIGKILL) {
     Server::_instance->_log.info("Server stopped from signal " + Utils::to_string(signum));
     delete Server::_instance;
     Server::_instance = NULL;

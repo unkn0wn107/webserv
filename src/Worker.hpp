@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/10 18:41:23 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/11 15:53:12 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,6 @@ class Worker {
   int                                         _maxConnections;
   int                                         _currentConnections;
   bool                                        _shouldStop;
-  bool                                        _started;
 
   static void* _workerRoutine(void* ref);
 

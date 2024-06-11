@@ -18,16 +18,16 @@ services:
       GID: ${MY_GID}
       BUILD_TYPE: ${BUILD_TYPE}
     restart: unless-stopped
-    develop:
-      watch:
-        - action: rebuild
-          path: ./src
-          target: /app/
-        - action: rebuild
-          path: ./Makefile
-          target: /app/
-        - action: rebuild
-          path: ./Dockerfile
-        - action: sync+restart
-          path: ./default.conf
-          target: /app/default.conf
+    # develop:
+    #   watch:
+    #     - action: rebuild
+    #       path: ./src
+    #       target: /app/
+    #     - action: rebuild
+    #       path: ./Makefile
+    #       target: /app/
+    #     - action: rebuild
+    #       path: ./Dockerfile
+    #     - action: sync+restart
+    #       path: ./default.conf
+    #       target: /app/default.conf

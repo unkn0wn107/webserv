@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Logger.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/05/29 17:02:36 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/11 15:23:29 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,8 +16,6 @@
 #include <iostream>
 #include <sstream>
 #include "Config.hpp"
-#include "ConfigManager.hpp"
-#include "Utils.hpp"
 
 Logger* Logger::_instance = NULL;
 

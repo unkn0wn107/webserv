@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
+#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/11 17:04:06 by  mchenava        ###   ########.fr        #
+#    Updated: 2024/06/11 19:06:34 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -55,7 +55,11 @@ $(OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-run:
+run: run-only
+	sleep 1
+	@make logs
+
+run-only:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d
 	@make build
 	@make logs
@@ -81,13 +85,13 @@ logs:
 stop:
 	docker compose stop
 
-test: run
+test: run-only
 	sleep 5
 	./test.sh
 	$(MAKE) stop
 
 test-compare: docker-stop
-	@$(MAKE) run
+	@$(MAKE) run-only
 	@$(MAKE) nginxd
 	./test_compare.sh
 	@$(MAKE) docker-stop
@@ -114,7 +118,7 @@ nginxd: nginx-build
 		-v ./site:/var/www/html nginx
 
 docker-stop:
-	-docker stop nginx webserv
+	-docker stop nginx & docker compose stop webserv*
 
 docker-fclean:
 	docker system prune --all --volumes -f

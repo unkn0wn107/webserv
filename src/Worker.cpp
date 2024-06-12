@@ -96,14 +96,7 @@ void Worker::assignConnection(int                 clientSocket,
 void Worker::_runEventLoop() {
   struct epoll_event events[MAX_EVENTS];
   int                nfds;
-
-  struct timeval timeout;
-  timeout.tv_sec = WORKER_TIME_TO_STOP;
-  timeout.tv_usec = 0;
-
   while (!_shouldStop) {
-    select(0, NULL, NULL, NULL, &timeout);
-
     nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
     if (nfds <= 0) {
       _log.error("Erreur lors de l'attente des événements epoll");
@@ -111,14 +104,13 @@ void Worker::_runEventLoop() {
     }
 
     for (int n = 0; n < nfds; ++n) {
-      _log.info("WORKER: Event loop : " + Utils::to_string(events[n].data.fd));
       if (std::find(_listenSockets.begin(), _listenSockets.end(),
                     events[n].data.fd) != _listenSockets.end())
         _acceptNewConnection(events[n].data.fd);
       else
         _handleIncomingConnection(events[n]);
     }
-  } 
+  }
 }
 
 void Worker::_acceptNewConnection(int fd) {

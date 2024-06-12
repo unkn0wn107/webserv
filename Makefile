@@ -6,7 +6,7 @@
 #    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/11 16:03:30 by  mchenava        ###   ########.fr        #
+#    Updated: 2024/06/11 17:04:06 by  mchenava        ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -58,12 +58,18 @@ $(OBJ_DIR)/%.o: %.cpp
 run:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d
 	@make build
+	@make logs
 
 run-debug:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d
 
-dev:
-	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose watch
+# dev:
+#   while true; do \
+#     inotifywait -qr -e modify -e create -e delete -e move $(SRC_DIR); \
+# 		kill 1; \
+#     make debug; \
+# 		make logs; \
+#   done
 
 build:
 	docker compose exec webserv* make -C /app/ 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
@@ -138,4 +144,4 @@ fclean: clean docker-fclean
 re: fclean all
 debug_re: fclean debug
 
-.PHONY: all clean fclean re debug debug_re update_gitignore dev logs nginx-build nginx docker-fclean run_tests test
+.PHONY: all clean fclean re debug debug_re update_gitignore logs nginx-build nginx docker-fclean run_tests test

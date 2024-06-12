@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/11 15:57:20 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/11 17:05:42 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,6 @@ int main(int argc, char* argv[]) {
   sigaction(SIGKILL, &sigHandler, NULL);
 
   Config config;
-  Server server;
   try {
     ConfigManager::loadConfig(argc == 1 ? ConfigManager::DEFAULT_FILE_NAME
                                         : argv[1]);
@@ -42,7 +41,8 @@ int main(int argc, char* argv[]) {
     Logger::getInstance().error("Shutdown Error in main.cpp");
     return EXIT_FAILURE;
   }
-  Logger::getInstance().info("Starting WebServ 2");
+  Server server;
+  Logger::getInstance().info("Starting WebServ");
   server.start();
   Logger::getInstance().info("Shutdown WebServ");
   delete &Logger::getInstance();

@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/12 16:50:38 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/12 17:02:22 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,7 +131,8 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 	std::string path = _getPath(request.getURI(), location);
 	std::string contentType;
   contentType = request.getHeader("Content-Type");
-  if (contentType.empty()) {
+  _log.info("HTTPMethods::_handlePostRequest : Content-Type: " + contentType);
+  if (contentType == "") {
     contentType = HTTPResponse::getContentType(path);
   }
   else {
@@ -151,7 +152,7 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 		response->setBody("<html><body>File uploaded successfully. File path: " + path + "</body></html>");
 		return response;
 	}
-	_log.error("HTTPMethods::_handlePostRequest : File open error: " + path);
+	_log.error("HTTPMethods::_handlePostRequest : File open error: " + path + " | error: " + strerror(errno));
 	return new HTTPResponse(500, location.error_pages);
 }
 

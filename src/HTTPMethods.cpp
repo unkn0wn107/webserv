@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/12 16:43:38 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/12 16:45:23 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -142,6 +142,7 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 	std::ofstream file(filePath.c_str());
 	if (file) {
 		if (!file.write(request.getBody().c_str(), request.getBody().size())) {
+      _log.error("HTTPMethods::_handlePostRequest : File write error");
 			return new HTTPResponse(500, location.error_pages);
 		}
 		file.close();
@@ -151,6 +152,7 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 		response->setBody("<html><body>File uploaded successfully. File path: " + filePath + "</body></html>");
 		return response;
 	}
+	_log.error("HTTPMethods::_handlePostRequest : File open error");
 	return new HTTPResponse(500, location.error_pages);
 }
 
@@ -167,6 +169,7 @@ HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
     response->setBody("<html><body>File deleted successfully. File path: " + path + "</body></html>");
 		return response;
 	} else {
+    _log.error("HTTPMethods::_handleDeleteRequest : File delete error");
 		return new HTTPResponse(500, location.error_pages);
 	}
 }

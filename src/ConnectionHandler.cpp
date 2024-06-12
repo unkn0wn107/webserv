@@ -59,8 +59,7 @@ void ConnectionHandler::_receiveRequest() {
   }
 
   if (bytesRead == -1) {
-    throw ReadException("CONNECTION_HANDLER: recv error -1 with errno: " +
-                        Utils::to_string(errno));
+    throw ReadException("CONNECTION_HANDLER: recv error -1");
   }
 
   if (!headerComplete)

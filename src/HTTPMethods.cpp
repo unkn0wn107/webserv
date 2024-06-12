@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/11 14:52:05 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/12 16:43:38 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -129,9 +129,16 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 		return new HTTPResponse(403, location.error_pages);
 	}
 	std::string path = _getPath(request.getURI(), location);
-	std::string contentType = request.getHeader("Content-Type");
-	std::string extension = HTTPResponse::getExtensionFromContentType(contentType);
-	std::string filePath = path + "." + extension;
+	std::string contentType;
+  contentType = request.getHeader("Content-Type");
+  if (contentType.empty()) {
+    contentType = HTTPResponse::getContentType(path);
+  }
+  else {
+    std::string extension = HTTPResponse::getExtensionFromContentType(contentType);
+    path += "." + extension;
+  }
+	std::string filePath = path;
 	std::ofstream file(filePath.c_str());
 	if (file) {
 		if (!file.write(request.getBody().c_str(), request.getBody().size())) {

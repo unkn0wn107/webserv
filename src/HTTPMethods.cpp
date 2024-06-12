@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/12 16:45:23 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/12 16:50:38 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -138,21 +138,20 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
     std::string extension = HTTPResponse::getExtensionFromContentType(contentType);
     path += "." + extension;
   }
-	std::string filePath = path;
-	std::ofstream file(filePath.c_str());
+	std::ofstream file(path.c_str());
 	if (file) {
 		if (!file.write(request.getBody().c_str(), request.getBody().size())) {
-      _log.error("HTTPMethods::_handlePostRequest : File write error");
+      _log.error("HTTPMethods::_handlePostRequest : File write error: " + path);
 			return new HTTPResponse(500, location.error_pages);
 		}
 		file.close();
 		HTTPResponse* response = new HTTPResponse(200);
 		response->addHeader("Content-Type", "text/html");
-		response->addHeader("Content-Length", Utils::to_string(filePath.size() + 67));
-		response->setBody("<html><body>File uploaded successfully. File path: " + filePath + "</body></html>");
+		response->addHeader("Content-Length", Utils::to_string(path.size() + 67));
+		response->setBody("<html><body>File uploaded successfully. File path: " + path + "</body></html>");
 		return response;
 	}
-	_log.error("HTTPMethods::_handlePostRequest : File open error");
+	_log.error("HTTPMethods::_handlePostRequest : File open error: " + path);
 	return new HTTPResponse(500, location.error_pages);
 }
 

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/09 03:12:07 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/11 19:22:47 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,6 +45,8 @@ void HTTPRequest::parseRequest() {
   std::cout << "  Query String: " << _uriComponents.queryString << std::endl;
 
   while (std::getline(requestStream, line) && !line.empty()) {
+    if (line == "\r" || line.empty())
+      break;
     std::size_t pos = line.find(":");
     if (pos != std::string::npos) {
       std::string key = line.substr(0, pos);

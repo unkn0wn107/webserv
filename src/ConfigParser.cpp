@@ -215,6 +215,7 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
 
   locationConfig.returnCode = 0;
   bool firstReturnEncountered = false;
+  bool limitExceptEncountered = false;
   _fillLocationDefinedByServerConfig(locationConfig, serverConfig);
 
   while (key != "}" && getline(configFile, line)) {
@@ -238,6 +239,7 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
         method = _cleanValue(method, ' ');
         locationConfig.allowed_methods.push_back(method);
       }
+      limitExceptEncountered = true;
     } else if (key == "return") {
       if (firstReturnEncountered)
         continue;
@@ -274,6 +276,14 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
                  _configFilepath);
     }
     key = "";
+  }
+  if (!limitExceptEncountered) {
+    for (size_t i = 0; i < sizeof(HTTPRequest::supportedMethods) /
+                               sizeof(HTTPRequest::supportedMethods[0]);
+         ++i) {
+      locationConfig.allowed_methods.push_back(
+          HTTPRequest::supportedMethods[i]);
+    }
   }
 }
 

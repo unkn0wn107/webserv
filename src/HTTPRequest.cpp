@@ -6,12 +6,15 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/11 19:22:47 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/14 01:12:52 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPRequest.hpp"
 #include "Utils.hpp"
+
+const std::string HTTPRequest::supportedMethods[4] = {"GET", "HEAD", "DELETE",
+                                                      "POST"};
 
 HTTPRequest::HTTPRequest(std::string rawRequest /*, size_t readn*/)
     : _rawRequest(rawRequest),

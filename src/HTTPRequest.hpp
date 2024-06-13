@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 16:20:32 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/14 01:13:18 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,8 @@ class HTTPRequest {
  public:
   HTTPRequest(std::string rawRequest /*, size_t readn*/);
   ~HTTPRequest();
+
+  static const std::string supportedMethods[4];
 
   void parseRequest();
 

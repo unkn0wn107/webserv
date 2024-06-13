@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/11 12:20:31 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/14 00:22:47 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,12 @@
 #include "Logger.hpp"
 #include "Utils.hpp"
 
+#define ERR_PAGE_301 \
+  "<!DOCTYPE html><html><body><h1>301 Moved Permanently</h1></body></html>"
+#define ERR_PAGE_302 \
+  "<!DOCTYPE html><html><body><h1>302 Found</h1></body></html>"
+#define ERR_PAGE_307 \
+  "<!DOCTYPE html><html><body><h1>307 Temporary Redirect</h1></body></html>"
 #define ERR_PAGE_400                                                           \
   "<!DOCTYPE html><html><body><h1>400 Bad Request</h1><p>Your browser sent a " \
   "request that this server could not understand.</p></body></html>"
@@ -71,16 +77,18 @@ class HTTPResponse {
 
  public:
   HTTPResponse();
+  HTTPResponse(int statusCode);
   HTTPResponse(const std::string& protocol);
   HTTPResponse(int statusCode, std::map<int, std::string> error_pages);
-  HTTPResponse(int statusCode);
+  HTTPResponse(int statusCode, LocationConfig& config, std::string redirectUrl);
   HTTPResponse(int                                statusCode,
                std::map<std::string, std::string> headers,
                std::string                        body);
   ~HTTPResponse();
 
   static std::string getContentType(const std::string& path);
-  static std::string getExtensionFromContentType(const std::string& contentType);
+  static std::string getExtensionFromContentType(
+      const std::string& contentType);
 
   void               buildResponse();
   int                sendResponse(int clientSocket);

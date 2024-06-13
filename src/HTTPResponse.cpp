@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/11 15:05:30 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/14 00:21:21 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,6 +161,9 @@ const std::pair<std::string, std::string> HTTPResponse::CONTENT_TYPES[] = {
     std::make_pair("7z", "application/x-7z-compressed")};
 
 std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
+    std::make_pair(301, std::string(ERR_PAGE_301)),
+    std::make_pair(302, std::string(ERR_PAGE_302)),
+    std::make_pair(307, std::string(ERR_PAGE_307)),
     std::make_pair(400, std::string(ERR_PAGE_400)),
     std::make_pair(403, std::string(ERR_PAGE_403)),
     std::make_pair(404, std::string(ERR_PAGE_404)),
@@ -200,6 +203,23 @@ HTTPResponse::HTTPResponse(int                        statusCode,
   _errorResponse();
 }
 
+HTTPResponse::HTTPResponse(int             statusCode,
+                           LocationConfig& config,
+                           std::string     redirectUrl)
+    : _log(Logger::getInstance()),
+      _statusCode(statusCode),
+      _statusMessage(getStatusMessage(statusCode)),
+      _headers(std::map<std::string, std::string>()),
+      _body(""),
+      _file(""),
+      _protocol("HTTP/1.1"),
+      _error_pages(config.error_pages) {
+  if (statusCode < 300 || statusCode >= 400)
+    throw std::invalid_argument("Not a redirect response");
+  _errorResponse();
+  addHeader("Location", redirectUrl);
+}
+
 HTTPResponse::HTTPResponse(int statusCode)
     : _log(Logger::getInstance()),
       _statusCode(statusCode),
@@ -227,13 +247,15 @@ HTTPResponse::HTTPResponse(int                                statusCode,
       _error_pages(std::map<int, std::string>()) {}
 
 void HTTPResponse::_errorResponse() {
-  if (_statusCode >= 400) {
+  if (_statusCode >= 300) {
     if (_error_pages.find(_statusCode) != _error_pages.end()) {
       _file = _error_pages[_statusCode];
     } else {
       _body = HTTPResponse::defaultErrorPage(_statusCode);
     }
   }
+  addHeader("Content-Type", "text/html");
+  addHeader("Content-Length", Utils::to_string(_body.length()));
 }
 
 void HTTPResponse::buildResponse() {
@@ -264,7 +286,8 @@ int HTTPResponse::sendResponse(int clientSocket) {
   if (_file.empty())
     return 0;
   _log.info("Sending file: " + _file);
-  if (!FileManager::doesFileExists(_file)) return sendResponse(404, clientSocket);
+  if (!FileManager::doesFileExists(_file))
+    return sendResponse(404, clientSocket);
   FILE* file = fopen(_file.c_str(), "r");
   fseek(file, 0, SEEK_END);
   int file_length = ftell(file);
@@ -296,8 +319,10 @@ int HTTPResponse::sendResponse(int statusCode, int clientSocket) {
   return 0;
 }
 
-std::string HTTPResponse::getExtensionFromContentType(const std::string& contentType) {
-  for (size_t i = 0; i < sizeof(CONTENT_TYPES) / sizeof(CONTENT_TYPES[0]); ++i) {
+std::string HTTPResponse::getExtensionFromContentType(
+    const std::string& contentType) {
+  for (size_t i = 0; i < sizeof(CONTENT_TYPES) / sizeof(CONTENT_TYPES[0]);
+       ++i) {
     if (CONTENT_TYPES[i].second == contentType) {
       return CONTENT_TYPES[i].first;
     }

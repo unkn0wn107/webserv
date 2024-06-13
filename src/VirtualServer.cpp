@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/11 12:46:15 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/14 00:22:22 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,11 +18,10 @@
 #include <sstream>
 #include "Utils.hpp"
 
-VirtualServer::VirtualServer(ServerConfig& serverConfig): 
-  _serverConfig(serverConfig),
-  _log(Logger::getInstance()),
-  _httpMethods(new HTTPMethods(*this))
-{
+VirtualServer::VirtualServer(ServerConfig& serverConfig)
+    : _serverConfig(serverConfig),
+      _log(Logger::getInstance()),
+      _httpMethods(new HTTPMethods(*this)) {
   _hostNames = _serverConfig.server_names;
   _defaultServer = _hasDefaultListenConfig();
 }
@@ -110,6 +109,8 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
     _log.error("VirtualServer::checkRequest : Content length too big");
     return new HTTPResponse(413, location.error_pages);
   }
+  if (location.returnCode >= 300 && location.returnCode < 400)
+    return new HTTPResponse(location.returnCode, location, location.returnUrl);
 
   return NULL;
 }

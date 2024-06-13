@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/09 02:04:18 by agaley           ###   ########.fr   */
+/*   Updated: 2024/06/14 00:23:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ ConnectionHandler::~ConnectionHandler() {
 }
 
 void ConnectionHandler::_receiveRequest() {
-  std::vector<char>  buffer(1024);
+  std::vector<char>  buffer(BUFFER_SIZE);
   std::ostringstream requestStream;
   ssize_t            bytesRead;
   bool               headerComplete = false;
@@ -157,7 +157,7 @@ void ConnectionHandler::processConnection() {
   event.data.ptr = this;
   if (_connectionStatus == READING) {
     try {
-                  _log.info(std::string("CONNECTION_HANDLER: receive req: "));
+      _log.info(std::string("CONNECTION_HANDLER: receive req: "));
       _receiveRequest();
     } catch (const Exception& e) {
       _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +

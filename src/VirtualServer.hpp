@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 10:22:15 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/11 12:46:05 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/14 14:25:10 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,10 +30,11 @@ class VirtualServer {
   bool                     _defaultServer;
   std::vector<std::string>    _hostNames;
   HTTPMethods*                _httpMethods;
+  std::map<std::string, std::map<std::string, std::string>  > _sessionStore;
 
   bool            _hasDefaultListenConfig();
   std::map<int, std::string> _getErrorPages(const std::string& uri);
-  
+
 
  public:
   VirtualServer(ServerConfig& serverConfig);
@@ -45,6 +46,10 @@ class VirtualServer {
   HTTPResponse *handleRequest(HTTPRequest& request);
   LocationConfig& getLocationConfig(const std::string& uri);
   std::string getRoot() const;
+  void storeSessionData(const std::string& sessionId, const std::string& key, const std::string& value);
+  std::string getSessionData(const std::string& sessionId, const std::string& key);
+  void deleteSessionData(const std::string& sessionId, const std::string& key);
+  void clearSessionData(const std::string& sessionId);
 };
 
 #endif

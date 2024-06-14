@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 00:22:47 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/14 13:39:20 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,6 +95,7 @@ class HTTPResponse {
   static int         sendResponse(int statusCode, int clientSocket);
   static std::string defaultErrorPage(int status);
   // Setters
+  void setCookie(const std::string& key, const std::string& value);
   void setStatusCode(int code);
   void setHeaders(const std::map<std::string, std::string>& headers);
   void addHeader(const std::string& key, const std::string& value);

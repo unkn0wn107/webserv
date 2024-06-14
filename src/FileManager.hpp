@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   FileManager.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:51 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/11 15:03:45 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/14 14:15:22 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ class FileManager {
    * @throws std::runtime_error If the file cannot be opened or read.
    */
   static std::string readFile(const std::string& filePath);
-
+  static int getFileSize(const std::string& filePath);
   /**
    * Writes data to a file.
    * @param filePath The path to the file where data will be written.

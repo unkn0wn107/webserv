@@ -3,14 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 00:23:16 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/14 13:50:40 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ConnectionHandler.hpp"
+#include "Common.hpp"
 #include <sys/epoll.h>
 #include <algorithm>
 #include <sstream>
@@ -27,8 +28,10 @@ ConnectionHandler::ConnectionHandler(
       _connectionStatus(READING),
       _clientSocket(clientSocket),
       _epollSocket(epollSocket),
-      _vservPool(virtualServers) {
-  _buffer = new char[BUFFER_SIZE];
+      _buffer(new char[BUFFER_SIZE]),
+      _readn(0),
+      _vservPool(virtualServers)
+{
   memset(_buffer, 0, BUFFER_SIZE);
   _log.info("CONNECTION_HANDLER: New connection handler created");
   _log.info("CONNECTION_HANDLER: serverPool size : " +
@@ -45,28 +48,50 @@ ConnectionHandler::~ConnectionHandler() {
 }
 
 void ConnectionHandler::_receiveRequest() {
-  std::vector<char>  buffer(BUFFER_SIZE);
-  std::ostringstream requestStream;
-  ssize_t            bytesRead;
-  bool               headerComplete = false;
+  bool headersEnd = false;
+  ssize_t bytes;
+  std::string headers;
+  size_t contentLength = 0;
+  bool contentLengthFound = false;
+  size_t headersEndPos = 0;
 
-  while ((bytesRead = recv(_clientSocket, &buffer[0], buffer.size(), 0)) > 0) {
-    requestStream.write(&buffer[0], bytesRead);
-    if (requestStream.str().find("\r\n\r\n") != std::string::npos) {
-      headerComplete = true;
-      break;  // End of request header
+  while (!headersEnd && (bytes = recv(_clientSocket, _buffer + _readn, BUFFER_SIZE - _readn, 0)) > 0) {
+    _readn += bytes;
+    headers.append(_buffer, _readn);
+    headersEndPos = headers.find("\r\n\r\n");
+    if (headersEndPos != std::string::npos) {
+      headersEnd = true;
+      size_t clPos = headers.find("Content-Length:");
+      if (clPos != std::string::npos) {
+        size_t clEnd = headers.find("\r\n", clPos);
+        std::string clValue = headers.substr(clPos + 15, clEnd - (clPos + 15));
+        contentLength = Utils::stoi<size_t>(clValue);
+        contentLengthFound = true;
+      }
+    }
+
+    if (_readn >= BUFFER_SIZE) {
+      _log.error("CONNECTION_HANDLER: Buffer overflow");
+      _connectionStatus = CLOSED;
+      return;
     }
   }
 
-  if (bytesRead == -1) {
-    throw ReadException("CONNECTION_HANDLER: recv error -1");
+  if (bytes <= 0) {
+      _log.error(std::string("CONNECTION_HANDLER: recv: ") + strerror(errno));
+      _connectionStatus = CLOSED;
+      return;
   }
 
-  if (!headerComplete)
-    throw ReadException(
-        "CONNECTION_HANDLER: Incomplete request header received.");
-  _request = new HTTPRequest(requestStream.str());
+  if (contentLengthFound && _readn - headersEndPos - 4 != contentLength) {
+      _log.error("CONNECTION_HANDLER: Content-Length mismatch");
+      _connectionStatus = CLOSED;
+      return;
+  }
+
+  _log.info("CONNECTION_HANDLER: Request received: " + std::string(_buffer, _readn));
   _processRequest();
+  _readn = 0;
 }
 
 void ConnectionHandler::_sendResponse() {
@@ -131,9 +156,13 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
 }
 
 void ConnectionHandler::_processRequest() {
-  // TODO ? : Initialize request with  location config and change
-  // LocationConfig&
-  // _request = new HTTPRequest(_buffer);
+  _request = new HTTPRequest(_buffer);
+  std::string sessionId = _request->getSessionId();
+  if (sessionId.empty()) {
+    sessionId = generateSessionId();
+    _request->setSessionId(sessionId);
+  }
+
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
     _log.error("CONNECTION_HANDLER: No virtual server selected");
@@ -141,13 +170,17 @@ void ConnectionHandler::_processRequest() {
     _connectionStatus = CLOSED;
     return;
   }
+
   if ((_response = vserv->checkRequest(*_request)) != NULL) {
     _log.error("CONNECTION_HANDLER: Request failed");
+    _response->setCookie("sessionid", sessionId);
     _connectionStatus = SENDING;
     return;
   }
+
   _log.info("CONNECTION_HANDLER: Request valid");
   _response = vserv->handleRequest(*_request);
+  _response->setCookie("sessionid", sessionId);
   _connectionStatus = SENDING;
 }
 

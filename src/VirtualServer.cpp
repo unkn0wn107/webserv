@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/14 00:22:22 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/14 13:49:41 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,43 +74,38 @@ LocationConfig& VirtualServer::getLocationConfig(const std::string& uri) {
 }
 
 HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
-  std::string    protocol = request.getProtocol();
-  std::string    method = request.getMethod();
-  std::string    uri = request.getURI();
-  unsigned int   contentLength = request.getContentLength();
+  std::string protocol = request.getProtocol();
+  std::string method = request.getMethod();
+  std::string uri = request.getURI();
+  unsigned int contentLength = request.getContentLength();
   LocationConfig location = getLocationConfig(uri);
-  _log.info("VirtualServer::checkRequest : Protocol : " + protocol +
-            " Method : " + method + " URI : " + uri +
-            " Content Length : " + Utils::to_string(contentLength));
+
+  _log.info("Checking request: Protocol: " + protocol + ", Method: " + method +
+            ", URI: " + uri + ", Content Length: " + Utils::to_string(contentLength));
+
   if (protocol != "HTTP/1.1") {
-    _log.error("VirtualServer::checkRequest : Protocol not supported");
+    _log.error("Unsupported protocol");
     return new HTTPResponse(400, location.error_pages);
   }
-  _log.info("VirtualServer::checkRequest : Location : " + location.location);
-  if (location.location == "") {
-    _log.error("VirtualServer::checkRequest : Location not found");
+
+  if (location.location.empty()) {
+    _log.error("Location not found for URI: " + uri);
     return new HTTPResponse(404, location.error_pages);
   }
-  bool isMethodAllowedInLocation =
-      std::find(location.allowed_methods.begin(),
-                location.allowed_methods.end(),
-                method) != location.allowed_methods.end();
-  if (!isMethodAllowedInLocation) {
-    _log.error("VirtualServer::checkRequest : Method not allowed");
+
+  if (std::find(location.allowed_methods.begin(), location.allowed_methods.end(), method) == location.allowed_methods.end()) {
+    _log.error("Method not allowed for this location");
     return new HTTPResponse(403, location.error_pages);
   }
-  // TODO : To fix
-  // if (contentLength > location.client_max_body_size ||
-  //     contentLength > request.getBody().length()) {
-  //   _log.error("VirtualServer::checkRequest : Content length too big");
-  //   return new HTTPResponse(413, location.error_pages);
-  // }
-  if (contentLength > location.client_max_body_size) {
-    _log.error("VirtualServer::checkRequest : Content length too big");
+
+  if (contentLength > location.client_max_body_size || contentLength != request.getBody().length()) {
+    _log.error("Content length too big or mismatch");
     return new HTTPResponse(413, location.error_pages);
   }
-  if (location.returnCode >= 300 && location.returnCode < 400)
+
+  if (location.returnCode >= 300 && location.returnCode < 400) {
     return new HTTPResponse(location.returnCode, location, location.returnUrl);
+  }
 
   return NULL;
 }
@@ -136,6 +131,26 @@ std::string VirtualServer::getServerName() const {
 
 std::string VirtualServer::getRoot() const {
   return _serverConfig.root;
+}
+
+void VirtualServer::storeSessionData(const std::string& sessionId,
+                                    const std::string& key,
+                                    const std::string& value) {
+  _sessionStore[sessionId][key] = value;
+}
+
+std::string VirtualServer::getSessionData(const std::string& sessionId,
+                                          const std::string& key) {
+  return _sessionStore[sessionId][key];
+}
+
+void VirtualServer::deleteSessionData(const std::string& sessionId,
+                                      const std::string& key) {
+  _sessionStore[sessionId].erase(key);
+}
+
+void VirtualServer::clearSessionData(const std::string& sessionId) {
+  _sessionStore[sessionId].clear();
 }
 
 VirtualServer::~VirtualServer() {

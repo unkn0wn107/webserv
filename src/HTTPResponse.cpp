@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 00:21:21 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/14 13:40:15 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -341,6 +341,10 @@ std::string HTTPResponse::getContentType(const std::string& path) {
     }
   }
   return "application/octet-stream";
+}
+
+void HTTPResponse::setCookie(const std::string& key, const std::string& value) {
+  addHeader("Set-Cookie", key + "=" + value + "; Path=/; HttpOnly");
 }
 
 void HTTPResponse::setStatusCode(int code) {

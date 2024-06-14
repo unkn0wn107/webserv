@@ -3,18 +3,18 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPMethods.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/12 17:02:22 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/14 14:22:50 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPMethods.hpp"
 
-HTTPMethods::HTTPMethods(VirtualServer& server): 
+HTTPMethods::HTTPMethods(VirtualServer& server):
 	_server(server),
-	_log(Logger::getInstance()) 
+	_log(Logger::getInstance())
 {}
 
 HTTPMethods::~HTTPMethods() {}
@@ -68,14 +68,11 @@ std::string HTTPMethods::_generateDirectoryListing(const std::string& path) {
 HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
                                         LocationConfig&    location) {
   std::string   indexPath = path + "/" + location.index;
-  std::ifstream indexFile(indexPath.c_str());
-  if (indexFile && location.autoindex) {
-    std::string   content((std::istreambuf_iterator<char>(indexFile)),
-                          std::istreambuf_iterator<char>());
+  if (FileManager::doesFileExists(indexPath) && location.autoindex) {
     HTTPResponse* response = new HTTPResponse(200);
     response->addHeader("Content-Type", "text/html");
-    response->addHeader("Content-Length", Utils::to_string(content.size()));
-    response->setBody(content);
+    response->addHeader("Content-Length", Utils::to_string(FileManager::getFileSize(indexPath)));
+    response->setFile(indexPath);
     return response;
   } else if (location.autoindex) {
     std::string   directoryListing = _generateDirectoryListing(path);
@@ -103,18 +100,14 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
     return new HTTPResponse(404, location.error_pages);
   }
 
-  if (S_ISDIR(statbuf.st_mode)) {
+  if (FileManager::isDirectory(path)) {
     return _autoindex(path, location);
   }
-  // Gestion des fichiers normaux
   std::string   contentType = HTTPResponse::getContentType(path);
-  std::ifstream file(path.c_str());
-  if (file) {
-    std::string   content((std::istreambuf_iterator<char>(file)),
-                          std::istreambuf_iterator<char>());
+  if (FileManager::doesFileExists(path)) {
     HTTPResponse* response = new HTTPResponse(200);
     response->addHeader("Content-Type", contentType);
-    response->addHeader("Content-Length", Utils::to_string(content.size()));
+    response->addHeader("Content-Length", Utils::to_string(FileManager::getFileSize(path)));
     response->setFile(path);
     return response;
   }
@@ -177,28 +170,9 @@ HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
 HTTPResponse* HTTPMethods::_handleHeadRequest(HTTPRequest& request) {
 	HTTPResponse* response = _handleGetRequest(request);
 	response->setBody("");
+  response->setFile("");
 	return response;
 }
-
-// HTTPResponse* HTTPMethods::_handlePutRequest(HTTPRequest& request) {
-// 	LocationConfig location = _server.getLocationConfig(request.getURI());
-// 	if (location.put == false) {
-// 		return new HTTPResponse(403, location.error_pages);
-// 	}
-//   std::string path = _getPath(request.getURI(), location);
-//   std::ofstream file(path.c_str());
-//   if (file) {
-//     if (!file.write(request.getBody().c_str(), request.getBody().size())) {
-//       return new HTTPResponse(500, location.error_pages);
-//     }
-//     HTTPResponse* response = new HTTPResponse(200);
-//     response->addHeader("Content-Type", "text/html");
-//     response->addHeader("Content-Length", Utils::to_string(path.size() + 66));
-//     response->setBody("<html><body>File put successfully. File path: " + path + "</body></html>");
-//     return response;
-//   }
-//   return new HTTPResponse(500, location.error_pages);
-// }
 
 HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
 	std::string    protocol = request.getProtocol();

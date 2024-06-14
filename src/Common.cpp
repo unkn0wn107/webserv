@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Common.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 11:06:33 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/11 15:53:55 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/14 13:38:25 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,4 +38,14 @@ int set_non_blocking(int sockfd) {
 void  signalHandler(int signum) {
   Logger::getInstance().info("Signal received: " + Utils::to_string(signum));
   Server::getInstance().stop(signum);
+}
+
+
+std::string generateSessionId() {
+  std::string sessionId;
+  std::string chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (int i = 0; i < 32; i++) {
+    sessionId += chars[rand() % chars.size()];
+  }
+  return sessionId;
 }

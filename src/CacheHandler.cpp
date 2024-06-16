@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 22:55:38 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/08 16:28:12 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,12 +63,28 @@ int CacheHandler::getResponse(const HTTPRequest& request,
   return 0;
 }
 
+void CacheHandler::reserveCache(const HTTPRequest&  request) {
+  std::string key = _generateKey(request);
+  LockGuard   lock(_mutex);
+  if (_cache.find(key) == _cache.end())
+    _cache[key] = std::pair<HTTPResponse*, time_t>(NULL, time(NULL));
+}
+
 void CacheHandler::storeResponse(const HTTPRequest&  request,
                                  const HTTPResponse& response) {
   std::string key = _generateKey(request);
   LockGuard   lock(_mutex);
+  if (_cache[key].first == NULL)
+    _cache.erase(key);
   if (_cache.find(key) == _cache.end())
     _cache[key] = std::make_pair(new HTTPResponse(response), time(NULL));
+}
+
+void CacheHandler::deleteCache(const HTTPRequest&  request) {
+  std::string key = _generateKey(request);
+  LockGuard   lock(_mutex);
+  if (_cache.find(key) != _cache.end())
+    _cache.erase(key);
 }
 
 std::string CacheHandler::_generateKey(const HTTPRequest& request) const {

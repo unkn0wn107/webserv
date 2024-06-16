@@ -142,8 +142,12 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
             _state = CACHE_CHECK;
           else
             _state = REGISTER_SCRIPT_FD;
-        } catch (...) {
-          throw;
+        } catch (const Exception& e) {
+          _state = CGI_ERROR;
+          if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e) || dynamic_cast<const CGIHandler::CGINotExecutable*>(&e) || dynamic_cast<const CGIHandler::ScriptNotExecutable*>(&e))
+            _response.setStatusCode(HTTPResponse::FORBIDDEN);
+          else if (dynamic_cast<const CGIHandler::NoRuntimeError*>(&e) || dynamic_cast<const CGIHandler::CGINotFound*>(&e) || dynamic_cast<const CGIHandler::ScriptNotFound*>(&e))
+            _response.setStatusCode(HTTPResponse::NOT_FOUND);
         }
         break;
 
@@ -158,12 +162,16 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
                                         : "Cache not found"));
           if (cacheStatus == 1)
             _state = DONE;
-          // else if (cacheStatus == -1)
-          //   _state = CACHE_CHECK;
-          else
+          else if (cacheStatus == -1) {
+            _state = CACHE_CHECK;  // Cache-building waiting, second caller wait for cache to be ready
+            continueProcessing = false;
+          }
+          else {
+            _cacheHandler.reserveCache(_request); // Cache-building waiting, first caller registers NULL
             _state = REGISTER_SCRIPT_FD;
+          }
         } catch (...) {
-          throw;
+          _state = CGI_ERROR;
         }
         break;
 
@@ -192,7 +200,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           } else if (_pid == 0)
             _state = RUN_SCRIPT;
         } catch (...) {
-          throw;
+          _state = CGI_ERROR;
         }
         break;
 
@@ -248,7 +256,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           exit(EXIT_FAILURE);
         } catch (...) {
           _state = CGI_ERROR;
-          throw;
         }
         break;
 
@@ -266,12 +273,11 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           if (pidReturn == 0) {
             _log.info("CGI: script is still running");
             if (std::time(NULL) - _runStartTime > CGI_TIMEOUT_SEC) {
-              _log.error("CGI: script timedout after " +
-                         Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
               kill(_pid, SIGKILL);
               int statusClean;
               waitpid(_pid, &statusClean, 0); // To stop child process in Zombie state
-              _state = CGI_ERROR;
+              throw TimeoutException("CGI: script timedout after " +
+                                    Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
               break;
             }
             continueProcessing = false;
@@ -282,27 +288,24 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
             _log.info("CGI: script exited, status=" +
                       Utils::to_string(exitStatus));
             if (exitStatus != 0) {
-              _log.warning("CGI: script finished with errors, exit status: " +
-                          Utils::to_string(exitStatus));
+              throw ExecutorError("CGI: script finished with errors, exit status: " +
+                                Utils::to_string(exitStatus));
             }
             _state = READ_FROM_CGI;
             break;
           } else if (WIFSIGNALED(status)) {
-            _log.error("CGI: script killed by signal: " +
-                      Utils::to_string(WTERMSIG(status)));
-            _state = CGI_ERROR;
-            break;
+            throw ExecutorError("CGI: script killed by signal: " +
+                              Utils::to_string(WTERMSIG(status)));
           } else if (WIFSTOPPED(status)) {
-            _log.error("CGI: script stopped by signal: " +
-                      Utils::to_string(WSTOPSIG(status)));
-            _state = CGI_ERROR;
-            break;
+            throw ExecutorError("CGI: script stopped by signal: " +
+                              Utils::to_string(WSTOPSIG(status)));
           }
           _state = CGI_ERROR;
           break;
-        } catch (...) {
+        } catch (const Exception& e) {
+          if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
+            _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
           _state = CGI_ERROR;
-          throw;
         }
         break;
 
@@ -328,7 +331,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           _state = PROCESS_OUTPUT;
         } catch (...) {
           _state = CGI_ERROR;
-          throw;
         }
         break;
 
@@ -359,11 +361,10 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           headers["Content-Length"] = Utils::to_string(bodyContent.size());
           _response.setHeaders(headers);
           _response.setBody(bodyContent);
+          _state = FINALIZE_RESPONSE;
         } catch (...) {
           _state = CGI_ERROR;
-          throw;
         }
-        _state = FINALIZE_RESPONSE;
         break;
 
       case FINALIZE_RESPONSE:
@@ -376,15 +377,16 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
                 "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
             _cacheHandler.storeResponse(_request, _response);
           }
+          _state = DONE;
         } catch (...) {
           _state = CGI_ERROR;
-          throw;
         }
-        _state = DONE;
         break;
 
       case CGI_ERROR:
-        _response.setStatusCode(500);
+        if (_response.getStatusCode() == HTTPResponse::OK)
+          _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
+        _cacheHandler.deleteCache(_request);
         _state = DONE;
         break;
 

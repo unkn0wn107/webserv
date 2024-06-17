@@ -3,18 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   Common.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 11:06:33 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/14 13:38:25 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/17 19:39:18 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <fcntl.h>
-#include <string.h>
+#include "Common.hpp"
 #include "Logger.hpp"
-#include "Utils.hpp"
 #include "Server.hpp"
+#include "Utils.hpp"
 
 int set_non_blocking(int sockfd) {
   int flags, s;
@@ -34,16 +33,16 @@ int set_non_blocking(int sockfd) {
   return 0;
 }
 
-
-void  signalHandler(int signum) {
+void signalHandler(int signum) {
   Logger::getInstance().info("Signal received: " + Utils::to_string(signum));
   Server::getInstance().stop(signum);
 }
 
-
-std::string generateSessionId() {
+std::string generateSessionId(void) {
   std::string sessionId;
-  std::string chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  std::string chars =
+      "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  srand(static_cast<unsigned int>(time(NULL)));
   for (int i = 0; i < 32; i++) {
     sessionId += chars[rand() % chars.size()];
   }

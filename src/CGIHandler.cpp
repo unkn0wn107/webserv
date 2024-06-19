@@ -171,12 +171,6 @@ void CGIHandler::_executeChildProcess(const HTTPRequest& request,
   exit(EXIT_FAILURE);  // execve only returns on error
 }
 
-char* alloc_string(const std::string& str) {
-  char* result = new char[str.length() + 1];
-  std::strcpy(result, str.c_str());
-  return result;
-}
-
 std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request) {
   std::vector<char*> argv;
   std::string        runtime = _identifyRuntime(request);
@@ -204,40 +198,39 @@ std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request) {
   return argv;
 }
 
+char* alloc_string(const std::string& str) {
+  char* result = new char[str.length() + 1];
+  std::strcpy(result, str.c_str());
+  return result;
+}
+
 char** CGIHandler::_getEnvp(const HTTPRequest& request) {
-  std::vector<char*>                       env;
   const std::map<std::string, std::string> headers = request.getHeaders();
   const URI::Components uriComponents = request.getURIComponents();
 
-  env.push_back(alloc_string("REDIRECT_STATUS=200"));  // For php-cgi at least
-  env.push_back(alloc_string("SCRIPT_FILENAME=" + request.getConfig()->root +
-                             uriComponents.scriptName));
-  env.push_back(alloc_string("SCRIPT_NAME=" + uriComponents.scriptName));
-  env.push_back(alloc_string("PATH_INFO=" + uriComponents.pathInfo));
-  env.push_back(alloc_string("REQUEST_METHOD=" + request.getMethod()));
-  env.push_back(alloc_string("QUERY_STRING=" + uriComponents.queryString));
-  env.push_back(alloc_string("REMOTE_HOST=localhost"));
-  env.push_back(alloc_string(
-      ("CONTENT_LENGTH=" + Utils::to_string(request.getBody().length()))
-          .c_str()));
+  char** envp = new char*[headers.size() + 8 + 1];  // 8 env variables + NULL
 
+  envp[0] = alloc_string("REDIRECT_STATUS=200");  // For php-cgi at least
+  envp[1] = alloc_string("SCRIPT_FILENAME=" + request.getConfig()->root +
+                         uriComponents.scriptName);
+  envp[2] = alloc_string("SCRIPT_NAME=" + uriComponents.scriptName);
+  envp[3] = alloc_string("PATH_INFO=" + uriComponents.pathInfo);
+  envp[4] = alloc_string("REQUEST_METHOD=" + request.getMethod());
+  envp[5] = alloc_string("QUERY_STRING=" + uriComponents.queryString);
+  envp[6] = alloc_string("REMOTE_HOST=localhost");
+  envp[7] = alloc_string(
+      ("CONTENT_LENGTH=" + Utils::to_string(request.getBody().length()))
+          .c_str());
+
+  size_t i = 0;
   for (std::map<std::string, std::string>::const_iterator hd = headers.begin();
        hd != headers.end(); ++hd) {
     std::string envName = "HTTP_" + hd->first;
     std::replace(envName.begin(), envName.end(), '-', '_');
     std::transform(envName.begin(), envName.end(), envName.begin(), ::toupper);
     std::string envLine = envName + "=" + hd->second;
-    env.push_back(alloc_string(envLine));
+    envp[8 + i++] = alloc_string(envLine);
   }
-
-  env.push_back(NULL);
-
-  char** envp = new char*[env.size() + 1];
-  size_t i;
-  for (i = 0; i < env.size(); ++i) {
-    envp[i] = env[i];
-  }
-  envp[i] = NULL;
-
+  envp[8 + i] = NULL;
   return envp;
 }

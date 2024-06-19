@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/19 23:36:06 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/20 00:04:44 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -60,11 +60,11 @@ run: run-only
 	@make logs
 
 run-only:
-	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d
+	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d webserv
 	@make build
 
 run-debug:
-	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d
+	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d webserv
 	@make build-debug
 
 dev:
@@ -88,7 +88,7 @@ stop:
 
 test:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d webserv
-	sleep 2
+	sleep 5
 	./test.sh
 	$(MAKE) stop
 

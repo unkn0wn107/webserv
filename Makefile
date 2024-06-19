@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
+#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/19 00:40:43 by  mchenava        ###   ########.fr        #
+#    Updated: 2024/06/19 22:56:09 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -67,13 +67,10 @@ run-debug:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d
 	@make build-debug
 
-# dev:
-#   while true; do \
-#     inotifywait git status-qr -e modify -e create -e delete -e move $(SRC_DIR); \
-# 		kill 1; \
-#     make debug; \
-# 		make logs; \
-#   done
+dev:
+	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d webserv-dev
+	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose exec -it webserv-dev make
+	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose exec -it webserv-dev ash -c "./webserv"
 
 build:
 	docker compose exec webserv* make -C /app/ 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"

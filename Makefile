@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/19 22:56:09 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/19 23:36:06 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -86,8 +86,9 @@ logs:
 stop:
 	docker compose stop
 
-test: run-only
-	sleep 5
+test:
+	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d webserv
+	sleep 2
 	./test.sh
 	$(MAKE) stop
 

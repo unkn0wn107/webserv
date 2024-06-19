@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/20 00:04:44 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/20 00:19:00 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -56,7 +56,7 @@ $(OBJ_DIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 run: run-only
-	sleep 1
+	$(MAKE) wait-for-healthy
 	@make logs
 
 run-only:
@@ -66,6 +66,13 @@ run-only:
 run-debug:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d webserv
 	@make build-debug
+
+wait-for-healthy:
+	@echo "Waiting for webserv docker to be healthy..."
+	@while ! docker inspect --format='{{json .State.Health.Status}}' webserv-production | grep -q '"healthy"'; do \
+		echo "Waiting for webserv to become healthy..."; \
+		sleep 2; \
+	done
 
 dev:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d webserv-dev
@@ -88,14 +95,14 @@ stop:
 
 test:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d webserv
-	sleep 5
+	$(MAKE) wait-for-healthy
 	./test.sh
 	$(MAKE) stop
 
 test-compare: docker-stop
 	@$(MAKE) run-only
 	@$(MAKE) nginxd
-	sleep 1
+	$(MAKE) wait-for-healthy
 	./test_compare.sh
 	@$(MAKE) docker-stop > /dev/null 2>&1
 

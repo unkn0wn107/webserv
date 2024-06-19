@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPMethods.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/14 14:22:50 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/18 23:47:06 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,15 +68,15 @@ std::string HTTPMethods::_generateDirectoryListing(const std::string& path) {
 HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
                                         LocationConfig&    location) {
   std::string   indexPath = path + "/" + location.index;
-  if (FileManager::doesFileExists(indexPath) && location.autoindex) {
-    HTTPResponse* response = new HTTPResponse(200);
+  if (FileManager::doesFileExists(indexPath)) {
+    HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", "text/html");
     response->addHeader("Content-Length", Utils::to_string(FileManager::getFileSize(indexPath)));
     response->setFile(indexPath);
     return response;
   } else if (location.autoindex) {
     std::string   directoryListing = _generateDirectoryListing(path);
-    HTTPResponse* response = new HTTPResponse(200);
+    HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", "text/html");
     response->addHeader("Content-Length",
                         Utils::to_string(directoryListing.size()));
@@ -85,7 +85,7 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
   } else {
     _log.error(
         "HTTPMethods::_autoindex : Directory index not available");
-    return new HTTPResponse(404, location.error_pages);
+    return new HTTPResponse(HTTPResponse::NOT_FOUND, location.error_pages);
   }
 }
 
@@ -97,7 +97,7 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
   struct stat    statbuf;
   if (stat(path.c_str(), &statbuf) == -1) {
     _log.error("HTTPMethods::_handleGetRequest : Path not found: " + path);
-    return new HTTPResponse(404, location.error_pages);
+    return new HTTPResponse(HTTPResponse::NOT_FOUND, location.error_pages);
   }
 
   if (FileManager::isDirectory(path)) {
@@ -105,7 +105,7 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
   }
   std::string   contentType = HTTPResponse::getContentType(path);
   if (FileManager::doesFileExists(path)) {
-    HTTPResponse* response = new HTTPResponse(200);
+    HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", contentType);
     response->addHeader("Content-Length", Utils::to_string(FileManager::getFileSize(path)));
     response->setFile(path);
@@ -113,13 +113,13 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
   }
 
   _log.error("HTTPMethods::_handleGetRequest : File not found");
-  return new HTTPResponse(404, location.error_pages);
+  return new HTTPResponse(HTTPResponse::NOT_FOUND, location.error_pages);
 }
 
 HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 	LocationConfig location = _server.getLocationConfig(request.getURI());
 	if (location.upload == false) {
-		return new HTTPResponse(403, location.error_pages);
+		return new HTTPResponse(HTTPResponse::FORBIDDEN, location.error_pages);
 	}
 	std::string path = _getPath(request.getURI(), location);
 	std::string contentType;
@@ -136,34 +136,34 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 	if (file) {
 		if (!file.write(request.getBody().c_str(), request.getBody().size())) {
       _log.error("HTTPMethods::_handlePostRequest : File write error: " + path);
-			return new HTTPResponse(500, location.error_pages);
+			return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, location.error_pages);
 		}
 		file.close();
-		HTTPResponse* response = new HTTPResponse(200);
+		HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
 		response->addHeader("Content-Type", "text/html");
 		response->addHeader("Content-Length", Utils::to_string(path.size() + 67));
 		response->setBody("<html><body>File uploaded successfully. File path: " + path + "</body></html>");
 		return response;
 	}
 	_log.error("HTTPMethods::_handlePostRequest : File open error: " + path + " | error: " + strerror(errno));
-	return new HTTPResponse(500, location.error_pages);
+	return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, location.error_pages);
 }
 
 HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
 	LocationConfig location = _server.getLocationConfig(request.getURI());
 	if (location.delete_ == false) {
-		return new HTTPResponse(403, location.error_pages);
+		return new HTTPResponse(HTTPResponse::FORBIDDEN, location.error_pages);
 	}
 	std::string path = _getPath(request.getURI(), location);
 	if (remove(path.c_str()) == 0) {
-    HTTPResponse* response = new HTTPResponse(200);
+    HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", "text/html");
     response->addHeader("Content-Length", Utils::to_string(path.size() + 66));
     response->setBody("<html><body>File deleted successfully. File path: " + path + "</body></html>");
 		return response;
 	} else {
     _log.error("HTTPMethods::_handleDeleteRequest : File delete error");
-		return new HTTPResponse(500, location.error_pages);
+		return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, location.error_pages);
 	}
 }
 
@@ -171,6 +171,7 @@ HTTPResponse* HTTPMethods::_handleHeadRequest(HTTPRequest& request) {
 	HTTPResponse* response = _handleGetRequest(request);
 	response->setBody("");
   response->setFile("");
+  response->deleteHeader("Content-Length");
 	return response;
 }
 
@@ -185,7 +186,7 @@ HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
 
   if (protocol != "HTTP/1.1") {
     _log.error("HTTPMethods::handleRequest : Protocol not supported");
-    return new HTTPResponse(400, location.error_pages);
+    return new HTTPResponse(HTTPResponse::BAD_REQUEST, location.error_pages);
   }
   if (CGIHandler::isScript(request)) {
     _log.info("Handling CGI request for URI: " + request.getURI());
@@ -214,5 +215,5 @@ HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
     return _handleHeadRequest(request);
   }
   _log.error("HTTPMethods::handleRequest : Method not allowed");
-  return new HTTPResponse(403, location.error_pages);
+  return new HTTPResponse(HTTPResponse::NOT_IMPLEMENTED, location.error_pages);
 }

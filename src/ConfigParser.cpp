@@ -237,7 +237,9 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
       methods >> method;
       while (methods >> method && method[0] != '{') {
         method = _cleanValue(method, ' ');
-        locationConfig.allowed_methods.push_back(method);
+        locationConfig.allowed_methods.insert(method);
+        if (method == "GET")
+          locationConfig.allowed_methods.insert("HEAD");
       }
       limitExceptEncountered = true;
     } else if (key == "return") {
@@ -281,7 +283,7 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
     for (size_t i = 0; i < sizeof(HTTPRequest::supportedMethods) /
                                sizeof(HTTPRequest::supportedMethods[0]);
          ++i) {
-      locationConfig.allowed_methods.push_back(
+      locationConfig.allowed_methods.insert(
           HTTPRequest::supportedMethods[i]);
     }
   }

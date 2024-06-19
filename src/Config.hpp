@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/11 14:47:29 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/18 17:16:35 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ typedef struct LocationConfig {
   std::map<int, std::string> error_pages;
 
   // Specific to location
-  std::vector<std::string> allowed_methods;
+  std::set<std::string>    allowed_methods;
   int                      returnCode;
   std::string              returnUrl;
 

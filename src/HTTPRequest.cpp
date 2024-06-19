@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 13:42:12 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/18 17:25:37 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,7 +102,7 @@ void HTTPRequest::setBody(const std::string& body) {
 int HTTPRequest::getContentLength() const {
   std::string contentLength = getHeader("Content-Length");
   if (contentLength.empty()) {
-    return 0;
+    return -1;
   }
   return Utils::stoi<int>(contentLength);
 }

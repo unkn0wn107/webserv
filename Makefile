@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
+#    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/11 19:06:34 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/19 00:40:43 by  mchenava        ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@ NAME = webserv
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
-DEBUGFLAGS = -g3
+DEBUGFLAGS = -g3 -fsanitize=address
 
 SRC_DIR = src
 OBJ_DIR = obj
@@ -62,14 +62,14 @@ run: run-only
 run-only:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d
 	@make build
-	@make logs
 
 run-debug:
 	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d
+	@make build-debug
 
 # dev:
 #   while true; do \
-#     inotifywait -qr -e modify -e create -e delete -e move $(SRC_DIR); \
+#     inotifywait git status-qr -e modify -e create -e delete -e move $(SRC_DIR); \
 # 		kill 1; \
 #     make debug; \
 # 		make logs; \
@@ -77,6 +77,10 @@ run-debug:
 
 build:
 	docker compose exec webserv* make -C /app/ 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
+	-docker compose exec webserv* kill 1 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
+
+build-debug:
+	docker compose exec webserv* make -C debug /app/ 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
 	-docker compose exec webserv* kill 1 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
 
 logs:
@@ -93,8 +97,9 @@ test: run-only
 test-compare: docker-stop
 	@$(MAKE) run-only
 	@$(MAKE) nginxd
+	sleep 1
 	./test_compare.sh
-	@$(MAKE) docker-stop
+	@$(MAKE) docker-stop > /dev/null 2>&1
 
 update_gitignore:
 	@if ! grep -q "$(LOG_FILE_EXT)" .gitignore; then \
@@ -113,9 +118,10 @@ nginx: nginx-build
 		-v ./site:/var/www/html nginx
 
 nginxd: nginx-build
-	docker run --rm --name nginx -d -p $(NGINX_PORT_1):8080 -p $(NGINX_PORT_2):8081 \
-		-v ./default.conf:/etc/nginx/conf.d/default.conf:ro \
-		-v ./site:/var/www/html nginx
+	docker compose run --rm --build --name webserv -d -p 8080:8080 -p 8081:8081 \
+		-v ./src/:/app/src/ \
+		-v ./default.conf:/app/default.conf \
+		-v ./site:/var/www/html webserv
 
 docker-stop:
 	-docker stop nginx & docker compose stop webserv*

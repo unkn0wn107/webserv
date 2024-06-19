@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 13:39:20 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/18 21:49:55 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,6 +74,8 @@ class HTTPResponse {
   static std::pair<int, std::string> _defaultErrorPages[];
 
   void _errorResponse();
+  ssize_t _sendAll(int socket, const char *buffer, size_t length);
+  ssize_t _sendAllFile(int socket, FILE* file);
 
  public:
   HTTPResponse();
@@ -99,6 +101,7 @@ class HTTPResponse {
   void setStatusCode(int code);
   void setHeaders(const std::map<std::string, std::string>& headers);
   void addHeader(const std::string& key, const std::string& value);
+  void deleteHeader(const std::string& key);
   void setBody(const std::string& body);
   void setFile(const std::string& path);
 

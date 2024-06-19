@@ -83,6 +83,9 @@ return_failure_if_test_fails() {
 # Run tests and capture their exit status
 test_get "/" "200"
 test_get "/nonexistent" "404"
+test_get "/cgi/hello.py" "200"
+test_get "/cgi/hello.php" "200"
+test_get "/cgi/off/disabled.py" "403"
 # test_post "/submit" "200" "name=example&value=test"
 
 test_get_ipv6 "/" "200"

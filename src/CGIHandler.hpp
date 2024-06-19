@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGIHandler.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/10 00:45:32 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/19 02:30:14 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -118,6 +118,8 @@ class CGIHandler {
    * environment variable.
    */
   static char** _getEnvp(const HTTPRequest& request);
+
+  static std::vector<char*> _getArgv(const HTTPRequest& request);
 
   /**
    * Identifies the runtime environment based on the script file extension.

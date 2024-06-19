@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 13:50:40 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/18 16:34:39 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,6 +56,12 @@ void ConnectionHandler::_receiveRequest() {
   size_t headersEndPos = 0;
 
   while (!headersEnd && (bytes = recv(_clientSocket, _buffer + _readn, BUFFER_SIZE - _readn, 0)) > 0) {
+    if (bytes <= 0) {
+        _log.error(std::string("CONNECTION_HANDLER: recv: ") + strerror(errno));
+        _connectionStatus = CLOSED;
+        return;
+    }
+    
     _readn += bytes;
     headers.append(_buffer, _readn);
     headersEndPos = headers.find("\r\n\r\n");
@@ -77,11 +83,6 @@ void ConnectionHandler::_receiveRequest() {
     }
   }
 
-  if (bytes <= 0) {
-      _log.error(std::string("CONNECTION_HANDLER: recv: ") + strerror(errno));
-      _connectionStatus = CLOSED;
-      return;
-  }
 
   if (contentLengthFound && _readn - headersEndPos - 4 != contentLength) {
       _log.error("CONNECTION_HANDLER: Content-Length mismatch");

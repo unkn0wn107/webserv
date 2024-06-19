@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:32 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/09 03:47:27 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/18 19:37:28 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,32 @@ std::string Utils::trim(const std::string& str) {
 
   // Extraire la sous-chaîne sans les espaces blancs au début et à la fin
   return str.substr(start, end - start + 1);
+}
+
+size_t Utils::calculateByteLength(const std::string& input, const std::string& charset) {
+  if (charset == "UTF-8") {
+    std::size_t length = 0;
+    for (std::size_t i = 0; i < input.length(); ++i) {
+      unsigned char c = static_cast<unsigned char>(input[i]);
+            if ((c & 0x80) == 0) { // 0xxxxxxx, 1 byte
+                length += 1;
+            } else if ((c & 0xE0) == 0xC0) { // 110xxxxx, 2 bytes
+                length += 2;
+                ++i; // Skip next byte
+            } else if ((c & 0xF0) == 0xE0) { // 1110xxxx, 3 bytes
+                length += 3;
+                i += 2; // Skip next two bytes
+            } else if ((c & 0xF8) == 0xF0) { // 11110xxx, 4 bytes
+                length += 4;
+                i += 3; // Skip next three bytes
+            }
+        }
+        return length;
+    } else if (charset == "ISO-8859-1" || charset == "ASCII") {
+        return input.size(); // These encodings are usually 1 byte per character
+    }
+    // Add other encodings if necessary
+    return input.size(); // Returns the default length if the encoding is not handled
 }
 
 template size_t       Utils::stoi<size_t>(const std::string& str);

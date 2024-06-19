@@ -100,7 +100,7 @@ void ConfigManager::_printLocationsConfig(
               << std::endl;
     std::cout << "\tCGI: " << (locationConfig.cgi ? "on" : "off") << std::endl;
     std::cout << "\tAllowed Methods: ";
-    for (std::vector<std::string>::const_iterator methodIt =
+    for (std::set<std::string>::const_iterator methodIt =
              locationConfig.allowed_methods.begin();
          methodIt != locationConfig.allowed_methods.end(); ++methodIt) {
       std::cout << *methodIt << " ";

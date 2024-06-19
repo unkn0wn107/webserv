@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 13:40:15 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/18 21:52:10 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -277,10 +277,44 @@ std::string HTTPResponse::defaultErrorPage(int status) {
   return std::string("");
 }
 
+ssize_t HTTPResponse::_sendAll(int socket, const char *buffer, size_t length) {
+  size_t totalSent = 0; // combien de bytes nous avons envoyé
+  ssize_t bytesSent;
+
+  while (totalSent < length) {
+    bytesSent = send(socket, buffer + totalSent, length - totalSent, 0);
+    if (bytesSent == -1) { 
+      return -1; // Une erreur s'est produite
+    }
+    totalSent += bytesSent;
+  }
+
+  return totalSent; // Retourne le nombre total de bytes envoyés
+}
+
+ssize_t HTTPResponse::_sendAllFile(int clientSocket, FILE* file) {
+    fseek(file, 0, SEEK_END);
+    off_t file_length = static_cast<off_t>(ftell(file));
+    fseek(file, 0, SEEK_SET);
+
+    off_t offset = 0;
+    ssize_t bytesSent;
+
+    while (offset < file_length) {
+        bytesSent = sendfile(clientSocket, fileno(file), &offset, file_length - offset);
+        if (bytesSent == -1) {
+            // Une erreur s'est produite, retourner -1
+            perror("sendfile");
+            return -1;
+        }
+        // Mise à jour de l'offset n'est pas nécessaire car sendfile le fait automatiquement
+    }
+    return offset;  // Retourne le nombre total de bytes envoyés
+}
+
 int HTTPResponse::sendResponse(int clientSocket) {
   buildResponse();
-  if (send(clientSocket, _responseBuffer.c_str(), _responseBuffer.length(),
-           0) == -1) {
+  if (_sendAll(clientSocket, _responseBuffer.c_str(), _responseBuffer.size()) == -1) {
     return -1;
   }
   if (_file.empty())
@@ -289,11 +323,8 @@ int HTTPResponse::sendResponse(int clientSocket) {
   if (!FileManager::doesFileExists(_file))
     return sendResponse(404, clientSocket);
   FILE* file = fopen(_file.c_str(), "r");
-  fseek(file, 0, SEEK_END);
-  int file_length = ftell(file);
-  fseek(file, 0, SEEK_SET);
   if (file) {
-    if (sendfile(clientSocket, fileno(file), 0, file_length) == -1) {
+    if (_sendAllFile(clientSocket, file) == -1) {
       return -1;
     }
     fclose(file);
@@ -361,6 +392,10 @@ void HTTPResponse::setHeaders(const std::map<std::string, std::string>& hdrs) {
 
 void HTTPResponse::addHeader(const std::string& key, const std::string& value) {
   _headers[key] = value;
+}
+
+void HTTPResponse::deleteHeader(const std::string& key) {
+  _headers.erase(key);
 }
 
 void HTTPResponse::setBody(const std::string& body) {

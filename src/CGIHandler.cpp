@@ -174,13 +174,26 @@ void CGIHandler::_executeChildProcess(const HTTPRequest& request,
   // Write POST data to postPipe[1] so it can be read from postPipe[0]
   std::string postData = request.getBody();
   std::size_t totalWritten = 0;
+  int trys = 0;  // Ajout d'un compteur de tentatives
+
   while (totalWritten < postData.size()) {
     ssize_t written = write(postPipe[1], postData.c_str() + totalWritten,
                             postData.size() - totalWritten);
     if (written == -1) {
-      close(postPipe[1]);
-      throw ExecutorError("write failed: unable to write POST data to pipe");
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            if (trys > 3) {
+                close(postPipe[1]);
+                throw ExecutorError("write failed: unable to write POST data to pipe after multiple retries");
+            }
+            trys++;
+            usleep(1000);  // Attendre un peu avant de réessayer
+            continue;
+        } else {
+            close(postPipe[1]);
+            throw ExecutorError("write failed: unable to write POST data to pipe, error: " + std::string(strerror(errno)));
+        }
     }
+    trys = 0;  // Réinitialiser le compteur de tentatives après une écriture réussie
     totalWritten += written;
   }
   close(postPipe[1]);

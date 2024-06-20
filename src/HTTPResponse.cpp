@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/18 21:52:10 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/20 12:36:59 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -280,12 +280,21 @@ std::string HTTPResponse::defaultErrorPage(int status) {
 ssize_t HTTPResponse::_sendAll(int socket, const char *buffer, size_t length) {
   size_t totalSent = 0; // combien de bytes nous avons envoyé
   ssize_t bytesSent;
+  int trys = 0;
 
+  _log.info("length to send: " + Utils::to_string(length));
   while (totalSent < length) {
     bytesSent = send(socket, buffer + totalSent, length - totalSent, 0);
-    if (bytesSent == -1) { 
-      return -1; // Une erreur s'est produite
+    _log.info("bytesSent: " + Utils::to_string(bytesSent));
+    if (bytesSent == -1) {
+      if (trys > 3) {
+        throw Exception("(send) Error sending response" + std::string(strerror(errno)));
+      }
+      trys++;
+      usleep(1000);
+      continue;
     }
+    trys = 0;
     totalSent += bytesSent;
   }
 
@@ -303,20 +312,17 @@ ssize_t HTTPResponse::_sendAllFile(int clientSocket, FILE* file) {
     while (offset < file_length) {
         bytesSent = sendfile(clientSocket, fileno(file), &offset, file_length - offset);
         if (bytesSent == -1) {
-            // Une erreur s'est produite, retourner -1
-            perror("sendfile");
-            return -1;
+            throw Exception("(sendfile) Error sending response");
         }
-        // Mise à jour de l'offset n'est pas nécessaire car sendfile le fait automatiquement
     }
     return offset;  // Retourne le nombre total de bytes envoyés
 }
 
-int HTTPResponse::sendResponse(int clientSocket) {
+int HTTPResponse::sendResponse(int clientSocket)
+{
   buildResponse();
-  if (_sendAll(clientSocket, _responseBuffer.c_str(), _responseBuffer.size()) == -1) {
-    return -1;
-  }
+
+  _sendAll(clientSocket, _responseBuffer.c_str(), _responseBuffer.size());
   if (_file.empty())
     return 0;
   _log.info("Sending file: " + _file);
@@ -324,13 +330,11 @@ int HTTPResponse::sendResponse(int clientSocket) {
     return sendResponse(404, clientSocket);
   FILE* file = fopen(_file.c_str(), "r");
   if (file) {
-    if (_sendAllFile(clientSocket, file) == -1) {
-      return -1;
-    }
+    _sendAllFile(clientSocket, file);
     fclose(file);
   } else {
     sendResponse(404, clientSocket);
-    return -1;
+    throw Exception("(fopen) Error sending response");
   }
   return 0;
 }

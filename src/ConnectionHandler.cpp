@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/18 16:34:39 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/20 14:46:46 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,14 +54,21 @@ void ConnectionHandler::_receiveRequest() {
   size_t contentLength = 0;
   bool contentLengthFound = false;
   size_t headersEndPos = 0;
+  int trys = 0;
 
   while (!headersEnd && (bytes = recv(_clientSocket, _buffer + _readn, BUFFER_SIZE - _readn, 0)) > 0) {
     if (bytes <= 0) {
+      if (trys > 3) {
         _log.error(std::string("CONNECTION_HANDLER: recv: ") + strerror(errno));
         _connectionStatus = CLOSED;
         return;
+      }
+      trys++;
+      usleep(1000);
+      continue;
     }
-    
+    trys = 0;
+
     _readn += bytes;
     headers.append(_buffer, _readn);
     headersEndPos = headers.find("\r\n\r\n");
@@ -185,6 +192,10 @@ void ConnectionHandler::_processRequest() {
   _connectionStatus = SENDING;
 }
 
+int ConnectionHandler::getConnectionStatus() const {
+  return _connectionStatus;
+}
+
 void ConnectionHandler::processConnection() {
   struct epoll_event event;
   event.data.fd = _clientSocket;
@@ -223,6 +234,5 @@ void ConnectionHandler::processConnection() {
   }
   if (_connectionStatus == CLOSED) {
     close(_clientSocket);
-    delete this;
   }
 }

@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 12:25:27 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/20 14:46:33 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ class ConnectionHandler {
 
   // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
   void processConnection();
+  int  getConnectionStatus() const;
 
   class ConnectionException : public Exception {
    public:

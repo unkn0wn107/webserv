@@ -27,7 +27,7 @@ Worker::Worker()
 
 Worker::~Worker() {
   // _stop();
-  
+
   // pthread_mutex_destroy(&_stopMutex);
 }
 
@@ -114,22 +114,25 @@ void Worker::_runEventLoop() {
 }
 
 void Worker::_acceptNewConnection(int fd) {
-  struct sockaddr    address;
-  socklen_t          addrlen = sizeof(address);
-  int                new_socket;
-  struct epoll_event event;
+  struct sockaddr_storage address;
+  socklen_t              addrlen = sizeof(address);
+  int                    new_socket;
+  struct epoll_event     event;
+  int trys = 0;
 
   _log.info("WORKER: \"accept\"");
   while (true) {
-    new_socket = accept(fd, &address, &addrlen);
+    new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
     if (new_socket < 0) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK)
-        break;
-      else {
+      if (trys > 3) {
         _log.error("WORKER: Failed \"accept\"");
         break;
       }
+      trys++;
+      usleep(1000);
+      continue;
     }
+    trys = 0;
     if (set_non_blocking(new_socket) == -1) {
       _log.error("WORKER: Failed \"set_non_blocking\"");
       continue;
@@ -149,6 +152,12 @@ void Worker::_acceptNewConnection(int fd) {
 void Worker::_handleIncomingConnection(struct epoll_event& event) {
   _log.info("WORKER: Handling incoming connection");
   ConnectionHandler* handler = (ConnectionHandler*)event.data.ptr;
+  int connectionStatus = handler->getConnectionStatus();
+  if (connectionStatus == CLOSED) {
+    _log.info("WORKER: Connection closed");
+    delete handler;
+    return;
+  }
   handler->processConnection();
 }
 

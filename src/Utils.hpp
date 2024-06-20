@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:04 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 02:48:43 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/20 12:18:05 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <sys/types.h>
 
 #include "Exception.hpp"
 

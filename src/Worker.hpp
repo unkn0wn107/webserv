@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/11 15:53:12 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/20 17:15:34 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,10 +21,12 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <queue>
 
 #include "ConnectionHandler.hpp"
 #include "Logger.hpp"
 #include "Utils.hpp"
+#include "Common.hpp"
 #include "VirtualServer.hpp"
 
 #define MAX_EVENTS 10
@@ -38,13 +40,14 @@ class Worker {
   Config&                                     _config;
   Logger&                                     _log;
   std::map<int, ConnectionHandler*>           _handlers;
-  std::map<int, ListenConfig>                 _listenConfigs;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
   int                                         _epollSocket;
-  std::vector<int>                            _listenSockets;
-  int                                         _maxConnections;
-  int                                         _currentConnections;
+  std::set<t_listen_socket>                   _listenSockets;
+  std::queue<struct epoll_event>              _events;
+  // int                                         _maxConnections;
+  // int                                         _currentConnections;
   bool                                        _shouldStop;
+  pthread_mutex_t                              _queueMutex;
 
   static void* _workerRoutine(void* ref);
 
@@ -56,11 +59,12 @@ class Worker {
   void _handleIncomingConnection(struct epoll_event& event);
 
  public:
-  Worker();
+  Worker(int epollSocket, std::set<t_listen_socket>& listenSockets);
   ~Worker();
-  void assignConnection(int clientSocket, const ListenConfig& listenConfig);
   void stop();
   void start();
+  void pushEvent(struct epoll_event event);
+  int getLoad();
 };
 
 #endif

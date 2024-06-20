@@ -14,17 +14,18 @@
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 #include "Utils.hpp"
+#include <climits>
 
 Server* Server::_instance = NULL;
 
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
-      _workerIndex(0),
       _activeWorkers(0) {
 
-  _setupWorkers();
+  _setupEpoll();
   _setupServerSockets();
+  _setupWorkers();
   pthread_mutex_init(&_mutex, NULL);
   pthread_cond_init(&_cond, NULL);
 }
@@ -63,11 +64,50 @@ void Server::start() {
     _activeWorkers++;
     pthread_mutex_unlock(&_mutex);
   }
-  pthread_mutex_lock(&_mutex);
-  while (_activeWorkers > 0) {
-    pthread_cond_wait(&_cond, &_mutex);
+  // pthread_mutex_lock(&_mutex);
+  // while (_activeWorkers > 0) {
+  //   pthread_cond_wait(&_cond, &_mutex);
+  // }
+  // pthread_mutex_unlock(&_mutex);
+  while (true) {
+    struct epoll_event events[MAX_EVENTS];
+    int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
+    for (int i = 0; i < nfds; i++) {
+      _log.info("SERVER: Dispatching event" + Utils::to_string(events[i].data.fd));
+      _dispatchEvent(events[i]);
+    }
   }
-  pthread_mutex_unlock(&_mutex);
+}
+
+void Server::_dispatchEvent(struct epoll_event event) {
+    Worker* bestChoice = NULL;
+    int lowestLoad = INT_MAX;
+
+    // Parcourir tous les workers pour trouver le meilleur choix
+    std::vector<Worker*>::iterator it;
+    for (it = _workers.begin(); it != _workers.end(); ++it) {
+        int workerLoad = (*it)->getLoad();
+
+        // Si un worker avec une charge de 0 est trouvé, sélectionnez-le immédiatement
+        if (workerLoad == 0) {
+            bestChoice = *it;
+            break; // Arrêtez la recherche car vous avez trouvé le worker idéal
+        }
+
+        // Sinon, continuez à chercher le worker avec la charge minimale
+        if (workerLoad < lowestLoad) {
+            lowestLoad = workerLoad;
+            bestChoice = *it;
+        }
+    }
+
+    // Si un worker a été sélectionné, lui assigner l'événement
+    if (bestChoice != NULL) {
+        bestChoice->pushEvent(event);
+        _log.info("SERVER: Dispatched event to worker with load " + Utils::to_string(lowestLoad) + " for fd " + Utils::to_string(event.data.fd));
+    } else {
+        _log.error("SERVER: No available worker to dispatch event for fd " + Utils::to_string(event.data.fd));
+    }
 }
 
 void Server::stop(int signum) {
@@ -81,8 +121,35 @@ void Server::stop(int signum) {
 
 void Server::_setupWorkers() {
   for (int i = 0; i < _config.worker_processes; i++) {
-    _workers.push_back(new Worker());
+    _workers.push_back(new Worker(_epollSocket, _listenSockets));
   }
+}
+
+void Server::_setupEpoll() {
+  _epollSocket = epoll_create1(0);
+  if (_epollSocket == -1) {
+    _log.error("Failed to create epoll socket");
+    throw std::runtime_error("Failed to create epoll socket");
+  }
+}
+
+std::vector<VirtualServer*> Server::_setupAssociateVirtualServers(
+    const ListenConfig& listenConfig) {
+  std::vector<VirtualServer*> virtualServers;
+
+  for (std::vector<ServerConfig>::iterator it = _config.servers.begin();
+       it != _config.servers.end(); ++it) {
+    for (std::vector<ListenConfig>::iterator lit = it->listen.begin();
+         lit != it->listen.end(); ++lit) {
+      if (*lit == listenConfig) {
+        _log.info("WORKER: Associate VirtualServer to a conn: " +
+                  it->server_names[0] + "\n");
+        virtualServers.push_back(new VirtualServer(*it));
+        break;
+      }
+    }
+  }
+  return virtualServers;
 }
 
 void Server::_setupServerSockets() {
@@ -179,8 +246,22 @@ void Server::_setupServerSockets() {
       close(sock);
       continue;
     }
-    _listenSockets[listenConfig] = sock;
-    _workers[_workerIndex]->assignConnection(sock, listenConfig);
-    _workerIndex = (_workerIndex + 1) % _config.worker_processes;
+
+    struct epoll_event event;
+    event.data.fd = sock;
+    event.events = EPOLLIN | EPOLLET;
+    if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {
+      close(sock);
+      _log.error(std::string("WORKER (assign conn): Failed \"epoll_ctl\": ") +
+                 strerror(errno) + " (" + Utils::to_string(sock) + ")");
+      continue;
+    }
+    t_listen_socket listenSocket = {sock, listenConfig};
+    _listenSockets.insert(listenSocket);
+    virtualServers[listenSocket.socket] = _setupAssociateVirtualServers(listenSocket.config);
   }
+}
+
+std::vector<VirtualServer *> Server::getVirtualServer(int fd) {
+  return _instance->virtualServers[fd];
 }

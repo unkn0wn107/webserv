@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 15:31:20 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/20 17:18:16 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,8 +21,10 @@
 #include <sys/socket.h>
 
 #include "Config.hpp"
+#include "Common.hpp"
 #include "Logger.hpp"
 #include "Worker.hpp"
+#include <set>
 
 class Worker;
 
@@ -32,20 +34,26 @@ class Server {
   Config&                     _config;
   Logger&                     _log;
   std::vector<Worker*>        _workers;
-  int                         _workerIndex;
-  std::map<ListenConfig, int> _listenSockets;
+  std::set<t_listen_socket>   _listenSockets;
   pthread_mutex_t             _mutex;
   pthread_cond_t              _cond;
-  int _activeWorkers;
+  int                         _epollSocket;
+  int                         _activeWorkers;
+
 
   void _setupServerSockets();
   void _setupWorkers();
-  static void _signalHandler(int signum);
-
+  void _setupEpoll();
+  void _dispatchEvent(struct epoll_event event);
+  std::vector<VirtualServer*> _setupAssociateVirtualServers(
+      const ListenConfig& listenConfig);
 
  public:
+  std::map<int, std::vector<VirtualServer*> > virtualServers;
+
   Server();
   static Server& getInstance();
+  static std::vector<VirtualServer*> getVirtualServer(int fd);
   void workerFinished();
   ~Server();
 

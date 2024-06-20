@@ -15,19 +15,26 @@
 #include "ConfigManager.hpp"
 #include "Server.hpp"
 
-Worker::Worker()
+Worker::Worker(int epollSocket, std::set<t_listen_socket>& listenSockets)
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
-      _maxConnections(_config.worker_connections),
-      _currentConnections(0),
+      // _maxConnections(_config.worker_connections),
+      // _currentConnections(0),
+      _epollSocket(epollSocket),
+      _listenSockets(listenSockets),
+      _events(),
       _shouldStop(false)
 {
   _log.info("Worker constructor called");
-  _setupEpoll();
+  pthread_mutex_init(&_queueMutex, NULL);
+  _events.push(epoll_event());
+  _events.pop();
+  _log.info("WORKER: event queue size: " + Utils::to_string(_events.size()));
 }
 
 Worker::~Worker() {
   // _stop();
+  pthread_mutex_destroy(&_queueMutex);
 
   // pthread_mutex_destroy(&_stopMutex);
 }
@@ -71,46 +78,37 @@ std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(
   return virtualServers;
 }
 
-void Worker::assignConnection(int                 clientSocket,
-                              const ListenConfig& listenConfig) {
-  struct epoll_event event;
-  event.data.fd = clientSocket;
-  event.events = EPOLLIN | EPOLLET;
 
-  if (_currentConnections >= _maxConnections) {
-    _log.error("WORKER: Max connections reached");
-    close(clientSocket);
-  } else {
-    if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, clientSocket, &event) == -1) {
-      close(clientSocket);
-      _log.error(std::string("WORKER (assign conn): Failed \"epoll_ctl\": ") +
-                 strerror(errno) + " (" + Utils::to_string(clientSocket) + ")");
-      return;
-    }
-    _listenSockets.push_back(clientSocket);
-    _listenConfigs[clientSocket] = listenConfig;
-    _virtualServers[clientSocket] = _setupAssociateVirtualServer(listenConfig);
-    _currentConnections++;
-  }
+void Worker::pushEvent(struct epoll_event event) {
+  pthread_mutex_lock(&_queueMutex);
+  _events.push(event);
+  pthread_mutex_unlock(&_queueMutex);
+  _log.info("WORKER: Pushed event to queue");
+}
+
+int Worker::getLoad() {
+  pthread_mutex_lock(&_queueMutex);
+  int load = _events.size();
+  pthread_mutex_unlock(&_queueMutex);
+  return load;
 }
 
 void Worker::_runEventLoop() {
-  struct epoll_event events[MAX_EVENTS];
-  int                nfds;
   while (!_shouldStop) {
-    nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
-    if (nfds <= 0) {
-      _log.error("Erreur lors de l'attente des événements epoll");
+    pthread_mutex_lock(&_queueMutex);
+    if (_events.empty()) {
+      usleep(1000);
+      pthread_mutex_unlock(&_queueMutex);
       continue;
     }
-
-    for (int n = 0; n < nfds; ++n) {
-      if (std::find(_listenSockets.begin(), _listenSockets.end(),
-                    events[n].data.fd) != _listenSockets.end())
-        _acceptNewConnection(events[n].data.fd);
-      else
-        _handleIncomingConnection(events[n]);
-    }
+    pthread_mutex_unlock(&_queueMutex);
+    struct epoll_event event = _events.front();
+    _events.pop();
+    pthread_mutex_unlock(&_queueMutex);
+    if (isInSet(event.data.fd, _listenSockets))
+      _acceptNewConnection(event.data.fd);
+    else
+      _handleIncomingConnection(event);
   }
 }
 
@@ -139,8 +137,9 @@ void Worker::_acceptNewConnection(int fd) {
       continue;
     }
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+    std::vector<VirtualServer*> virtualServers = Server::getVirtualServer(fd);
     ConnectionHandler* handler = new ConnectionHandler(
-        new_socket, _epollSocket, /*_listenConfigs[fd],*/ _virtualServers[fd]);
+        new_socket, _epollSocket, virtualServers);
     _handlers[new_socket] = handler;
     event.data.ptr = handler;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {

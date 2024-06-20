@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/20 01:07:41 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/20 02:36:35 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -97,19 +97,19 @@ logs:
 stop:
 	docker compose stop
 
-test:
+test: stop
 	BUILD_TYPE=production docker compose up --build -d webserv
 	$(MAKE) wait-for-healthy
 	./test.sh
 	$(MAKE) stop
 
-test-compare: docker-stop
-	@$(MAKE) run-only
+test-compare: stop
+	BUILD_TYPE=production docker compose up --build -d webserv
 	@$(MAKE) nginxd
 	$(MAKE) wait-for-healthy
 	$(MAKE) wait-for-nginx-healthy
 	./test_compare.sh
-	@$(MAKE) docker-stop > /dev/null 2>&1
+	@$(MAKE) stop
 
 run_tests:
 	@./test.sh
@@ -142,9 +142,6 @@ nginx:
 
 nginxd:
 	NGINX_PORT_1=$(NGINX_PORT_1) NGINX_PORT_2=$(NGINX_PORT_2) docker compose up -d nginx --build
-
-docker-stop:
-	-docker stop nginx & docker compose stop webserv*
 
 docker-fclean:
 	docker system prune --all --volumes -f

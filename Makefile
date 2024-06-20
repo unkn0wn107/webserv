@@ -6,7 +6,7 @@
 #    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/20 12:14:28 by mchenava         ###   ########.fr        #
+#    Updated: 2024/06/20 16:28:59 by agaley           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -89,6 +89,9 @@ dev:
 	docker compose up --build -d webserv-dev
 	docker compose exec -it webserv-dev make
 	docker compose exec -it webserv-dev ash -c "./webserv"
+
+daemon:
+	BUILD_TYPE=production docker compose up --build -d webserv
 
 build:
 	docker compose exec webserv* make -C /app/ 2>&1

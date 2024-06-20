@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/18 17:32:18 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/20 16:33:39 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,15 +74,16 @@ LocationConfig& VirtualServer::getLocationConfig(const std::string& uri) {
 }
 
 HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
-  std::string protocol = request.getProtocol();
-  std::string method = request.getMethod();
-  std::string uri = request.getURI();
-  std::string body = request.getBody();
-  int contentLength = request.getContentLength();
+  std::string    protocol = request.getProtocol();
+  std::string    method = request.getMethod();
+  std::string    uri = request.getURI();
+  std::string    body = request.getBody();
+  int            contentLength = request.getContentLength();
   LocationConfig location = getLocationConfig(uri);
 
   _log.info("Checking request: Protocol: " + protocol + ", Method: " + method +
-            ", URI: " + uri + ", Content Length: " + Utils::to_string(contentLength));
+            ", URI: " + uri +
+            ", Content Length: " + Utils::to_string(contentLength));
 
   if (protocol != "HTTP/1.1") {
     _log.error("Unsupported protocol");
@@ -94,18 +95,25 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
     return new HTTPResponse(HTTPResponse::NOT_FOUND, location.error_pages);
   }
 
-  if (std::find(location.allowed_methods.begin(), location.allowed_methods.end(), method) == location.allowed_methods.end()) {
+  if (std::find(location.allowed_methods.begin(),
+                location.allowed_methods.end(),
+                method) == location.allowed_methods.end()) {
     _log.error("Method not allowed for this location");
-    return new HTTPResponse(HTTPResponse::METHOD_NOT_ALLOWED, location.error_pages);
+    return new HTTPResponse(HTTPResponse::METHOD_NOT_ALLOWED,
+                            location.error_pages);
   }
 
   if (!body.empty() && contentLength == -1) {
     _log.error("Content length not provided");
-    return new HTTPResponse(HTTPResponse::LENGTH_REQUIRED, location.error_pages);
+    return new HTTPResponse(HTTPResponse::LENGTH_REQUIRED,
+                            location.error_pages);
   }
-  if (contentLength != -1 && ((size_t)contentLength > location.client_max_body_size || (size_t)contentLength != body.length())) {
+  if (contentLength != -1 &&
+      ((size_t)contentLength > location.client_max_body_size ||
+       (size_t)contentLength != body.length())) {
     _log.error("Content length too big or mismatch");
-    return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE, location.error_pages);
+    return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE,
+                            location.error_pages);
   }
 
   if (location.returnCode >= 300 && location.returnCode < 400) {
@@ -139,8 +147,8 @@ std::string VirtualServer::getRoot() const {
 }
 
 void VirtualServer::storeSessionData(const std::string& sessionId,
-                                    const std::string& key,
-                                    const std::string& value) {
+                                     const std::string& key,
+                                     const std::string& value) {
   _sessionStore[sessionId][key] = value;
 }
 

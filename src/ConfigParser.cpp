@@ -16,7 +16,7 @@ const std::string ConfigParser::DEFAULT_HOST = "127.0.0.1";
 const std::string ConfigParser::DEFAULT_PORT = "8080";
 const std::string ConfigParser::DEFAULT_ROOT = "./site";
 const std::string ConfigParser::DEFAULT_MAX_CLIENT_BODY_SIZE = "8192";
-const std::string ConfigParser::DEFAULT_INDEX = "index.html";
+const std::string ConfigParser::DEFAULT_INDEX = "";
 
 std::string ConfigParser::_configFilepath = "";
 
@@ -283,8 +283,7 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
     for (size_t i = 0; i < sizeof(HTTPRequest::supportedMethods) /
                                sizeof(HTTPRequest::supportedMethods[0]);
          ++i) {
-      locationConfig.allowed_methods.insert(
-          HTTPRequest::supportedMethods[i]);
+      locationConfig.allowed_methods.insert(HTTPRequest::supportedMethods[i]);
     }
   }
 }

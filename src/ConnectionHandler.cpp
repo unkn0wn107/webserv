@@ -3,19 +3,19 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 14:46:46 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/20 16:08:24 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ConnectionHandler.hpp"
-#include "Common.hpp"
 #include <sys/epoll.h>
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include "Common.hpp"
 #include "Utils.hpp"
 
 ConnectionHandler::ConnectionHandler(
@@ -30,8 +30,7 @@ ConnectionHandler::ConnectionHandler(
       _epollSocket(epollSocket),
       _buffer(new char[BUFFER_SIZE]),
       _readn(0),
-      _vservPool(virtualServers)
-{
+      _vservPool(virtualServers) {
   memset(_buffer, 0, BUFFER_SIZE);
   _log.info("CONNECTION_HANDLER: New connection handler created");
   _log.info("CONNECTION_HANDLER: serverPool size : " +
@@ -48,15 +47,16 @@ ConnectionHandler::~ConnectionHandler() {
 }
 
 void ConnectionHandler::_receiveRequest() {
-  bool headersEnd = false;
-  ssize_t bytes;
+  bool        headersEnd = false;
+  ssize_t     bytes;
   std::string headers;
-  size_t contentLength = 0;
-  bool contentLengthFound = false;
-  size_t headersEndPos = 0;
-  int trys = 0;
+  size_t      contentLength = 0;
+  bool        contentLengthFound = false;
+  size_t      headersEndPos = 0;
+  int         trys = 0;
 
-  while (!headersEnd && (bytes = recv(_clientSocket, _buffer + _readn, BUFFER_SIZE - _readn, 0)) > 0) {
+  while (!headersEnd && (bytes = recv(_clientSocket, _buffer + _readn,
+                                      BUFFER_SIZE - _readn, 0)) > 0) {
     if (bytes <= 0) {
       if (trys > 3) {
         _log.error(std::string("CONNECTION_HANDLER: recv: ") + strerror(errno));
@@ -76,7 +76,7 @@ void ConnectionHandler::_receiveRequest() {
       headersEnd = true;
       size_t clPos = headers.find("Content-Length:");
       if (clPos != std::string::npos) {
-        size_t clEnd = headers.find("\r\n", clPos);
+        size_t      clEnd = headers.find("\r\n", clPos);
         std::string clValue = headers.substr(clPos + 15, clEnd - (clPos + 15));
         contentLength = Utils::stoi<size_t>(clValue);
         contentLengthFound = true;
@@ -90,14 +90,14 @@ void ConnectionHandler::_receiveRequest() {
     }
   }
 
-
   if (contentLengthFound && _readn - headersEndPos - 4 != contentLength) {
-      _log.error("CONNECTION_HANDLER: Content-Length mismatch");
-      _connectionStatus = CLOSED;
-      return;
+    _log.error("CONNECTION_HANDLER: Content-Length mismatch");
+    _connectionStatus = CLOSED;
+    return;
   }
 
-  _log.info("CONNECTION_HANDLER: Request received: " + std::string(_buffer, _readn));
+  _log.info("CONNECTION_HANDLER: Request received: " +
+            std::string(_buffer, _readn));
   _processRequest();
   _readn = 0;
 }
@@ -179,11 +179,14 @@ void ConnectionHandler::_processRequest() {
     return;
   }
 
-  if ((_response = vserv->checkRequest(*_request)) != NULL) {
-    _log.error("CONNECTION_HANDLER: Request failed");
-    _response->setCookie("sessionid", sessionId);
-    _connectionStatus = SENDING;
-    return;
+  try {
+    if ((_response = vserv->checkRequest(*_request)) != NULL) {
+      _log.error("CONNECTION_HANDLER: Request failed");
+      _response->setCookie("sessionid", sessionId);
+      _connectionStatus = SENDING;
+      return;
+    }
+  } catch (Exception& e) {
   }
 
   _log.info("CONNECTION_HANDLER: Request valid");

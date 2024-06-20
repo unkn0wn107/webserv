@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/19 23:03:52 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/20 02:57:03 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,6 +54,11 @@ class CGIHandler {
   class RuntimeError : public Exception {
    public:
     RuntimeError(const std::string& message) : Exception(message) {}
+  };
+
+  class ExecutorError : public Exception {
+   public:
+    ExecutorError(const std::string& message) : Exception(message) {}
   };
 
   class CGIDisabled : public Exception {
@@ -124,7 +129,7 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return Array of environment variable strings.
    */
-  static char** _getEnvp(const HTTPRequest& request);
+  static std::vector<char*> _getEnvp(const HTTPRequest& request);
 
   /**
    * Generates a list of arguments for the CGI script based on the HTTP request.
@@ -136,23 +141,33 @@ class CGIHandler {
 
   /**
    * Executes the parent process logic for CGI script execution.
-   * @param request The HTTP request object for passing to the CGI.
    * @param pipefd Array holding file descriptors for the pipe.
    * @param pid The process ID of the forked process.
+   * @param argv A vector of strings, each representing an argument for the CGI
+   * script.
+   * @param envp A vector of strings, each representing an environment variable
+   * for the CGI script.
    * @return HTTPResponse object containing the response from the CGI script.
    */
-  static HTTPResponse* _executeParentProcess(int pipefd[2], pid_t pid);
+  static HTTPResponse* _executeParentProcess(int                pipefd[2],
+                                             pid_t              pid,
+                                             std::vector<char*> argv,
+                                             std::vector<char*> envp);
 
   /**
    * Executes the child process logic for CGI script execution.
    * @param request The HTTP request object.
-   * @param runtimePath The path to the CGI runtime.
    * @param pipefd Array holding file descriptors for the pipe.
+   * @param argv A vector of strings, each representing an argument for the CGI
+   * script.
+   * @param envp A vector of strings, each representing an environment variable
+   * for the CGI script.
    * @return String containing the output from the CGI script.
    */
   static void _executeChildProcess(const HTTPRequest& request,
-                                   const std::string& runtimePath,
-                                   int                pipefd[2]);
+                                   int                pipefd[2],
+                                   std::vector<char*> argv,
+                                   std::vector<char*> envp);
 };
 
 #endif

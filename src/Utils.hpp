@@ -3,20 +3,24 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:04 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/18 19:30:34 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/20 02:48:43 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
+
+#include "Exception.hpp"
 
 class Utils {
  public:
@@ -26,8 +30,11 @@ class Utils {
   template <typename T>
   static std::string to_string(const T& num);
   static std::string trim(const std::string& str);
-  static std::size_t                        calculateByteLength(const std::string& input, const std::string& charset);
+  static std::size_t calculateByteLength(const std::string& input,
+                                         const std::string& charset);
 
+  static void  freeCharVector(std::vector<char*>& vec);
+  static char* cstr(const std::string& str);
 };
 
 #endif

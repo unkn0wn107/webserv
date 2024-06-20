@@ -42,6 +42,13 @@ void CGIHandler::_checkIfProcessingPossible(const HTTPRequest& request,
     throw CGINotFound("CGI not found: " + runtime);
   if (!FileManager::isFileExecutable(runtime))
     throw CGINotExecutable("CGI not executable: " + runtime);
+
+  std::string scriptPath =
+      request.getConfig()->root + request.getURIComponents().scriptName;
+  if (!FileManager::doesFileExists(scriptPath))
+    throw ScriptNotFound("Script not found: " + scriptPath);
+  if (!FileManager::isFileExecutable(scriptPath))
+    throw ScriptNotExecutable("Script not executable: " + scriptPath);
 }
 
 HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
@@ -50,21 +57,32 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
 
   int pipefd[2];
   if (pipe(pipefd) == -1)
-    throw RuntimeError("Failed to create pipe");
+    throw PipeFailure("Failed to create pipe");
 
-  pid_t pid = fork();
+  _log.info("Executing: " + request.getURIComponents().scriptName +
+            " with runtime: " + runtime);
+
+  std::vector<char*> argv = _getArgv(request);
+  std::vector<char*> envp = _getEnvp(request);
+  pid_t              pid = fork();
   if (pid == -1)
-    throw RuntimeError("Failed to fork process");
-  else if (pid == 0)
-    _executeChildProcess(request, runtime, pipefd);
-  else
-    return _executeParentProcess(pipefd, pid);
-  throw RuntimeError("CGI script fatal : out of pid branches !!");
+    throw ForkFailure("Failed to fork process");
+  else if (pid == 0) {
+    _executeChildProcess(request, pipefd, argv, envp);
+  } else {
+    try {
+      return _executeParentProcess(pipefd, pid, argv, envp);
+    } catch (const Exception& e) {
+      Utils::freeCharVector(argv);
+      Utils::freeCharVector(envp);
+      throw e;
+    }
+  }
+  throw ExecutorError("CGI script fatal : out of pid branches !!");  // -Werror
 }
 
 const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request) {
   const URI::Components uriComponents = request.getURIComponents();
-  _log.info("Identifying extension for script: " + uriComponents.extension);
   for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
     if (CGIHandler::_AVAILABLE_CGIS[i].first == uriComponents.extension) {
       return CGIHandler::_AVAILABLE_CGIS[i].second;
@@ -73,7 +91,10 @@ const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request) {
   return "";
 }
 
-HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
+HTTPResponse* CGIHandler::_executeParentProcess(int                pipefd[2],
+                                                pid_t              pid,
+                                                std::vector<char*> argv,
+                                                std::vector<char*> envp) {
   close(pipefd[1]);  // Close the write end of the pipe
 
   fd_set read_fds;
@@ -85,7 +106,7 @@ HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
 
   int retval = select(pipefd[0] + 1, &read_fds, NULL, NULL, &timeout);
   if (retval == -1) {
-    throw RuntimeError("Select error");
+    throw ExecutorError("Select error");
   } else if (retval == 0) {
     kill(pid, SIGKILL);
     throw TimeoutException("CGI script execution timed out");
@@ -104,6 +125,10 @@ HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
       throw RuntimeError("CGI script failed");
     }
+
+    // Free only after last throw, where already freed
+    Utils::freeCharVector(argv);
+    Utils::freeCharVector(envp);
 
     // Parse output to create HTTPResponse
     std::size_t headerEndPos = output.find("\r\n\r\n");
@@ -125,112 +150,84 @@ HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
     headers["Content-Length"] = Utils::to_string(bodyContent.size());
     return new HTTPResponse(HTTPResponse::OK, headers, bodyContent);
   }
-  throw RuntimeError("CGI script failed : out of timeout loop");
+  throw ExecutorError("CGI script failed : out of timeout loop");
 }
 
 void CGIHandler::_executeChildProcess(const HTTPRequest& request,
-                                      const std::string& runtimePath,
-                                      int                pipefd[2]) {
+                                      int                pipefd[2],
+                                      std::vector<char*> argv,
+                                      std::vector<char*> envp) {
   close(pipefd[0]);  // Close the read end of the pipe
-
   // Redirect stdout to pipe
-  if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
-    perror("dup2 failed");
-    exit(EXIT_FAILURE);
-  }
+  if (dup2(pipefd[1], STDOUT_FILENO) == -1)
+    throw ExecutorError("dup2 failed: unable to redirect stdout to pipe");
   close(pipefd[1]);
 
   // Handling POST data by redirecting stdin to a pipe
   int postPipe[2];
-  if (pipe(postPipe) == -1) {
-    perror("pipe failed");
-    exit(EXIT_FAILURE);
-  }
-
-  if (dup2(postPipe[0], STDIN_FILENO) == -1) {
-    perror("dup2 failed");
-    exit(EXIT_FAILURE);
-  }
+  if (pipe(postPipe) == -1)
+    throw PipeFailure("pipe failed: unable to create pipe for POST data");
+  if (dup2(postPipe[0], STDIN_FILENO) == -1)
+    throw ExecutorError("dup2 failed: unable to redirect stdin to pipe");
   close(postPipe[0]);  // Close the read end of the pipe
 
   // Write POST data to postPipe[1] so it can be read from postPipe[0]
-  std::string postData =
-      request.getBody();  // Assuming getBody() fetches the raw POST data
-  write(postPipe[1], postData.c_str(), postData.size());
-  close(postPipe[1]);  // Close after writing
-
-  // Execute CGI script - TODO : remove stderr
-  char** envp = _getEnvp(request);
-  std::cerr << "Environment variables for CGI script:" << std::endl;
-  for (char** env = envp; *env != NULL; ++env) {
-    std::cerr << *env << std::endl;
+  std::string postData = request.getBody();
+  std::size_t totalWritten = 0;
+  while (totalWritten < postData.size()) {
+    ssize_t written = write(postPipe[1], postData.c_str() + totalWritten,
+                            postData.size() - totalWritten);
+    if (written == -1) {
+      close(postPipe[1]);
+      throw ExecutorError("write failed: unable to write POST data to pipe");
+    }
+    totalWritten += written;
   }
-  std::vector<char*> argv = _getArgv(request);
-  execve(runtimePath.c_str(), &argv[0], envp);
-  perror("execve failed");
-  exit(EXIT_FAILURE);  // execve only returns on error
+  close(postPipe[1]);
+  execve(argv[0], &argv[0], &envp[0]);
+  throw ExecutorError("execve failed: unable to execute CGI script");
 }
 
 std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request) {
   std::vector<char*> argv;
-  std::string        runtime = _identifyRuntime(request);
-  argv.push_back(const_cast<char*>(runtime.c_str()));
-  std::string scriptPath =
-      request.getConfig()->root + request.getURIComponents().scriptName;
-  if (!FileManager::doesFileExists(scriptPath))
-    throw ScriptNotFound("Script not found: " + scriptPath);
-  if (!FileManager::isFileExecutable(scriptPath))
-    throw ScriptNotExecutable("Script not executable: " + scriptPath);
-  argv.push_back(const_cast<char*>(scriptPath.c_str()));
+
+  argv.reserve(3);
+  argv.push_back(Utils::cstr(_identifyRuntime(request)));
+  argv.push_back(Utils::cstr(request.getConfig()->root +
+                             request.getURIComponents().scriptName));
   argv.push_back(NULL);
-  if (argv.empty()) {
-    std::cerr << "Argument vector is empty, cannot execute CGI script."
-              << std::endl;
-  } else {
-    std::string argsDebugInfo = "Executing CGI script with arguments: ";
-    for (size_t i = 0; i < argv.size(); ++i) {
-      if (argv[i] != NULL) {
-        argsDebugInfo += std::string(argv[i]) + " ";
-      }
-    }
-    std::cerr << argsDebugInfo << std::endl;
-  }
+
   return argv;
 }
 
-char* alloc_string(const std::string& str) {
-  char* result = new char[str.length() + 1];
-  std::strcpy(result, str.c_str());
-  return result;
-}
+std::vector<char*> CGIHandler::_getEnvp(const HTTPRequest& request) {
+  std::vector<char*> envp;
 
-char** CGIHandler::_getEnvp(const HTTPRequest& request) {
   const std::map<std::string, std::string> headers = request.getHeaders();
   const URI::Components uriComponents = request.getURIComponents();
 
-  char** envp = new char*[headers.size() + 8 + 1];  // 8 env variables + NULL
+  envp.reserve(headers.size() + 8 + 1);  // 8 env variables + NULL
 
-  envp[0] = alloc_string("REDIRECT_STATUS=200");  // For php-cgi at least
-  envp[1] = alloc_string("SCRIPT_FILENAME=" + request.getConfig()->root +
-                         uriComponents.scriptName);
-  envp[2] = alloc_string("SCRIPT_NAME=" + uriComponents.scriptName);
-  envp[3] = alloc_string("PATH_INFO=" + uriComponents.pathInfo);
-  envp[4] = alloc_string("REQUEST_METHOD=" + request.getMethod());
-  envp[5] = alloc_string("QUERY_STRING=" + uriComponents.queryString);
-  envp[6] = alloc_string("REMOTE_HOST=localhost");
-  envp[7] = alloc_string(
-      ("CONTENT_LENGTH=" + Utils::to_string(request.getBody().length()))
-          .c_str());
+  envp.push_back(Utils::cstr("REDIRECT_STATUS=200"));  // For php-cgi at least
+  envp.push_back(Utils::cstr("SCRIPT_FILENAME=" + request.getConfig()->root +
+                             uriComponents.scriptName));
+  envp.push_back(Utils::cstr("SCRIPT_NAME=" + uriComponents.scriptName));
+  envp.push_back(Utils::cstr("PATH_INFO=" + uriComponents.pathInfo));
+  envp.push_back(Utils::cstr("REQUEST_METHOD=" + request.getMethod()));
+  envp.push_back(Utils::cstr("QUERY_STRING=" + uriComponents.queryString));
+  envp.push_back(Utils::cstr("REMOTE_HOST=localhost"));
+  envp.push_back(Utils::cstr("CONTENT_LENGTH=" +
+                             Utils::to_string(request.getBody().length())));
 
-  size_t i = 0;
   for (std::map<std::string, std::string>::const_iterator hd = headers.begin();
        hd != headers.end(); ++hd) {
     std::string envName = "HTTP_" + hd->first;
     std::replace(envName.begin(), envName.end(), '-', '_');
     std::transform(envName.begin(), envName.end(), envName.begin(), ::toupper);
     std::string envLine = envName + "=" + hd->second;
-    envp[8 + i++] = alloc_string(envLine);
+    envp.push_back(Utils::cstr(envLine));
   }
-  envp[8 + i] = NULL;
+  envp.push_back(NULL);
+
   return envp;
 }

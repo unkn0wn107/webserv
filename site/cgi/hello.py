@@ -36,9 +36,9 @@ if query_string:
         name = form_dict["name"]
         print("<h3>Hello {}!</h3>".format(name))
     else:
-        print("<h3>Error: name not provided!</h3>")
+        print("<h3>btw what's your name ?!</h3>")
 else:
-    print("<h3>Error: no data received!</h3>")
+    print("<h3>Error: no data received as query string!</h3>")
 
 print("</body>")
 print("</html>")

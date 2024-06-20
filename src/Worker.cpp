@@ -13,6 +13,7 @@
 #include "Worker.hpp"
 #include "Common.hpp"
 #include "ConfigManager.hpp"
+#include "Server.hpp"
 
 Worker::Worker()
     : _config(ConfigManager::getInstance().getConfig()),
@@ -35,7 +36,7 @@ void  Worker::start() {
   if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0) {
     _log.error("WORKER : Failed to create thread proc");
   }
-  pthread_join(_thread, NULL);
+  pthread_detach(_thread);
 }
 
 void Worker::stop() {
@@ -164,5 +165,6 @@ void Worker::_handleIncomingConnection(struct epoll_event& event) {
 void* Worker::_workerRoutine(void* ref) {
   Worker* worker = static_cast<Worker*>(ref);
   worker->_runEventLoop();
+  Server::getInstance().workerFinished();
   return NULL;
 }

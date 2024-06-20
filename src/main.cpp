@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/11 17:05:42 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/20 11:53:58 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@ int main(int argc, char* argv[]) {
   sigaction(SIGTERM, &sigHandler, NULL);
   sigaction(SIGKILL, &sigHandler, NULL);
 
+  //coucouc
   Config config;
   try {
     ConfigManager::loadConfig(argc == 1 ? ConfigManager::DEFAULT_FILE_NAME

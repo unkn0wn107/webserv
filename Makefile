@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
+#    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/20 02:36:35 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/20 12:14:28 by mchenava         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -76,6 +76,13 @@ run-only:
 run-debug:
 	BUILD_TYPE=debug docker compose up --build -d webserv
 	@make build-debug
+
+watch:
+	while true; do \
+		$(MAKE); \
+		inotifywait -qre close_write /app/src; \
+	done
+
 
 dev:
 	export BUILD_TYPE=production

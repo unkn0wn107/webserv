@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/18 17:16:35 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/20 14:24:33 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,9 +86,9 @@ typedef struct ListenConfig {
   ListenConfig() {
     port = 80;
     default_server = false;
-    backlog = 1000;
-    rcvbuf = 1000;
-    sndbuf = 1000;
+    backlog = 2048;
+    rcvbuf = 2048;
+    sndbuf = 2048;
     ipv6only = false;
   }
 } ListenConfig;
@@ -127,7 +127,7 @@ typedef struct Config {
   Config() {
     worker_processes =
         sysconf(_SC_NPROCESSORS_CONF);  // Initialisation dans le constructeur
-    worker_connections = 1000;          // Valeur fixe initialisée ici
+    worker_connections = 2048;          // Valeur fixe initialisée ici
   }
 } Config;
 

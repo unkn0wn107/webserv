@@ -20,10 +20,13 @@ Server* Server::_instance = NULL;
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
-      _workerIndex(0) {
+      _workerIndex(0),
+      _activeWorkers(0) {
 
   _setupWorkers();
   _setupServerSockets();
+  pthread_mutex_init(&_mutex, NULL);
+  pthread_cond_init(&_cond, NULL);
 }
 
 Server::~Server() {
@@ -32,6 +35,8 @@ Server::~Server() {
     delete _workers[i];
   }
   _workers.clear();
+  pthread_cond_destroy(&_cond);
+  pthread_mutex_destroy(&_mutex);
   Server::_instance = NULL;
 }
 
@@ -42,10 +47,27 @@ Server& Server::getInstance() {
   return *Server::_instance;
 }
 
+void Server::workerFinished() {
+  pthread_mutex_lock(&_mutex);
+  _activeWorkers--;
+  if (_activeWorkers == 0) {
+    pthread_cond_signal(&_cond);
+  }
+  pthread_mutex_unlock(&_mutex);
+}
+
 void Server::start() {
   for (size_t i = 0; i < _workers.size(); i++) {
     _workers[i]->start();
+    pthread_mutex_lock(&_mutex);
+    _activeWorkers++;
+    pthread_mutex_unlock(&_mutex);
   }
+  pthread_mutex_lock(&_mutex);
+  while (_activeWorkers > 0) {
+    pthread_cond_wait(&_cond, &_mutex);
+  }
+  pthread_mutex_unlock(&_mutex);
 }
 
 void Server::stop(int signum) {

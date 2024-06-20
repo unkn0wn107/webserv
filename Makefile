@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/20 00:19:00 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/20 01:07:41 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -23,8 +23,11 @@ LOG_DIR = ./logs
 
 LOG_FILE_EXT = .log
 
-NGINX_PORT_1 = 8000
-NGINX_PORT_2 = 8001
+export MY_GID ?= $(id -g)
+export BUILD_TYPE ?= production
+export MY_UID ?= $(id -u)
+export NGINX_PORT_1 ?= 8000
+export NGINX_PORT_2 ?= 8001
 
 SRC = $(SRC_DIR)/Server.cpp \
 		$(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
@@ -55,37 +58,38 @@ $(OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+debug: $(DEBUG_OBJ)
+	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) $(DEBUG_OBJ) -o $(NAME)
+
+$(DEBUG_OBJ_DIR)/%.o: %.cpp
+	@mkdir -p $(DEBUG_OBJ_DIR)
+	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -c $< -o $@
+
 run: run-only
 	$(MAKE) wait-for-healthy
 	@make logs
 
 run-only:
-	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d webserv
+	BUILD_TYPE=production docker compose up --build -d webserv
 	@make build
 
 run-debug:
-	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=debug docker compose up --build -d webserv
+	BUILD_TYPE=debug docker compose up --build -d webserv
 	@make build-debug
 
-wait-for-healthy:
-	@echo "Waiting for webserv docker to be healthy..."
-	@while ! docker inspect --format='{{json .State.Health.Status}}' webserv-production | grep -q '"healthy"'; do \
-		echo "Waiting for webserv to become healthy..."; \
-		sleep 2; \
-	done
-
 dev:
-	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d webserv-dev
-	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose exec -it webserv-dev make
-	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose exec -it webserv-dev ash -c "./webserv"
+	export BUILD_TYPE=production
+	docker compose up --build -d webserv-dev
+	docker compose exec -it webserv-dev make
+	docker compose exec -it webserv-dev ash -c "./webserv"
 
 build:
-	docker compose exec webserv* make -C /app/ 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
-	-docker compose exec webserv* kill 1 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
+	docker compose exec webserv* make -C /app/ 2>&1
+	-docker compose exec webserv* kill 1 2>&1
 
 build-debug:
-	docker compose exec webserv* make -C debug /app/ 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
-	-docker compose exec webserv* kill 1 2>&1 | grep -v "WARN\[0000\]" | grep -v "level=warning"
+	docker compose exec webserv* make -C debug /app/ 2>&1
+	-docker compose exec webserv* kill 1 2>&1
 
 logs:
 	docker compose logs -f
@@ -94,7 +98,7 @@ stop:
 	docker compose stop
 
 test:
-	MY_UID=$(id -u) MY_GID=$(id -g) BUILD_TYPE=production docker compose up --build -d webserv
+	BUILD_TYPE=production docker compose up --build -d webserv
 	$(MAKE) wait-for-healthy
 	./test.sh
 	$(MAKE) stop
@@ -103,8 +107,27 @@ test-compare: docker-stop
 	@$(MAKE) run-only
 	@$(MAKE) nginxd
 	$(MAKE) wait-for-healthy
+	$(MAKE) wait-for-nginx-healthy
 	./test_compare.sh
 	@$(MAKE) docker-stop > /dev/null 2>&1
+
+run_tests:
+	@./test.sh
+	@./test_compare.sh
+
+wait-for-healthy:
+	@echo "Waiting for webserv docker to be healthy..."
+	@while ! docker inspect --format='{{json .State.Health.Status}}' webserv-production | grep -q '"healthy"'; do \
+		echo "Waiting for webserv to become healthy..."; \
+		sleep 2; \
+	done
+
+wait-for-nginx-healthy:
+	@echo "Waiting for nginx docker to be healthy..."
+	@while ! docker inspect --format='{{json .State.Health.Status}}' nginx | grep -q '"healthy"'; do \
+		echo "Waiting for nginx to become healthy..."; \
+		sleep 2; \
+	done
 
 update_gitignore:
 	@if ! grep -q "$(LOG_FILE_EXT)" .gitignore; then \
@@ -114,36 +137,17 @@ update_gitignore:
 		echo "$(LOG_FILE_EXT) already in .gitignore"; \
 	fi
 
-nginx-build:
-	docker build -t nginx nginx/
+nginx:
+	NGINX_PORT_1=$(NGINX_PORT_1) NGINX_PORT_2=$(NGINX_PORT_2) docker compose up nginx --build
 
-nginx: nginx-build
-	docker run --rm --name nginx -p $(NGINX_PORT_1):8080 -p $(NGINX_PORT_2):8081 \
-		-v ./default.conf:/etc/nginx/conf.d/default.conf:ro \
-		-v ./site:/var/www/html nginx
-
-nginxd: nginx-build
-	docker compose run --rm --build --name webserv -d -p 8080:8080 -p 8081:8081 \
-		-v ./src/:/app/src/ \
-		-v ./default.conf:/app/default.conf \
-		-v ./site:/var/www/html webserv
+nginxd:
+	NGINX_PORT_1=$(NGINX_PORT_1) NGINX_PORT_2=$(NGINX_PORT_2) docker compose up -d nginx --build
 
 docker-stop:
 	-docker stop nginx & docker compose stop webserv*
 
 docker-fclean:
 	docker system prune --all --volumes -f
-
-run_tests:
-	@./test.sh
-	@./test_compare.sh
-
-debug: $(DEBUG_OBJ)
-	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) $(DEBUG_OBJ) -o $(NAME)
-
-$(DEBUG_OBJ_DIR)/%.o: %.cpp
-	@mkdir -p $(DEBUG_OBJ_DIR)
-	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -c $< -o $@
 
 -include $(DEPS)
 -include $(DEBUG_DEPS)
@@ -159,4 +163,7 @@ fclean: clean docker-fclean
 re: fclean all
 debug_re: fclean debug
 
-.PHONY: all clean fclean re debug debug_re update_gitignore logs nginx-build nginx docker-fclean run_tests test
+.PHONY: all clean fclean re debug debug_re update_gitignore
+.PHONY: run run-only run-debug dev build build-debug logs stop
+.PHONY: test test-compare wait-for-healthy wait-for-nginx-healthy
+.PHONY: nginx nginxd docker-stop docker-fclean run_tests

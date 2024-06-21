@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
+#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/20 12:14:28 by mchenava         ###   ########.fr        #
+#    Updated: 2024/06/21 16:36:27 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -65,17 +65,12 @@ $(DEBUG_OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(DEBUG_OBJ_DIR)
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -c $< -o $@
 
-run: run-only
+run: daemon
 	$(MAKE) wait-for-healthy
 	@make logs
 
-run-only:
+daemon:
 	BUILD_TYPE=production docker compose up --build -d webserv
-	@make build
-
-run-debug:
-	BUILD_TYPE=debug docker compose up --build -d webserv
-	@make build-debug
 
 watch:
 	while true; do \
@@ -85,18 +80,10 @@ watch:
 
 
 dev:
-	export BUILD_TYPE=production
+	export BUILD_TYPE=debug
 	docker compose up --build -d webserv-dev
-	docker compose exec -it webserv-dev make
-	docker compose exec -it webserv-dev ash -c "./webserv"
-
-build:
-	docker compose exec webserv* make -C /app/ 2>&1
-	-docker compose exec webserv* kill 1 2>&1
-
-build-debug:
-	docker compose exec webserv* make -C debug /app/ 2>&1
-	-docker compose exec webserv* kill 1 2>&1
+	docker compose exec -it webserv-dev make debug
+	docker compose exec -it webserv-dev bash -c "./webserv"
 
 logs:
 	docker compose logs -f
@@ -104,14 +91,12 @@ logs:
 stop:
 	docker compose stop
 
-test: stop
-	BUILD_TYPE=production docker compose up --build -d webserv
+test: stop daemon
 	$(MAKE) wait-for-healthy
 	./test.sh
 	$(MAKE) stop
 
-test-compare: stop
-	BUILD_TYPE=production docker compose up --build -d webserv
+test-compare: stop daemon
 	@$(MAKE) nginxd
 	$(MAKE) wait-for-healthy
 	$(MAKE) wait-for-nginx-healthy
@@ -168,6 +153,6 @@ re: fclean all
 debug_re: fclean debug
 
 .PHONY: all clean fclean re debug debug_re update_gitignore
-.PHONY: run run-only run-debug dev build build-debug logs stop
+.PHONY: run daemon dev logs stop
 .PHONY: test test-compare wait-for-healthy wait-for-nginx-healthy
 .PHONY: nginx nginxd docker-stop docker-fclean run_tests

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Common.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 11:06:33 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/20 17:21:31 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/21 11:57:59 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,11 +49,3 @@ std::string generateSessionId(void) {
   return sessionId;
 }
 
-bool isInSet(int fd, std::set<t_listen_socket>& listenSockets) {
-  for (std::set<t_listen_socket>::iterator it = listenSockets.begin(); it != listenSockets.end(); ++it) {
-    if (it->socket == fd) {
-      return true;
-    }
-  }
-  return false;
-}

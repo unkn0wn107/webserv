@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/20 17:15:34 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/21 13:51:22 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,10 +42,10 @@ class Worker {
   std::map<int, ConnectionHandler*>           _handlers;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
   int                                         _epollSocket;
-  std::set<t_listen_socket>                   _listenSockets;
+  std::map<int, ListenConfig>                 _listenSockets;
   std::queue<struct epoll_event>              _events;
   // int                                         _maxConnections;
-  // int                                         _currentConnections;
+  int                                         _load;
   bool                                        _shouldStop;
   pthread_mutex_t                              _queueMutex;
 
@@ -56,10 +56,10 @@ class Worker {
       const ListenConfig& listenConfig);
   void _acceptNewConnection(int fd);
   void _runEventLoop();
-  void _handleIncomingConnection(struct epoll_event& event);
+  void _handleIncomingConnection(struct epoll_event event);
 
  public:
-  Worker(int epollSocket, std::set<t_listen_socket>& listenSockets);
+  Worker(int epollSocket, std::map<int, ListenConfig>& listenSockets);
   ~Worker();
   void stop();
   void start();

@@ -17,17 +17,19 @@
 #include <climits>
 
 Server* Server::_instance = NULL;
+int Server::_callCount = 1;
 
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       _activeWorkers(0) {
-
+  _log.info("====================SERVER: Setup server " + Utils::to_string(_callCount));
   _setupEpoll();
   _setupServerSockets();
   _setupWorkers();
   pthread_mutex_init(&_mutex, NULL);
   pthread_cond_init(&_cond, NULL);
+  _callCount++;
 }
 
 Server::~Server() {
@@ -42,10 +44,10 @@ Server::~Server() {
 }
 
 Server& Server::getInstance() {
-  if (Server::_instance == NULL) {
-    Server::_instance = new Server();
+  if (_instance == NULL) {
+    _instance = new Server();
   }
-  return *Server::_instance;
+  return *_instance;
 }
 
 void Server::workerFinished() {
@@ -69,13 +71,41 @@ void Server::start() {
   //   pthread_cond_wait(&_cond, &_mutex);
   // }
   // pthread_mutex_unlock(&_mutex);
+  struct epoll_event events[MAX_EVENTS];
   while (true) {
-    struct epoll_event events[MAX_EVENTS];
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
-    for (int i = 0; i < nfds; i++) {
-      _log.info("SERVER: Dispatching event" + Utils::to_string(events[i].data.fd));
-      _dispatchEvent(events[i]);
+    if (nfds < 0) {
+      _log.error("SERVER: Failed to wait for events");
+      continue;
     }
+    for (int i = 0; i < nfds; i++) {
+    std::string eventDetails = "=========>>>SERVER: Dispatching event for fd " + Utils::to_string(events[i].data.fd) + ": ";
+
+    if (events[i].events & EPOLLIN) {
+        eventDetails += "EPOLLIN ";
+    }
+    if (events[i].events & EPOLLOUT) {
+        eventDetails += "EPOLLOUT ";
+    }
+    if (events[i].events & EPOLLERR) {
+        eventDetails += "EPOLLERR ";
+    }
+    if (events[i].events & EPOLLHUP) {
+        eventDetails += "EPOLLHUP ";
+    }
+    if (events[i].events & EPOLLRDHUP) {
+        eventDetails += "EPOLLRDHUP ";
+    }
+    if (events[i].events & EPOLLET) {
+        eventDetails += "EPOLLET ";
+    }
+    if (events[i].events & EPOLLONESHOT) {
+        eventDetails += "EPOLLONESHOT ";
+    }
+
+    _log.info(eventDetails);
+    _dispatchEvent(events[i]);
+}
   }
 }
 
@@ -104,7 +134,7 @@ void Server::_dispatchEvent(struct epoll_event event) {
     // Si un worker a été sélectionné, lui assigner l'événement
     if (bestChoice != NULL) {
         bestChoice->pushEvent(event);
-        _log.info("SERVER: Dispatched event to worker with load " + Utils::to_string(lowestLoad) + " for fd " + Utils::to_string(event.data.fd));
+        _log.info("SERVER: Dispatched event to worker with load " + Utils::to_string(bestChoice->getLoad()) + " for fd " + Utils::to_string(event.data.fd));
     } else {
         _log.error("SERVER: No available worker to dispatch event for fd " + Utils::to_string(event.data.fd));
     }
@@ -133,28 +163,10 @@ void Server::_setupEpoll() {
   }
 }
 
-std::vector<VirtualServer*> Server::_setupAssociateVirtualServers(
-    const ListenConfig& listenConfig) {
-  std::vector<VirtualServer*> virtualServers;
-
-  for (std::vector<ServerConfig>::iterator it = _config.servers.begin();
-       it != _config.servers.end(); ++it) {
-    for (std::vector<ListenConfig>::iterator lit = it->listen.begin();
-         lit != it->listen.end(); ++lit) {
-      if (*lit == listenConfig) {
-        _log.info("WORKER: Associate VirtualServer to a conn: " +
-                  it->server_names[0] + "\n");
-        virtualServers.push_back(new VirtualServer(*it));
-        break;
-      }
-    }
-  }
-  return virtualServers;
-}
-
 void Server::_setupServerSockets() {
   const std::set<ListenConfig>& uniqueConfigs = _config.unique_listen_configs;
 
+  _log.info("SERVER: Setup server sockets");
   for (std::set<ListenConfig>::const_iterator it = uniqueConfigs.begin();
        it != uniqueConfigs.end(); ++it) {
     const ListenConfig& listenConfig = *it;
@@ -252,16 +264,11 @@ void Server::_setupServerSockets() {
     event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {
       close(sock);
-      _log.error(std::string("WORKER (assign conn): Failed \"epoll_ctl\": ") +
+      _log.error(std::string("SERVER (assign conn): Failed \"epoll_ctl\": ") +
                  strerror(errno) + " (" + Utils::to_string(sock) + ")");
       continue;
     }
-    t_listen_socket listenSocket = {sock, listenConfig};
-    _listenSockets.insert(listenSocket);
-    virtualServers[listenSocket.socket] = _setupAssociateVirtualServers(listenSocket.config);
+    _log.info("SERVER (assign conn): Add socket to epoll : " + Utils::to_string(sock));
+    _listenSockets[sock] = listenConfig;
   }
-}
-
-std::vector<VirtualServer *> Server::getVirtualServer(int fd) {
-  return _instance->virtualServers[fd];
 }

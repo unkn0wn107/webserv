@@ -15,7 +15,7 @@
 #include "ConfigManager.hpp"
 #include "Server.hpp"
 
-Worker::Worker(int epollSocket, std::set<t_listen_socket>& listenSockets)
+Worker::Worker(int epollSocket, std::map<int, ListenConfig>& listenSockets)
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       // _maxConnections(_config.worker_connections),
@@ -23,20 +23,15 @@ Worker::Worker(int epollSocket, std::set<t_listen_socket>& listenSockets)
       _epollSocket(epollSocket),
       _listenSockets(listenSockets),
       _events(),
+      _load(0), 
       _shouldStop(false)
 {
   _log.info("Worker constructor called");
   pthread_mutex_init(&_queueMutex, NULL);
-  _events.push(epoll_event());
-  _events.pop();
-  _log.info("WORKER: event queue size: " + Utils::to_string(_events.size()));
 }
 
 Worker::~Worker() {
-  // _stop();
   pthread_mutex_destroy(&_queueMutex);
-
-  // pthread_mutex_destroy(&_stopMutex);
 }
 
 void  Worker::start() {
@@ -53,7 +48,7 @@ void Worker::stop() {
 void Worker::_setupEpoll() {
   _epollSocket = epoll_create1(0);
   if (_epollSocket <= 0) {
-    _log.error(std::string("WORKER: Failed \"epoll_create1\": ") +
+    _log.error(std::string("WORKER (" + Utils::to_string(_thread) + "): Failed \"epoll_create1\": ") +
         strerror(errno));
     exit(EXIT_FAILURE);
   }
@@ -68,7 +63,7 @@ std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(
     for (std::vector<ListenConfig>::iterator lit = it->listen.begin();
          lit != it->listen.end(); ++lit) {
       if (*lit == listenConfig) {
-        _log.info("WORKER: Associate VirtualServer to a conn: " +
+        _log.info("WORKER (" + Utils::to_string(_thread) + "): Associate VirtualServer to a conn: " +
                   it->server_names[0] + "\n");
         virtualServers.push_back(new VirtualServer(*it));
         break;
@@ -83,31 +78,33 @@ void Worker::pushEvent(struct epoll_event event) {
   pthread_mutex_lock(&_queueMutex);
   _events.push(event);
   pthread_mutex_unlock(&_queueMutex);
-  _log.info("WORKER: Pushed event to queue");
+  _load++;
+  _log.info("WORKER (" + Utils::to_string(_thread) + "): Pushed event to queue : " + Utils::to_string(event.data.fd));
 }
 
 int Worker::getLoad() {
-  pthread_mutex_lock(&_queueMutex);
-  int load = _events.size();
-  pthread_mutex_unlock(&_queueMutex);
-  return load;
+  return _load;
 }
 
 void Worker::_runEventLoop() {
   while (!_shouldStop) {
+    if (_load == 0) {
+      usleep(1000);
+      continue;
+    }
     pthread_mutex_lock(&_queueMutex);
     if (_events.empty()) {
-      usleep(1000);
       pthread_mutex_unlock(&_queueMutex);
       continue;
     }
-    pthread_mutex_unlock(&_queueMutex);
     struct epoll_event event = _events.front();
     _events.pop();
     pthread_mutex_unlock(&_queueMutex);
-    if (isInSet(event.data.fd, _listenSockets))
+    _load--;
+    _log.info("WORKER (" + Utils::to_string(_thread) + "): Event loop: " + Utils::to_string(event.data.fd));
+    if (_listenSockets.find(event.data.fd) != _listenSockets.end() && event.events & EPOLLIN)
       _acceptNewConnection(event.data.fd);
-    else
+    else 
       _handleIncomingConnection(event);
   }
 }
@@ -119,12 +116,13 @@ void Worker::_acceptNewConnection(int fd) {
   struct epoll_event     event;
   int trys = 0;
 
-  _log.info("WORKER: \"accept\"");
+  _log.info("WORKER (" + Utils::to_string(_thread) + "): \"accept\" fd :" + Utils::to_string(fd));
   while (true) {
     new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
     if (new_socket < 0) {
-      if (trys > 3) {
-        _log.error("WORKER: Failed \"accept\"");
+      _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"accept\" " + strerror(errno));
+      if (trys > 10) {
+        _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"accept\"");
         break;
       }
       trys++;
@@ -133,28 +131,31 @@ void Worker::_acceptNewConnection(int fd) {
     }
     trys = 0;
     if (set_non_blocking(new_socket) == -1) {
-      _log.error("WORKER: Failed \"set_non_blocking\"");
+      _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"set_non_blocking\"");
       continue;
     }
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    std::vector<VirtualServer*> virtualServers = Server::getVirtualServer(fd);
+    _log.info("WORKER (" + Utils::to_string(_thread) + "): Accepted connection : " + Utils::to_string(fd) + " -> " + Utils::to_string(new_socket));
+    ListenConfig listenConfig = _listenSockets[fd];
+    std::vector<VirtualServer*> virtualServers = _setupAssociateVirtualServer(listenConfig);
     ConnectionHandler* handler = new ConnectionHandler(
         new_socket, _epollSocket, virtualServers);
     _handlers[new_socket] = handler;
     event.data.ptr = handler;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
-      _log.error("WORKER (new conn): Failed \"epoll_ctl\"");
+      _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"epoll_ctl\"");
       continue;
     }
+    break;
   }
 }
 
-void Worker::_handleIncomingConnection(struct epoll_event& event) {
-  _log.info("WORKER: Handling incoming connection");
-  ConnectionHandler* handler = (ConnectionHandler*)event.data.ptr;
+void Worker::_handleIncomingConnection(struct epoll_event event) {
+  _log.info("WORKER (" + Utils::to_string(_thread) + "): Handling incoming connection for fd " + Utils::to_string(event.data.fd));
+  ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
   int connectionStatus = handler->getConnectionStatus();
-  if (connectionStatus == CLOSED) {
-    _log.info("WORKER: Connection closed");
+  if (connectionStatus == CLOSED) {  
+    _log.info("WORKER (" + Utils::to_string(_thread) + "): Connection closed");
     delete handler;
     return;
   }
@@ -163,6 +164,7 @@ void Worker::_handleIncomingConnection(struct epoll_event& event) {
 
 void* Worker::_workerRoutine(void* ref) {
   Worker* worker = static_cast<Worker*>(ref);
+  Logger::getInstance().info("WORKER (" + Utils::to_string(worker->_thread) + "): Worker routine started");
   worker->_runEventLoop();
   Server::getInstance().workerFinished();
   return NULL;

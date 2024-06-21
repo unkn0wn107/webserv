@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 14:46:46 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/21 15:52:38 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -192,7 +192,7 @@ void ConnectionHandler::_processRequest() {
   _connectionStatus = SENDING;
 }
 
-int ConnectionHandler::getConnectionStatus() const {
+int ConnectionHandler::getConnectionStatus() {
   return _connectionStatus;
 }
 
@@ -233,6 +233,8 @@ void ConnectionHandler::processConnection() {
     }
   }
   if (_connectionStatus == CLOSED) {
+    epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
     close(_clientSocket);
+    // delete this;
   }
 }

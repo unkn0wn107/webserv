@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/21 14:38:15 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/22 15:04:42 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,6 +79,7 @@ class ConnectionHandler {
   VirtualServer* _findDefaultServer();
   std::string    _extractHost(const std::string& requestHeader);
   void           _sendResponse();
+  void           _processData();
 };
 
 #endif

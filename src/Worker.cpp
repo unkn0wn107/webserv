@@ -153,12 +153,6 @@ void Worker::_acceptNewConnection(int fd) {
 void Worker::_handleIncomingConnection(struct epoll_event event) {
   _log.info("WORKER (" + Utils::to_string(_thread) + "): Handling incoming connection for fd " + Utils::to_string(event.data.fd));
   ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
-  int connectionStatus = handler->getConnectionStatus();
-  if (connectionStatus == CLOSED) {  
-    _log.info("WORKER (" + Utils::to_string(_thread) + "): Connection closed");
-    delete handler;
-    return;
-  }
   handler->processConnection();
 }
 

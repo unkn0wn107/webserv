@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/21 12:02:17 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/22 15:23:29 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,7 @@ class Server {
   pthread_cond_t              _cond;
   int                         _epollSocket;
   int                         _activeWorkers;
+  int                         _event_count;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
 
 

@@ -22,7 +22,8 @@ int Server::_callCount = 1;
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
-      _activeWorkers(0) {
+      _activeWorkers(0),
+      _event_count(0) {
   _log.info("====================SERVER: Setup server " + Utils::to_string(_callCount));
   _setupEpoll();
   _setupServerSockets();
@@ -79,33 +80,11 @@ void Server::start() {
       continue;
     }
     for (int i = 0; i < nfds; i++) {
-    std::string eventDetails = "=========>>>SERVER: Dispatching event for fd " + Utils::to_string(events[i].data.fd) + ": ";
+      std::string eventDetails = "=========>>>SERVER: Dispatching event for fd " + Utils::to_string(events[i].data.fd);
 
-    if (events[i].events & EPOLLIN) {
-        eventDetails += "EPOLLIN ";
+      _log.info(eventDetails);
+      _dispatchEvent(events[i]);
     }
-    if (events[i].events & EPOLLOUT) {
-        eventDetails += "EPOLLOUT ";
-    }
-    if (events[i].events & EPOLLERR) {
-        eventDetails += "EPOLLERR ";
-    }
-    if (events[i].events & EPOLLHUP) {
-        eventDetails += "EPOLLHUP ";
-    }
-    if (events[i].events & EPOLLRDHUP) {
-        eventDetails += "EPOLLRDHUP ";
-    }
-    if (events[i].events & EPOLLET) {
-        eventDetails += "EPOLLET ";
-    }
-    if (events[i].events & EPOLLONESHOT) {
-        eventDetails += "EPOLLONESHOT ";
-    }
-
-    _log.info(eventDetails);
-    _dispatchEvent(events[i]);
-}
   }
 }
 
@@ -127,17 +106,17 @@ void Server::_dispatchEvent(struct epoll_event event) {
         // Sinon, continuez à chercher le worker avec la charge minimale
         if (workerLoad < lowestLoad) {
             lowestLoad = workerLoad;
-            bestChoice = *it;
-        }
+      bestChoice = *it;
     }
+  }
 
-    // Si un worker a été sélectionné, lui assigner l'événement
-    if (bestChoice != NULL) {
-        bestChoice->pushEvent(event);
-        _log.info("SERVER: Dispatched event to worker with load " + Utils::to_string(bestChoice->getLoad()) + " for fd " + Utils::to_string(event.data.fd));
-    } else {
-        _log.error("SERVER: No available worker to dispatch event for fd " + Utils::to_string(event.data.fd));
-    }
+  // Si un worker a été sélectionné, lui assigner l'événement
+  if (bestChoice != NULL) {
+    bestChoice->pushEvent(event);
+    _log.info("SERVER: Dispatched event to worker with load " + Utils::to_string(bestChoice->getLoad()) + " for fd " + Utils::to_string(event.data.fd));
+  } else {
+    _log.error("SERVER: No available worker to dispatch event for fd " + Utils::to_string(event.data.fd));
+  }
 }
 
 void Server::stop(int signum) {

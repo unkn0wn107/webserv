@@ -75,9 +75,7 @@ std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(
 
 
 void Worker::pushEvent(struct epoll_event event) {
-  pthread_mutex_lock(&_queueMutex);
   _events.push(event);
-  pthread_mutex_unlock(&_queueMutex);
   _load++;
   _log.info("WORKER (" + Utils::to_string(_thread) + "): Pushed event to queue : " + Utils::to_string(event.data.fd));
 }
@@ -88,18 +86,15 @@ int Worker::getLoad() {
 
 void Worker::_runEventLoop() {
   while (!_shouldStop) {
-    if (_load == 0) {
+    if (_load <= 0) {
       usleep(1000);
       continue;
     }
-    pthread_mutex_lock(&_queueMutex);
     if (_events.empty()) {
-      pthread_mutex_unlock(&_queueMutex);
       continue;
     }
     struct epoll_event event = _events.front();
     _events.pop();
-    pthread_mutex_unlock(&_queueMutex);
     _load--;
     _log.info("WORKER (" + Utils::to_string(_thread) + "): Event loop: " + Utils::to_string(event.data.fd));
     if (_listenSockets.find(event.data.fd) != _listenSockets.end() && event.events & EPOLLIN)
@@ -114,22 +109,14 @@ void Worker::_acceptNewConnection(int fd) {
   socklen_t              addrlen = sizeof(address);
   int                    new_socket;
   struct epoll_event     event;
-  int trys = 0;
 
   _log.info("WORKER (" + Utils::to_string(_thread) + "): \"accept\" fd :" + Utils::to_string(fd));
   while (true) {
     new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
-    if (new_socket < 0) {
+    if (new_socket <= 0) {
       _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"accept\" " + strerror(errno));
-      if (trys > 10) {
-        _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"accept\"");
-        break;
-      }
-      trys++;
-      usleep(1000);
-      continue;
+      break;
     }
-    trys = 0;
     if (set_non_blocking(new_socket) == -1) {
       _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"set_non_blocking\"");
       continue;
@@ -146,7 +133,6 @@ void Worker::_acceptNewConnection(int fd) {
       _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"epoll_ctl\"");
       continue;
     }
-    break;
   }
 }
 

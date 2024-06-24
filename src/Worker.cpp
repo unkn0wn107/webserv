@@ -14,25 +14,30 @@
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 
-Worker::Worker(Server& server, int epollSocket, std::map<int, ListenConfig>& listenSockets)
+Worker::Worker(Server&                      server,
+               int                          epollSocket,
+               std::map<int, ListenConfig>& listenSockets)
     : _server(server),
+      _thread(0),
       _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       _epollSocket(epollSocket),
       _listenSockets(listenSockets),
       _load(0),
-      _shouldStop(false)
-{
-}
+      _shouldStop(false) {}
 
-Worker::~Worker() {
-}
+Worker::~Worker() {}
 
-void  Worker::start() {
-  if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0) {
+void Worker::start() {
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+  if (pthread_create(&_thread, &attr, _workerRoutine, this) != 0) {
     _log.error("WORKER : Failed to create thread proc");
   }
-  pthread_detach(_thread);
+
+  pthread_attr_destroy(&attr);
 }
 
 void Worker::stop() {
@@ -67,7 +72,8 @@ void Worker::_runEventLoop() {
       usleep(1000);
       continue;
     }
-    if (_listenSockets.find(event.data.fd) != _listenSockets.end() && event.events & EPOLLIN)
+    if (_listenSockets.find(event.data.fd) != _listenSockets.end() &&
+        event.events & EPOLLIN)
       _acceptNewConnection(event.data.fd);
     else
       _handleIncomingConnection(event);
@@ -77,30 +83,35 @@ void Worker::_runEventLoop() {
 
 void Worker::_acceptNewConnection(int fd) {
   struct sockaddr_storage address;
-  socklen_t              addrlen = sizeof(address);
-  int                    new_socket;
-  struct epoll_event     event;
+  socklen_t               addrlen = sizeof(address);
+  int                     new_socket;
+  struct epoll_event      event;
   while (!_shouldStop) {
     new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
     if (new_socket <= 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         continue;
       }
-      _log.info("WORKER (" + Utils::to_string(_thread) + "): Failed \"accept\" for fd =" + Utils::to_string(fd) + ": " + strerror(errno));
+      _log.info("WORKER (" + Utils::to_string(_thread) +
+                "): Failed \"accept\" for fd =" + Utils::to_string(fd) + ": " +
+                strerror(errno));
       break;
     }
     if (set_non_blocking(new_socket) == -1) {
-      _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"set_non_blocking\"");
+      _log.error("WORKER (" + Utils::to_string(_thread) +
+                 "): Failed \"set_non_blocking\"");
       continue;
     }
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    ListenConfig listenConfig = _listenSockets[fd];
-    std::vector<VirtualServer*> virtualServers = _setupAssociateVirtualServer(listenConfig);
-    ConnectionHandler* handler = new ConnectionHandler(
-        new_socket, _epollSocket, virtualServers);
+    ListenConfig                listenConfig = _listenSockets[fd];
+    std::vector<VirtualServer*> virtualServers =
+        _setupAssociateVirtualServer(listenConfig);
+    ConnectionHandler* handler =
+        new ConnectionHandler(new_socket, _epollSocket, virtualServers);
     event.data.ptr = handler;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
-      _log.error("WORKER (" + Utils::to_string(_thread) + "): Failed \"epoll_ctl\"");
+      _log.error("WORKER (" + Utils::to_string(_thread) +
+                 "): Failed \"epoll_ctl\"");
       continue;
     }
   }
@@ -115,9 +126,11 @@ void Worker::_handleIncomingConnection(struct epoll_event event) {
 void* Worker::_workerRoutine(void* ref) {
   Worker* worker = static_cast<Worker*>(ref);
   worker->_threadId = gettid();
-  worker->_log.info("WORKER (" + Utils::to_string(worker->_threadId) + "): Started");
+  worker->_log.info("WORKER (" + Utils::to_string(worker->_threadId) +
+                    "): Started");
   worker->_runEventLoop();
-  worker->_log.info("WORKER (" + Utils::to_string(worker->_threadId) + "): Finished");
+  worker->_log.info("WORKER (" + Utils::to_string(worker->_threadId) +
+                    "): Finished");
   worker->_server.workerFinished();
   return NULL;
 }

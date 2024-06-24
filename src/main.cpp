@@ -6,11 +6,12 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/24 22:54:33 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/24 23:05:06 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <cstdlib>
+
 #include "Common.hpp"
 #include "Config.hpp"
 #include "ConfigManager.hpp"
@@ -45,6 +46,7 @@ int main(int argc, char* argv[]) {
   Logger::getInstance().info("Starting WebServ");
   server.start();
   Logger::getInstance().info("Shutdown WebServ");
+  usleep(SHUTDOWN_DELAY);  // Wait for Logger to finish output logs
   ConfigManager::deleteInstance();
   Logger::deleteInstance();
   return EXIT_SUCCESS;

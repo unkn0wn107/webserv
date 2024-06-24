@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/24 21:01:13 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/24 22:57:11 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -88,7 +88,7 @@ valgrind:
 	export BUILD_TYPE=debug
 	docker compose up --build -d webserv-dev
 	docker compose exec -it webserv-dev make debug
-	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --leak-check=full --show-leak-kinds=all ./webserv"
+	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./webserv"
 
 logs:
 	docker compose logs -f

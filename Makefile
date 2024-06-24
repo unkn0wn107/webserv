@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/24 22:57:11 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/25 00:40:40 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -32,7 +32,7 @@ export NGINX_PORT_2 ?= 8001
 SRC = $(SRC_DIR)/Server.cpp \
 		$(SRC_DIR)/Config.cpp $(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
 		$(SRC_DIR)/FileManager.cpp \
-		$(SRC_DIR)/ConnectionHandler.cpp \
+		$(SRC_DIR)/ConnectionHandler.cpp $(SRC_DIR)/CacheHandler.cpp \
 		$(SRC_DIR)/Worker.cpp \
 		$(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp $(SRC_DIR)/URI.cpp \
 		$(SRC_DIR)/CGIHandler.cpp $(SRC_DIR)/FileHandler.cpp \
@@ -67,6 +67,9 @@ $(DEBUG_OBJ_DIR)/%.o: %.cpp
 
 run: daemon
 	$(MAKE) wait-for-healthy
+	docker compose exec -it webserv make
+	docker compose exec -it webserv bash -c "kill 1"
+	sleep 1
 	@make logs
 
 daemon:

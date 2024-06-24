@@ -44,6 +44,8 @@ Server::~Server() {
   _workers.clear();
   pthread_mutex_destroy(&_mutex);
   pthread_mutex_destroy(&_eventsMutex);
+  CacheHandler::deleteInstance();
+  ConfigManager::deleteInstance();
   Server::_instance = NULL;
 }
 

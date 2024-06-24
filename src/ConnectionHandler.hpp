@@ -3,25 +3,27 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/24 10:37:08 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/25 01:51:47 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CONNECTION_HANDLER_H
 #define CONNECTION_HANDLER_H
 
+#include <pthread.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <vector>
+
+#include "CacheHandler.hpp"
 #include "Config.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
-#include <pthread.h>
 
 #define BUFFER_SIZE 16384
 
@@ -71,6 +73,7 @@ class ConnectionHandler {
   std::vector<VirtualServer*> _vservPool;
   HTTPRequest*                _request;
   HTTPResponse*               _response;
+  CacheHandler&               _cacheHandler;
   // pthread_mutex_t             _mutex;
 
   void           _receiveRequest();

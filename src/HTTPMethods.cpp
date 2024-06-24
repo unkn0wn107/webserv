@@ -68,8 +68,8 @@ std::string HTTPMethods::_generateDirectoryListing(const std::string& path) {
 }
 
 HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
-                                        LocationConfig&    location) {
-  std::string   indexPath = path + "/" + location.index;
+                                      LocationConfig&    location) {
+  std::string indexPath = path + location.index;
   if (FileManager::doesFileExists(indexPath)) {
     HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", "text/html");

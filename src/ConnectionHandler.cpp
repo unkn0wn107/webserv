@@ -6,16 +6,18 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/24 21:59:35 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/25 01:51:28 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ConnectionHandler.hpp"
 #include <sys/epoll.h>
 #include <algorithm>
 #include <sstream>
 #include <string>
+
+#include "CacheHandler.hpp"
 #include "Common.hpp"
+#include "ConnectionHandler.hpp"
 #include "Utils.hpp"
 
 ConnectionHandler::ConnectionHandler(
@@ -28,7 +30,8 @@ ConnectionHandler::ConnectionHandler(
       _epollSocket(epollSocket),
       _buffer(new char[BUFFER_SIZE]),
       _readn(0),
-      _vservPool(virtualServers) {
+      _vservPool(virtualServers),
+      _cacheHandler(CacheHandler::getInstance()) {
   memset(_buffer, 0, BUFFER_SIZE);
 }
 
@@ -179,6 +182,16 @@ void ConnectionHandler::_processRequest() {
     _request->setSessionId(sessionId);
   }
 
+  if (_request->getHeader("Cache-Control") != "no-cache") {
+    HTTPResponse* cachedResponse = _cacheHandler.getResponse(*_request);
+    if (cachedResponse) {
+      _log.info("CONNECTION_HANDLER: Cache hit");
+      _response = cachedResponse;
+      _connectionStatus = SENDING;
+      return;
+    }
+  }
+
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
     _log.error("CONNECTION_HANDLER: No virtual server selected");
@@ -195,7 +208,12 @@ void ConnectionHandler::_processRequest() {
   }
 
   _response = vserv->handleRequest(*_request);
-  _response->setCookie("sessionid", sessionId);
+  _cacheHandler.storeResponse(*_request, *_response);
+
+  if (_request->getHeader("Set-Cookie").empty()) {
+    _response->setCookie("sessionid", sessionId);
+  }
+
   _connectionStatus = SENDING;
 }
 

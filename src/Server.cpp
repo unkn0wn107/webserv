@@ -31,7 +31,6 @@ Server::Server()
   _setupWorkers();
   pthread_mutex_init(&_mutex, NULL);
   pthread_mutex_init(&_eventsMutex, NULL);
-  pthread_cond_init(&_cond, NULL);
   _callCount++;
   _running = false;
   _instance = this;
@@ -42,7 +41,6 @@ Server::~Server() {
     delete _workers[i];
   }
   _workers.clear();
-  pthread_cond_destroy(&_cond);
   pthread_mutex_destroy(&_mutex);
   pthread_mutex_destroy(&_eventsMutex);
   Server::_instance = NULL;
@@ -61,7 +59,7 @@ void Server::workerFinished() {
   _activeWorkers--;
   _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) + ")");
   if (_activeWorkers == 0) {
-    pthread_cond_signal(&_cond);
+    _running = false;
     _log.info("SERVER: All workers finished");
   }
   pthread_mutex_unlock(&_mutex);
@@ -78,16 +76,19 @@ void Server::start() {
   _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) + ")");
   struct epoll_event events[MAX_EVENTS];
   while (_running) {
+    _log.info("SERVER: Waiting for events...");
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
     if (nfds < 0) {
       _log.error("SERVER: Failed to wait for events");
       usleep(1000);
       continue;
     }
-    for (int i = 0; i < nfds; i++) {
+    for (int i = 0; i < nfds && _running; i++) {
       _addEvent(events[i]);
+      _log.info("SERVER: Added event to queue");
     }
   }
+  _log.info("SERVER:  events queue size: " + Utils::to_string(_events.size()));
 }
 
 void Server::_addEvent(struct epoll_event event) {
@@ -114,15 +115,11 @@ void Server::stop(int signum) {
   if (signum == SIGINT || signum == SIGTERM || signum == SIGKILL) {
     Server::_instance->_log.info("Server stopped from signal " + Utils::to_string(signum));
     for (size_t i = 0; i < _workers.size(); i++) {
+      _log.info("SERVER: stopping worker " + Utils::to_string(i) + " (" + Utils::to_string(_workers[i]->_threadId) + ")");
       _workers[i]->stop();
     }
     _log.info("SERVER: workers stopped");
     _running = false;
-    while (_activeWorkers > 0) {
-      // _log.info("SERVER: Waiting for workers to finish");
-      usleep(1000);
-    }
-    _log.info("SERVER: All workers finished");
   }
 }
 

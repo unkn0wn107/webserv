@@ -72,6 +72,7 @@ void Worker::_runEventLoop() {
     else
       _handleIncomingConnection(event);
   }
+  _log.info("WORKER (" + Utils::to_string(_threadId) + "): End of event loop");
 }
 
 void Worker::_acceptNewConnection(int fd) {
@@ -79,7 +80,7 @@ void Worker::_acceptNewConnection(int fd) {
   socklen_t              addrlen = sizeof(address);
   int                    new_socket;
   struct epoll_event     event;
-  while (true) {
+  while (!_shouldStop) {
     new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
     if (new_socket <= 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {

@@ -3,18 +3,18 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 11:53:58 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/24 19:30:00 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <cstdlib>
+#include "Common.hpp"
 #include "Config.hpp"
 #include "ConfigManager.hpp"
 #include "Server.hpp"
-#include "Common.hpp"
 
 int main(int argc, char* argv[]) {
   if (argc != 2 || argv[1] == NULL)
@@ -29,7 +29,6 @@ int main(int argc, char* argv[]) {
   sigaction(SIGTERM, &sigHandler, NULL);
   sigaction(SIGKILL, &sigHandler, NULL);
 
-  //coucouc
   Config config;
   try {
     ConfigManager::loadConfig(argc == 1 ? ConfigManager::DEFAULT_FILE_NAME
@@ -46,6 +45,7 @@ int main(int argc, char* argv[]) {
   Logger::getInstance().info("Starting WebServ");
   server.start();
   Logger::getInstance().info("Shutdown WebServ");
+  delete &ConfigManager::getInstance();
   delete &Logger::getInstance();
   return EXIT_SUCCESS;
 }

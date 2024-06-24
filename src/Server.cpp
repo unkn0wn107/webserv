@@ -11,13 +11,13 @@
 /* ************************************************************************** */
 
 #include "Server.hpp"
+#include <climits>
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 #include "Utils.hpp"
-#include <climits>
 
 Server* Server::_instance = NULL;
-int Server::_callCount = 1;
+int     Server::_callCount = 1;
 
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
@@ -25,7 +25,8 @@ Server::Server()
       _activeWorkers(0),
       _event_count(0),
       _events() {
-  _log.info("====================SERVER: Setup server " + Utils::to_string(_callCount));
+  _log.info("====================SERVER: Setup server " +
+            Utils::to_string(_callCount));
   _setupEpoll();
   _setupServerSockets();
   _setupWorkers();
@@ -57,7 +58,8 @@ Server& Server::getInstance() {
 void Server::workerFinished() {
   pthread_mutex_lock(&_mutex);
   _activeWorkers--;
-  _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) + ")");
+  _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) +
+            ")");
   if (_activeWorkers == 0) {
     _running = false;
     _log.info("SERVER: All workers finished");
@@ -73,7 +75,8 @@ void Server::start() {
     _activeWorkers++;
     pthread_mutex_unlock(&_mutex);
   }
-  _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) + ")");
+  _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) +
+            ")");
   struct epoll_event events[MAX_EVENTS];
   while (_running) {
     _log.info("SERVER: Waiting for events...");
@@ -97,7 +100,6 @@ void Server::_addEvent(struct epoll_event event) {
   pthread_mutex_unlock(&_eventsMutex);
 }
 
-
 struct epoll_event Server::getEvent() {
   pthread_mutex_lock(&_eventsMutex);
   if (_events.empty()) {
@@ -113,9 +115,11 @@ struct epoll_event Server::getEvent() {
 
 void Server::stop(int signum) {
   if (signum == SIGINT || signum == SIGTERM || signum == SIGKILL) {
-    Server::_instance->_log.info("Server stopped from signal " + Utils::to_string(signum));
+    Server::_instance->_log.info("Server stopped from signal " +
+                                 Utils::to_string(signum));
     for (size_t i = 0; i < _workers.size(); i++) {
-      _log.info("SERVER: stopping worker " + Utils::to_string(i) + " (" + Utils::to_string(_workers[i]->_threadId) + ")");
+      _log.info("SERVER: stopping worker " + Utils::to_string(i) + " (" +
+                Utils::to_string(_workers[i]->_threadId) + ")");
       _workers[i]->stop();
     }
     _log.info("SERVER: workers stopped");
@@ -147,8 +151,8 @@ void Server::_setupServerSockets() {
     int                 sock = socket(AF_INET6, SOCK_STREAM, 0);
     if (sock < 0) {
       _log.error("(" + listenConfig.address + ":" +
-      Utils::to_string(listenConfig.port) +
-      ") Failed to create socket");
+                 Utils::to_string(listenConfig.port) +
+                 ") Failed to create socket");
       continue;
     }
 
@@ -234,6 +238,7 @@ void Server::_setupServerSockets() {
     }
 
     struct epoll_event event;
+    memset(&event, 0, sizeof(event));
     event.data.fd = sock;
     event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {
@@ -242,7 +247,8 @@ void Server::_setupServerSockets() {
                  strerror(errno) + " (" + Utils::to_string(sock) + ")");
       continue;
     }
-    _log.info("SERVER (assign conn): Add socket to epoll : " + Utils::to_string(sock));
+    _log.info("SERVER (assign conn): Add socket to epoll : " +
+              Utils::to_string(sock));
     _listenSockets[sock] = listenConfig;
   }
 }

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/09 16:53:47 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/20 14:24:33 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/24 19:22:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,16 +33,12 @@ typedef struct LocationConfig {
   std::map<int, std::string> error_pages;
 
   // Specific to location
-  std::set<std::string>    allowed_methods;
-  int                      returnCode;
-  std::string              returnUrl;
+  std::set<std::string> allowed_methods;
+  int                   returnCode;
+  std::string           returnUrl;
 
-  LocationConfig() {
-    client_max_body_size = 1000;
-    upload = false;
-    cgi = false;
-    autoindex = false;
-  }
+  LocationConfig();
+  ~LocationConfig();
 } LocationConfig;
 
 typedef struct ListenConfig {
@@ -54,43 +50,10 @@ typedef struct ListenConfig {
   int         sndbuf;
   bool        ipv6only;
 
-  bool operator<(const ListenConfig& other) const {
-    if (address < other.address)
-      return true;
-    if (address > other.address)
-      return false;
-    if (port < other.port)
-      return true;
-    if (port > other.port)
-      return false;
-    if (default_server < other.default_server)
-      return true;
-    if (default_server > other.default_server)
-      return false;
-    if (rcvbuf < other.rcvbuf)
-      return true;
-    if (rcvbuf > other.rcvbuf)
-      return false;
-    if (sndbuf < other.sndbuf)
-      return true;
-    if (sndbuf > other.sndbuf)
-      return false;
-    return ipv6only < other.ipv6only;
-  }
-  bool operator==(const ListenConfig& other) const {
-    return address == other.address && port == other.port &&
-           default_server == other.default_server && backlog == other.backlog &&
-           rcvbuf == other.rcvbuf && sndbuf == other.sndbuf &&
-           ipv6only == other.ipv6only;
-  }
-  ListenConfig() {
-    port = 80;
-    default_server = false;
-    backlog = 2048;
-    rcvbuf = 2048;
-    sndbuf = 2048;
-    ipv6only = false;
-  }
+  bool operator<(const ListenConfig& other) const;
+  bool operator==(const ListenConfig& other) const;
+
+  ListenConfig();
 } ListenConfig;
 
 typedef struct ServerConfig {
@@ -109,12 +72,8 @@ typedef struct ServerConfig {
 
   std::map<std::string, LocationConfig> locations;
 
-  ServerConfig() {
-    client_max_body_size = 1000;
-    upload = false;
-    cgi = false;
-    autoindex = false;
-  }
+  ServerConfig();
+  ~ServerConfig();
 } ServerConfig;
 
 typedef struct Config {
@@ -124,11 +83,9 @@ typedef struct Config {
   std::set<ListenConfig>    unique_listen_configs;
   std::string               log_file;
   std::vector<ServerConfig> servers;
-  Config() {
-    worker_processes =
-        sysconf(_SC_NPROCESSORS_CONF);  // Initialisation dans le constructeur
-    worker_connections = 2048;          // Valeur fixe initialisée ici
-  }
+
+  Config();
+  ~Config();
 } Config;
 
 #endif

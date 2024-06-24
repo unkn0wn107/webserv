@@ -26,8 +26,8 @@ Config ConfigParser::parseConfigFile(const std::string& filepath) {
   _configFilepath = filepath;
   std::ifstream configFile(filepath.c_str());
   if (!configFile.is_open()) {
-    throw std::runtime_error("Failed to open config file: " + filepath);
     _log.emerg("Failed to open config file: " + filepath);
+    throw Exception("Failed to open config file: " + filepath);
   }
 
   Config      config;
@@ -39,19 +39,15 @@ Config ConfigParser::parseConfigFile(const std::string& filepath) {
     iss >> key >> value;
 
     value = _cleanValue(value, '#');
-    if (key.empty() || key[0] == '#') {
-      _log.info("Skip empty or comment line :" + line);
+    if (key.empty() || key[0] == '#')
       continue;
-    }
-    _log.info("========== Parsing line : key = " + key + " line = " + line);
     if (key == "server") {
       if (value == "{") {
         ServerConfig serverConfig;
         _parseServerConfig(configFile, serverConfig, config);
         config.servers.push_back(serverConfig);
-        _log.info("++++++++++++++ new server config add to config");
       } else {
-        throw std::runtime_error("Malformed server block");
+        throw Exception("Malformed server block");
       }
     } else if (key == "log_file") {
       config.log_file = _parseValue(value);
@@ -76,30 +72,25 @@ void ConfigParser::_parseServerConfig(std::ifstream& configFile,
   std::string line;
   std::string key;
   while (key != "}" && getline(configFile, line)) {
-    _log.info("############### parseServerConfig line = [" + line + "]");
     std::istringstream lineStream(line);
     std::string        value;
     std::string        afterValue;
     lineStream >> key >> value >> afterValue;
 
     if (key.empty() || key[0] == '#' || key == "}") {
-      _log.info("server block Skip empty or comment line :" + line);
       continue;
     }
 
     afterValue = _cleanValue(afterValue, '#');
-    _log.info("========= Parsing server block line: key = [" + key +
-              "] line = [" + line + "]");
     if (key == "location") {
       LocationConfig locationConfig;
       locationConfig.location = _parseValue(lineStream.str());
       if (afterValue == "{") {
         _parseLocationConfig(configFile, locationConfig, serverConfig);
         serverConfig.locations[value] = locationConfig;
-        _log.info(">>>>>>>>>>>>>>>>>>>>> new route config add to server");
       } else {
         std::cerr << "Parsing error !" << std::endl;
-        throw std::runtime_error("Malformed route block");
+        throw Exception("Malformed route block");
       }
     } else {
       if (key == "listen") {
@@ -135,8 +126,6 @@ void ConfigParser::_parseServerConfig(std::ifstream& configFile,
         int         errorCode;
         std::string errorPage;
         errorCode = Utils::stoi<int>(value);
-        _log.info("Server block find error_page: errorCode = " +
-                  Utils::to_string(errorCode) + " errorPage = " + afterValue);
         errorPage = _cleanValue(afterValue, ';');
         serverConfig.error_pages[errorCode] = errorPage;
       } else {
@@ -221,12 +210,8 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
   while (key != "}" && getline(configFile, line)) {
     std::istringstream lineStream(line);
     lineStream >> key >> value >> afterValue;
-    if (key.empty() || key[0] == '#' || key == "}") {
-      _log.info("route block Skip empty or comment line :" + line);
+    if (key.empty() || key[0] == '#' || key == "}")
       continue;
-    }
-    _log.info(" ====== Parsing route block line: key = " + key +
-              " line = " + line);
     if (key == "root") {
       locationConfig.root = _parseValue(lineStream.str());
     } else if (key == "index") {
@@ -269,8 +254,6 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
       int         errorCode;
       std::string errorPage;
       errorCode = Utils::stoi<int>(value);
-      _log.info("Server block find error_page: errorCode = " +
-                Utils::to_string(errorCode) + " errorPage = " + afterValue);
       errorPage = _cleanValue(afterValue, ';');
       locationConfig.error_pages[errorCode] = errorPage;
     } else {
@@ -283,8 +266,7 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
     for (size_t i = 0; i < sizeof(HTTPRequest::supportedMethods) /
                                sizeof(HTTPRequest::supportedMethods[0]);
          ++i) {
-      locationConfig.allowed_methods.insert(
-          HTTPRequest::supportedMethods[i]);
+      locationConfig.allowed_methods.insert(HTTPRequest::supportedMethods[i]);
     }
   }
 }
@@ -323,9 +305,7 @@ std::string ConfigParser::_parseValue(std::string toParse) {
   std::string        value;
   std::string        afterValue;
 
-  _log.info("Parsing value form :" + toParse);
   toParseStream >> key >> value >> afterValue;
-  _log.info("parsed Value :" + value + " afterValue :" + afterValue);
   value = _cleanValue(value, '#');
   afterValue = _cleanValue(afterValue, '#');
   if (key == "route" && afterValue != "{")
@@ -335,14 +315,11 @@ std::string ConfigParser::_parseValue(std::string toParse) {
     _log.warning("Badly terminated server line in server block: " + toParse +
                  " afterValue = " + afterValue);
   else {
-    _log.info("key = " + key + " value = " + value +
-              " afterValue = " + afterValue);
     size_t semicolonPos = value.find(';');
     if (semicolonPos != value.length()) {
       value = value.substr(0, semicolonPos);
     } else
       _log.warning("Badly terminated line in server block: " + toParse);
   }
-  _log.info("Parsed value : " + value);
   return value;
 }

@@ -3,24 +3,24 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/24 14:24:15 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/24 21:59:35 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ConnectionHandler.hpp"
-#include "Common.hpp"
 #include <sys/epoll.h>
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include "Common.hpp"
 #include "Utils.hpp"
 
 ConnectionHandler::ConnectionHandler(
-    int clientSocket,
-    int epollSocket,
+    int                          clientSocket,
+    int                          epollSocket,
     std::vector<VirtualServer*>& virtualServers)
     : _log(Logger::getInstance()),
       _connectionStatus(READING),
@@ -28,8 +28,7 @@ ConnectionHandler::ConnectionHandler(
       _epollSocket(epollSocket),
       _buffer(new char[BUFFER_SIZE]),
       _readn(0),
-      _vservPool(virtualServers)
-{
+      _vservPool(virtualServers) {
   memset(_buffer, 0, BUFFER_SIZE);
 }
 
@@ -50,15 +49,16 @@ ConnectionHandler::~ConnectionHandler() {
 }
 
 void ConnectionHandler::_receiveRequest() {
-  bool headersEnd = false;
-  ssize_t bytes;
+  bool        headersEnd = false;
+  ssize_t     bytes;
   std::string headers;
-  size_t contentLength = 0;
-  bool contentLengthFound = false;
-  size_t headersEndPos = 0;
-  int trys = 0;
+  size_t      contentLength = 0;
+  bool        contentLengthFound = false;
+  size_t      headersEndPos = 0;
+  int         trys = 0;
 
-  while (!headersEnd && (bytes = recv(_clientSocket, _buffer + _readn, BUFFER_SIZE - _readn, 0)) > 0) {
+  while (!headersEnd && (bytes = recv(_clientSocket, _buffer + _readn,
+                                      BUFFER_SIZE - _readn, 0)) > 0) {
     if (bytes <= 0) {
       if (trys > 3) {
         _log.error(std::string("CONNECTION_HANDLER: recv: ") + strerror(errno));
@@ -78,7 +78,7 @@ void ConnectionHandler::_receiveRequest() {
       headersEnd = true;
       size_t clPos = headers.find("Content-Length:");
       if (clPos != std::string::npos) {
-        size_t clEnd = headers.find("\r\n", clPos);
+        size_t      clEnd = headers.find("\r\n", clPos);
         std::string clValue = headers.substr(clPos + 15, clEnd - (clPos + 15));
         contentLength = Utils::stoi<size_t>(clValue);
         contentLengthFound = true;
@@ -92,11 +92,10 @@ void ConnectionHandler::_receiveRequest() {
     }
   }
 
-
   if (contentLengthFound && _readn - headersEndPos - 4 != contentLength) {
-      _log.error("CONNECTION_HANDLER: Content-Length mismatch");
-      _connectionStatus = CLOSED;
-      return;
+    _log.error("CONNECTION_HANDLER: Content-Length mismatch");
+    _connectionStatus = CLOSED;
+    return;
   }
   _processRequest();
   _readn = 0;
@@ -107,7 +106,8 @@ void ConnectionHandler::_sendResponse() {
   std::string protocol = _request->getProtocol();
   std::string uri = _request->getURI();
   std::string status = Utils::to_string(_response->getStatusCode());
-  std::string contentLength = _response->getHeaders().find("Content-Length")->second;
+  std::string contentLength =
+      _response->getHeaders().find("Content-Length")->second;
   if (_response->sendResponse(_clientSocket) == -1)
     throw WriteException("CONNECTION_HANDLER: Failed to send response");
   _connectionStatus = CLOSED;
@@ -167,8 +167,11 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
   return "";
 }
 
-
 void ConnectionHandler::_processRequest() {
+  if (_request) {
+    delete _request;
+    _request = NULL;
+  }
   _request = new HTTPRequest(_buffer);
   std::string sessionId = _request->getSessionId();
   if (sessionId.empty()) {
@@ -200,7 +203,7 @@ int ConnectionHandler::getConnectionStatus() {
   return _connectionStatus;
 }
 
-void  ConnectionHandler::_processData() {
+void ConnectionHandler::_processData() {
   if (_connectionStatus == READING) {
     try {
       _receiveRequest();
@@ -233,8 +236,7 @@ void ConnectionHandler::processConnection() {
                  strerror(errno));
       return;
     }
-  }
-  else if (_connectionStatus == SENDING) {
+  } else if (_connectionStatus == SENDING) {
     event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
@@ -248,8 +250,10 @@ void ConnectionHandler::processConnection() {
     std::string uri = _request->getURI();
     std::string protocol = _request->getProtocol();
     std::string status = Utils::to_string(_response->getStatusCode());
-    std::string contentLength = _response->getHeaders().find("Content-Length")->second;
-    _log.info("Request : " + host + " - " + method + " " + uri + " " + protocol);
+    std::string contentLength =
+        _response->getHeaders().find("Content-Length")->second;
+    _log.info("Request : " + host + " - " + method + " " + uri + " " +
+              protocol);
     _log.info("Response : " + status + " " + contentLength);
     epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
     close(_clientSocket);

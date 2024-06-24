@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "ConfigManager.hpp"
+#include "Config.hpp"
 #include "ConfigParser.hpp"
 #include "Logger.hpp"
 
@@ -47,22 +48,24 @@ void ConfigManager::loadConfig(const std::string& filepath) {
 
 void ConfigManager::printConfig() {
   const Config& config = getInstance()._config;
+  std::cout << "Unique Listen Configs:" << std::endl;
+  for (std::set<ListenConfig>::const_iterator it =
+           config.unique_listen_configs.begin();
+       it != config.unique_listen_configs.end(); ++it) {
+    const ListenConfig& listen = *it;
+    std::cout << "\tAddress: " << listen.address << " Port: " << listen.port
+              << " Default Server: " << (listen.default_server ? "Yes" : "No")
+              << " Backlog: " << listen.backlog << " Rcvbuf: " << listen.rcvbuf
+              << " Sndbuf: " << listen.sndbuf
+              << " IPv6 Only: " << (listen.ipv6only ? "Yes" : "No")
+              << std::endl;
+  }
   for (std::vector<ServerConfig>::const_iterator it = config.servers.begin();
        it != config.servers.end(); ++it) {
     const ServerConfig& server = *it;
-    std::cout << "Unique Listen Configs:" << std::endl;
-    for (std::set<ListenConfig>::const_iterator it =
-             config.unique_listen_configs.begin();
-         it != config.unique_listen_configs.end(); ++it) {
-      const ListenConfig& listen = *it;
-      std::cout << "\tAddress: " << listen.address << " Port: " << listen.port
-                << " Default Server: " << (listen.default_server ? "Yes" : "No")
-                << " Backlog: " << listen.backlog
-                << " Rcvbuf: " << listen.rcvbuf << " Sndbuf: " << listen.sndbuf
-                << " IPv6 Only: " << (listen.ipv6only ? "Yes" : "No")
-                << std::endl;
-    }
-    std::cout << "Server Names: ";
+    std::cout << std::endl
+              << "===================" << std::endl
+              << "Server Names: ";
     for (std::vector<std::string>::const_iterator nameIt =
              server.server_names.begin();
          nameIt != server.server_names.end(); ++nameIt) {
@@ -86,7 +89,7 @@ void ConfigManager::_printLocationsConfig(
            locations.begin();
        it != locations.end(); ++it) {
     const LocationConfig& locationConfig = it->second;
-    std::cout << "====Route: " << it->first << std::endl;
+    std::cout << std::endl << it->first << " --------------------" << std::endl;
     std::cout << "\tDirectory: " << locationConfig.root << std::endl;
     std::cout << "\tIndex File: " << locationConfig.index << std::endl;
     std::cout << "\tRoot Directory: " << locationConfig.root << std::endl;
@@ -106,7 +109,8 @@ void ConfigManager::_printLocationsConfig(
       std::cout << *methodIt << " ";
     }
     std::cout << std::endl;
-    std::cout << "======Error Pages:" << std::endl;
+    if (!locationConfig.error_pages.empty())
+      std::cout << "  Error Pages:" << std::endl;
     for (std::map<int, std::string>::const_iterator errorIt =
              locationConfig.error_pages.begin();
          errorIt != locationConfig.error_pages.end(); ++errorIt) {

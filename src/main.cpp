@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/24 19:30:00 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/24 22:54:33 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
   Logger::getInstance().info("Starting WebServ");
   server.start();
   Logger::getInstance().info("Shutdown WebServ");
-  delete &ConfigManager::getInstance();
-  delete &Logger::getInstance();
+  ConfigManager::deleteInstance();
+  Logger::deleteInstance();
   return EXIT_SUCCESS;
 }

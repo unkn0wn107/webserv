@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/24 22:32:12 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/24 22:54:21 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@ class ConfigManager {
   ConfigManager();
 
  public:
+  static void deleteInstance();
   ~ConfigManager();
   static ConfigManager& getInstance();
   const std::string     getFilePath() const;

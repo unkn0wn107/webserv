@@ -30,6 +30,13 @@ ConfigManager& ConfigManager::getInstance() {
   return *_instance;
 }
 
+void ConfigManager::deleteInstance() {
+  if (_instance != NULL) {
+    delete _instance;
+    _instance = NULL;
+  }
+}
+
 Config& ConfigManager::getConfig() const {
   return _instance->_config;
 }

@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/24 11:04:17 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/24 14:40:55 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,7 @@ class Worker {
  private:
   Server&                                     _server;
   pthread_t                                   _thread;
+  int                                         _threadId;
   Config&                                     _config;
   Logger&                                     _log;
   std::map<int, ConnectionHandler*>           _handlers;

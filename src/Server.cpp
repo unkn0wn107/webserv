@@ -33,11 +33,12 @@ Server::Server()
   pthread_mutex_init(&_eventsMutex, NULL);
   pthread_cond_init(&_cond, NULL);
   _callCount++;
+  _running = false;
+  _instance = this;
 }
 
 Server::~Server() {
   for (size_t i = 0; i < _workers.size(); i++) {
-    _workers[i]->stop();
     delete _workers[i];
   }
   _workers.clear();
@@ -49,6 +50,7 @@ Server::~Server() {
 
 Server& Server::getInstance() {
   if (_instance == NULL) {
+    Logger::getInstance().info("SERVER: Creating server instance");
     _instance = new Server();
   }
   return *_instance;
@@ -57,26 +59,25 @@ Server& Server::getInstance() {
 void Server::workerFinished() {
   pthread_mutex_lock(&_mutex);
   _activeWorkers--;
+  _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) + ")");
   if (_activeWorkers == 0) {
     pthread_cond_signal(&_cond);
+    _log.info("SERVER: All workers finished");
   }
   pthread_mutex_unlock(&_mutex);
 }
 
 void Server::start() {
+  _running = true;
   for (size_t i = 0; i < _workers.size(); i++) {
     _workers[i]->start();
     pthread_mutex_lock(&_mutex);
     _activeWorkers++;
     pthread_mutex_unlock(&_mutex);
   }
-  // pthread_mutex_lock(&_mutex);
-  // while (_activeWorkers > 0) {
-  //   pthread_cond_wait(&_cond, &_mutex);
-  // }
-  // pthread_mutex_unlock(&_mutex);
+  _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) + ")");
   struct epoll_event events[MAX_EVENTS];
-  while (true) {
+  while (_running) {
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
     if (nfds < 0) {
       _log.error("SERVER: Failed to wait for events");
@@ -84,9 +85,7 @@ void Server::start() {
       continue;
     }
     for (int i = 0; i < nfds; i++) {
-      std::string eventDetails = "=========>>>SERVER: Dispatching event for fd " + Utils::to_string(events[i].data.fd);
       _addEvent(events[i]);
-      _log.info(eventDetails);
     }
   }
 }
@@ -111,43 +110,19 @@ struct epoll_event Server::getEvent() {
   return event;
 }
 
-// void Server::_dispatchEvent(struct epoll_event event) {
-//     Worker* bestChoice = NULL;
-//     int lowestLoad = INT_MAX;
-
-//     // Parcourir tous les workers pour trouver le meilleur choix
-//     std::vector<Worker*>::iterator it;
-//     for (it = _workers.begin(); it != _workers.end(); ++it) {
-//         int workerLoad = (*it)->getLoad();
-
-//         // Si un worker avec une charge de 0 est trouvé, sélectionnez-le immédiatement
-//         if (workerLoad == 0) {
-//             bestChoice = *it;
-//             break; // Arrêtez la recherche car vous avez trouvé le worker idéal
-//         }
-
-//         // Sinon, continuez à chercher le worker avec la charge minimale
-//         if (workerLoad < lowestLoad) {
-//             lowestLoad = workerLoad;
-//       bestChoice = *it;
-//     }
-//   }
-
-//   // Si un worker a été sélectionné, lui assigner l'événement
-//   if (bestChoice != NULL) {
-//     bestChoice->pushEvent(event);
-//     _log.info("SERVER: Dispatched event to worker with load " + Utils::to_string(bestChoice->getLoad()) + " for fd " + Utils::to_string(event.data.fd));
-//   } else {
-//     _log.error("SERVER: No available worker to dispatch event for fd " + Utils::to_string(event.data.fd));
-//   }
-// }
-
 void Server::stop(int signum) {
   if (signum == SIGINT || signum == SIGTERM || signum == SIGKILL) {
     Server::_instance->_log.info("Server stopped from signal " + Utils::to_string(signum));
-    delete Server::_instance;
-    Server::_instance = NULL;
-    throw std::runtime_error("Server stopped");
+    for (size_t i = 0; i < _workers.size(); i++) {
+      _workers[i]->stop();
+    }
+    _log.info("SERVER: workers stopped");
+    _running = false;
+    while (_activeWorkers > 0) {
+      // _log.info("SERVER: Waiting for workers to finish");
+      usleep(1000);
+    }
+    _log.info("SERVER: All workers finished");
   }
 }
 

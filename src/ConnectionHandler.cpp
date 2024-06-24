@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/22 15:28:20 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/24 14:24:15 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,10 +21,8 @@
 ConnectionHandler::ConnectionHandler(
     int clientSocket,
     int epollSocket,
-    // ListenConfig&                listenConfig,
     std::vector<VirtualServer*>& virtualServers)
     : _log(Logger::getInstance()),
-      // _listenConfig(listenConfig),
       _connectionStatus(READING),
       _clientSocket(clientSocket),
       _epollSocket(epollSocket),
@@ -33,18 +31,22 @@ ConnectionHandler::ConnectionHandler(
       _vservPool(virtualServers)
 {
   memset(_buffer, 0, BUFFER_SIZE);
-  _log.info("CONNECTION_HANDLER: New connection handler created");
-  _log.info("CONNECTION_HANDLER: serverPool size : " +
-            Utils::to_string(_vservPool.size()));
-  for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
-       it != _vservPool.end(); ++it) {
-    _log.info("CONNECTION_HANDLER: serverPool name : " +
-              (*it)->getServerName());
-  }
 }
 
 ConnectionHandler::~ConnectionHandler() {
+  for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
+       it != _vservPool.end(); ++it) {
+    delete *it;
+  }
   delete[] _buffer;
+  if (_request) {
+    delete _request;
+    _request = NULL;
+  }
+  if (_response) {
+    delete _response;
+    _response = NULL;
+  }
 }
 
 void ConnectionHandler::_receiveRequest() {
@@ -96,20 +98,22 @@ void ConnectionHandler::_receiveRequest() {
       _connectionStatus = CLOSED;
       return;
   }
-
-  _log.info("CONNECTION_HANDLER: Request received: " + std::string(_buffer, _readn));
   _processRequest();
   _readn = 0;
 }
 
 void ConnectionHandler::_sendResponse() {
+  std::string method = _request->getMethod();
+  std::string protocol = _request->getProtocol();
+  std::string uri = _request->getURI();
+  std::string status = Utils::to_string(_response->getStatusCode());
+  std::string contentLength = _response->getHeaders().find("Content-Length")->second;
   if (_response->sendResponse(_clientSocket) == -1)
     throw WriteException("CONNECTION_HANDLER: Failed to send response");
   _connectionStatus = CLOSED;
 }
 
 VirtualServer* ConnectionHandler::_selectVirtualServer(std::string host) {
-  _log.info(std::string("CONNECTION_HANDLER: Host extracted: ") + host);
   if (!host.empty()) {
     for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
          it != _vservPool.end(); ++it) {
@@ -187,7 +191,6 @@ void ConnectionHandler::_processRequest() {
     return;
   }
 
-  _log.info("CONNECTION_HANDLER: Request valid");
   _response = vserv->handleRequest(*_request);
   _response->setCookie("sessionid", sessionId);
   _connectionStatus = SENDING;
@@ -224,7 +227,6 @@ void ConnectionHandler::processConnection() {
   event.data.ptr = this;
   _processData();
   if (_connectionStatus == READING) {
-    _log.info("CONNECTION_HANDLER: Reading request");
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
@@ -233,7 +235,6 @@ void ConnectionHandler::processConnection() {
     }
   }
   else if (_connectionStatus == SENDING) {
-    _log.info("CONNECTION_HANDLER: Sending response");
     event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
@@ -242,6 +243,14 @@ void ConnectionHandler::processConnection() {
     }
   }
   if (_connectionStatus == CLOSED) {
+    std::string host = _request->getHost();
+    std::string method = _request->getMethod();
+    std::string uri = _request->getURI();
+    std::string protocol = _request->getProtocol();
+    std::string status = Utils::to_string(_response->getStatusCode());
+    std::string contentLength = _response->getHeaders().find("Content-Length")->second;
+    _log.info("Request : " + host + " - " + method + " " + uri + " " + protocol);
+    _log.info("Response : " + status + " " + contentLength);
     epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
     close(_clientSocket);
     delete this;

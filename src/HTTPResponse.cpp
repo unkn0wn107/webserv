@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 12:36:59 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/24 14:23:15 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -282,10 +282,8 @@ ssize_t HTTPResponse::_sendAll(int socket, const char *buffer, size_t length) {
   ssize_t bytesSent;
   int trys = 0;
 
-  _log.info("length to send: " + Utils::to_string(length));
   while (totalSent < length) {
     bytesSent = send(socket, buffer + totalSent, length - totalSent, 0);
-    _log.info("bytesSent: " + Utils::to_string(bytesSent));
     if (bytesSent == -1) {
       if (trys > 3) {
         throw Exception("(send) Error sending response" + std::string(strerror(errno)));

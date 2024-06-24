@@ -30,15 +30,45 @@ Longest transaction:            0.05
 Shortest transaction:           0.00
 
 with loadbalancing (algo 2)
-Transactions:		      209353 hits
+Lifting the server siege...
+Transactions:		      231742 hits
 Availability:		      100.00 %
-Elapsed time:		       29.48 secs
-Data transferred:	      138.76 MB
+Elapsed time:		       29.67 secs
+Data transferred:	      153.60 MB
 Response time:		        0.00 secs
-Transaction rate:	     7101.53 trans/sec
-Throughput:		        4.71 MB/sec
-Concurrency:		       24.75
-Successful transactions:      209353
+Transaction rate:	     7810.65 trans/sec
+Throughput:		        5.18 MB/sec
+Concurrency:		       24.77
+Successful transactions:      231742
 Failed transactions:	           0
-Longest transaction:	        0.05
+Longest transaction:	        0.06
+Shortest transaction:	        0.00
+--------------------------------------
+Lifting the server siege...
+Transactions:		      111982 hits
+Availability:		      100.00 %
+Elapsed time:		       17.79 secs
+Data transferred:	       74.22 MB
+Response time:		        0.00 secs
+Transaction rate:	     6294.66 trans/sec
+Throughput:		        4.17 MB/sec
+Concurrency:		       24.57
+Successful transactions:      111983
+Failed transactions:	           0
+Longest transaction:	        0.03
+Shortest transaction:	        0.00
+
+nginx:
+Lifting the server siege...
+Transactions:		      458431 hits
+Availability:		      100.00 %
+Elapsed time:		       26.94 secs
+Data transferred:	      303.85 MB
+Response time:		        0.00 secs
+Transaction rate:	    17016.74 trans/sec
+Throughput:		       11.28 MB/sec
+Concurrency:		       22.63
+Successful transactions:      458437
+Failed transactions:	           0
+Longest transaction:	        0.09
 Shortest transaction:	        0.00

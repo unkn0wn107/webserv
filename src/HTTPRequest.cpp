@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/18 17:25:37 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/24 14:17:52 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,9 @@ HTTPRequest::HTTPRequest(std::string rawRequest /*, size_t readn*/)
   parseRequest();
 }
 
-HTTPRequest::~HTTPRequest() {}
+HTTPRequest::~HTTPRequest() {
+
+}
 
 void HTTPRequest::parseRequest() {
   std::istringstream requestStream(_rawRequest);
@@ -37,15 +39,6 @@ void HTTPRequest::parseRequest() {
 
   _uri = URI::decode(rawUri);
   _uriComponents = URI::parse(rawUri);
-
-  std::cout << "URI: " << _uri << std::endl;
-  std::cout << "Method: " << _method << std::endl;
-  std::cout << "Protocol: " << _protocol << std::endl;
-  std::cout << "URI Components:" << std::endl;
-  std::cout << "  Extension: " << _uriComponents.extension << std::endl;
-  std::cout << "  Script Name: " << _uriComponents.scriptName << std::endl;
-  std::cout << "  Path Info: " << _uriComponents.pathInfo << std::endl;
-  std::cout << "  Query String: " << _uriComponents.queryString << std::endl;
 
   while (std::getline(requestStream, line) && !line.empty()) {
     if (line == "\r" || line.empty())

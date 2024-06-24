@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/18 17:32:18 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/24 14:16:42 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,9 +80,6 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
   std::string body = request.getBody();
   int contentLength = request.getContentLength();
   LocationConfig location = getLocationConfig(uri);
-
-  _log.info("Checking request: Protocol: " + protocol + ", Method: " + method +
-            ", URI: " + uri + ", Content Length: " + Utils::to_string(contentLength));
 
   if (protocol != "HTTP/1.1") {
     _log.error("Unsupported protocol");

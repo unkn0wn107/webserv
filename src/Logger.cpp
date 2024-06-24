@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Logger.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/11 15:23:29 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/24 12:54:09 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,9 @@
 
 Logger* Logger::_instance = NULL;
 
-Logger::Logger() : _progLogFile(new std::ofstream()) {}
+Logger::Logger() : _progLogFile(new std::ofstream()) {
+  std::cout << "++++++++++++++++++++++++Logger created++++++++++++++++++" << std::endl;
+}
 
 Logger& Logger::getInstance() {
   if (_instance == NULL) {

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/21 13:51:22 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/24 11:04:17 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,14 +28,18 @@
 #include "Utils.hpp"
 #include "Common.hpp"
 #include "VirtualServer.hpp"
+#include "Server.hpp"
+
 
 #define MAX_EVENTS 10
 #define WORKER_TIME_TO_STOP 2
 
 class ConnectionHandler;
+class Server;
 
 class Worker {
  private:
+  Server&                                     _server;
   pthread_t                                   _thread;
   Config&                                     _config;
   Logger&                                     _log;
@@ -43,11 +47,10 @@ class Worker {
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
   int                                         _epollSocket;
   std::map<int, ListenConfig>                 _listenSockets;
-  std::queue<struct epoll_event>              _events;
   // int                                         _maxConnections;
   int                                         _load;
   bool                                        _shouldStop;
-  pthread_mutex_t                              _queueMutex;
+  // pthread_mutex_t                              _queueMutex;
 
   static void* _workerRoutine(void* ref);
 
@@ -59,11 +62,11 @@ class Worker {
   void _handleIncomingConnection(struct epoll_event event);
 
  public:
-  Worker(int epollSocket, std::map<int, ListenConfig>& listenSockets);
+  Worker(Server& server, int epollSocket, std::map<int, ListenConfig>& listenSockets);
   ~Worker();
   void stop();
   void start();
-  void pushEvent(struct epoll_event event);
+  // void pushEvent(struct epoll_event event);
   int getLoad();
 };
 

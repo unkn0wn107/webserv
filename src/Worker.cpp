@@ -13,25 +13,22 @@
 #include "Worker.hpp"
 #include "Common.hpp"
 #include "ConfigManager.hpp"
-#include "Server.hpp"
 
-Worker::Worker(int epollSocket, std::map<int, ListenConfig>& listenSockets)
-    : _config(ConfigManager::getInstance().getConfig()),
+Worker::Worker(Server& server, int epollSocket, std::map<int, ListenConfig>& listenSockets)
+    : _server(server),
+      _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       // _maxConnections(_config.worker_connections),
       // _currentConnections(0),
       _epollSocket(epollSocket),
       _listenSockets(listenSockets),
-      _events(),
-      _load(0), 
+      _load(0),
       _shouldStop(false)
 {
   _log.info("Worker constructor called");
-  pthread_mutex_init(&_queueMutex, NULL);
 }
 
 Worker::~Worker() {
-  pthread_mutex_destroy(&_queueMutex);
 }
 
 void  Worker::start() {
@@ -73,33 +70,21 @@ std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(
   return virtualServers;
 }
 
-
-void Worker::pushEvent(struct epoll_event event) {
-  _events.push(event);
-  _load++;
-  _log.info("WORKER (" + Utils::to_string(_thread) + "): Pushed event to queue : " + Utils::to_string(event.data.fd));
-}
-
 int Worker::getLoad() {
   return _load;
 }
 
 void Worker::_runEventLoop() {
   while (!_shouldStop) {
-    if (_load <= 0) {
+    struct epoll_event event = _server.getEvent();
+    if (event.data.fd == 0) {
       usleep(1000);
       continue;
     }
-    if (_events.empty()) {
-      continue;
-    }
-    struct epoll_event event = _events.front();
-    _events.pop();
-    _load--;
     _log.info("WORKER (" + Utils::to_string(_thread) + "): Event loop: " + Utils::to_string(event.data.fd));
     if (_listenSockets.find(event.data.fd) != _listenSockets.end() && event.events & EPOLLIN)
       _acceptNewConnection(event.data.fd);
-    else 
+    else
       _handleIncomingConnection(event);
   }
 }
@@ -146,6 +131,6 @@ void* Worker::_workerRoutine(void* ref) {
   Worker* worker = static_cast<Worker*>(ref);
   Logger::getInstance().info("WORKER (" + Utils::to_string(worker->_thread) + "): Worker routine started");
   worker->_runEventLoop();
-  Server::getInstance().workerFinished();
+  worker->_server.workerFinished();
   return NULL;
 }

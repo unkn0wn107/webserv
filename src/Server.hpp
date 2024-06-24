@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/22 15:23:29 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/24 10:47:05 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,8 @@ class Server {
   int                         _epollSocket;
   int                         _activeWorkers;
   int                         _event_count;
+  pthread_mutex_t             _eventsMutex;
+  std::queue<struct epoll_event>              _events;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
 
 
@@ -48,6 +50,7 @@ class Server {
   void _setupWorkers();
   void _setupEpoll();
   void _dispatchEvent(struct epoll_event event);
+  void _addEvent(struct epoll_event event);
   std::vector<VirtualServer*> _setupAssociateVirtualServers(
       const ListenConfig& listenConfig);
 
@@ -57,6 +60,7 @@ class Server {
   static Server& getInstance();
   std::vector<VirtualServer*> getVirtualServer(int fd);
   void workerFinished();
+  struct epoll_event getEvent();
   ~Server();
 
   void start();

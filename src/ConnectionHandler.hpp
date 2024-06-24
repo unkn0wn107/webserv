@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/22 15:04:42 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/24 10:37:08 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,7 +71,7 @@ class ConnectionHandler {
   std::vector<VirtualServer*> _vservPool;
   HTTPRequest*                _request;
   HTTPResponse*               _response;
-  pthread_mutex_t             _mutex;
+  // pthread_mutex_t             _mutex;
 
   void           _receiveRequest();
   void           _processRequest();

@@ -18,8 +18,6 @@ Worker::Worker(Server& server, int epollSocket, std::map<int, ListenConfig>& lis
     : _server(server),
       _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
-      // _maxConnections(_config.worker_connections),
-      // _currentConnections(0),
       _epollSocket(epollSocket),
       _listenSockets(listenSockets),
       _load(0),

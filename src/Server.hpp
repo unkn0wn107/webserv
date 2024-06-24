@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 15:31:20 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/24 10:47:05 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,32 +21,46 @@
 #include <sys/socket.h>
 
 #include "Config.hpp"
+#include "Common.hpp"
 #include "Logger.hpp"
 #include "Worker.hpp"
+#include <set>
 
 class Worker;
 
 class Server {
  private:
+  static int                  _callCount;
   static Server*              _instance;
   Config&                     _config;
   Logger&                     _log;
   std::vector<Worker*>        _workers;
-  int                         _workerIndex;
-  std::map<ListenConfig, int> _listenSockets;
+  std::map<int, ListenConfig> _listenSockets;
   pthread_mutex_t             _mutex;
   pthread_cond_t              _cond;
-  int _activeWorkers;
+  int                         _epollSocket;
+  int                         _activeWorkers;
+  int                         _event_count;
+  pthread_mutex_t             _eventsMutex;
+  std::queue<struct epoll_event>              _events;
+  std::map<int, std::vector<VirtualServer*> > _virtualServers;
+
 
   void _setupServerSockets();
   void _setupWorkers();
-  static void _signalHandler(int signum);
-
+  void _setupEpoll();
+  void _dispatchEvent(struct epoll_event event);
+  void _addEvent(struct epoll_event event);
+  std::vector<VirtualServer*> _setupAssociateVirtualServers(
+      const ListenConfig& listenConfig);
 
  public:
+
   Server();
   static Server& getInstance();
+  std::vector<VirtualServer*> getVirtualServer(int fd);
   void workerFinished();
+  struct epoll_event getEvent();
   ~Server();
 
   void start();

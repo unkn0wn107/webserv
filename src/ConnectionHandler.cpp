@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 14:46:46 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/22 15:28:20 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -163,6 +163,7 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
   return "";
 }
 
+
 void ConnectionHandler::_processRequest() {
   _request = new HTTPRequest(_buffer);
   std::string sessionId = _request->getSessionId();
@@ -192,27 +193,17 @@ void ConnectionHandler::_processRequest() {
   _connectionStatus = SENDING;
 }
 
-int ConnectionHandler::getConnectionStatus() const {
+int ConnectionHandler::getConnectionStatus() {
   return _connectionStatus;
 }
 
-void ConnectionHandler::processConnection() {
-  struct epoll_event event;
-  event.data.fd = _clientSocket;
-  event.data.ptr = this;
+void  ConnectionHandler::_processData() {
   if (_connectionStatus == READING) {
     try {
-      _log.info(std::string("CONNECTION_HANDLER: receive req: "));
       _receiveRequest();
     } catch (const Exception& e) {
       _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +
                  e.what());
-      return;
-    }
-    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
-                 strerror(errno));
       return;
     }
   }
@@ -220,11 +211,29 @@ void ConnectionHandler::processConnection() {
     try {
       _sendResponse();
     } catch (const Exception& e) {
-      _log.error(
-          std::string("CONNECTION_HANDLER: Exception caught while sending: ") +
-          e.what());
+      _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +
+                 e.what());
       return;
     }
+  }
+}
+
+void ConnectionHandler::processConnection() {
+  struct epoll_event event;
+  event.data.fd = _clientSocket;
+  event.data.ptr = this;
+  _processData();
+  if (_connectionStatus == READING) {
+    _log.info("CONNECTION_HANDLER: Reading request");
+    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+    if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
+      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
+                 strerror(errno));
+      return;
+    }
+  }
+  else if (_connectionStatus == SENDING) {
+    _log.info("CONNECTION_HANDLER: Sending response");
     event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
@@ -233,6 +242,8 @@ void ConnectionHandler::processConnection() {
     }
   }
   if (_connectionStatus == CLOSED) {
+    epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
     close(_clientSocket);
+    delete this;
   }
 }

@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 14:46:33 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/24 10:37:08 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
+#include <pthread.h>
 
 #define BUFFER_SIZE 16384
 
@@ -36,7 +37,7 @@ class ConnectionHandler {
 
   // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
   void processConnection();
-  int  getConnectionStatus() const;
+  int  getConnectionStatus();
 
   class ConnectionException : public Exception {
    public:
@@ -70,6 +71,7 @@ class ConnectionHandler {
   std::vector<VirtualServer*> _vservPool;
   HTTPRequest*                _request;
   HTTPResponse*               _response;
+  // pthread_mutex_t             _mutex;
 
   void           _receiveRequest();
   void           _processRequest();
@@ -77,6 +79,7 @@ class ConnectionHandler {
   VirtualServer* _findDefaultServer();
   std::string    _extractHost(const std::string& requestHeader);
   void           _sendResponse();
+  void           _processData();
 };
 
 #endif

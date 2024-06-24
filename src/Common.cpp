@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Common.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 11:06:33 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/17 19:39:18 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/21 11:57:59 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,3 +48,4 @@ std::string generateSessionId(void) {
   }
   return sessionId;
 }
+

@@ -46,6 +46,11 @@ void CGIHandler::_checkIfProcessingPossible(const HTTPRequest& request,
 
   std::string scriptPath =
       request.getConfig()->root + request.getURIComponents().scriptName;
+  if (FileManager::isDirectory(scriptPath))
+    scriptPath = request.getConfig()->root + request.getConfig()->location +
+                 request.getURIComponents().scriptName +
+                 request.getConfig()->index;
+
   if (!FileManager::doesFileExists(scriptPath))
     throw ScriptNotFound("Script not found: " + scriptPath);
   if (!FileManager::isFileExecutable(scriptPath))
@@ -96,9 +101,15 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
 }
 
 const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request) {
-  const URI::Components uriComponents = request.getURIComponents();
+  LocationConfig* location = request.getConfig();
+  std::string     extension = request.getURIComponents().extension;
+  std::string     scriptPath =
+      request.getConfig()->root + request.getURIComponents().scriptName;
+  if (FileManager::isDirectory(scriptPath))
+    extension = location->index.substr(location->index.find_last_of('.'));
+
   for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
-    if (CGIHandler::_AVAILABLE_CGIS[i].first == uriComponents.extension) {
+    if (CGIHandler::_AVAILABLE_CGIS[i].first == extension) {
       return CGIHandler::_AVAILABLE_CGIS[i].second;
     }
   }
@@ -224,10 +235,16 @@ void CGIHandler::_executeChildProcess(const HTTPRequest& request,
 std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request) {
   std::vector<char*> argv;
 
+  std::string scriptPath =
+      request.getConfig()->root + request.getURIComponents().scriptName;
+  if (FileManager::isDirectory(scriptPath))
+    scriptPath = request.getConfig()->root + request.getConfig()->location +
+                 request.getURIComponents().scriptName +
+                 request.getConfig()->index;
+
   argv.reserve(3);
   argv.push_back(Utils::cstr(_identifyRuntime(request)));
-  argv.push_back(Utils::cstr(request.getConfig()->root +
-                             request.getURIComponents().scriptName));
+  argv.push_back(Utils::cstr(scriptPath));
   argv.push_back(NULL);
 
   return argv;
@@ -239,12 +256,22 @@ std::vector<char*> CGIHandler::_getEnvp(const HTTPRequest& request) {
   const std::map<std::string, std::string> headers = request.getHeaders();
   const URI::Components uriComponents = request.getURIComponents();
 
-  envp.reserve(headers.size() + 8 + 1);  // 8 env variables + NULL
+  std::string scriptName = uriComponents.scriptName;
+  std::string scriptPath = request.getConfig()->root + uriComponents.scriptName;
+  if (FileManager::isDirectory(scriptPath)) {
+    scriptPath = request.getConfig()->root + request.getConfig()->location +
+                 request.getURIComponents().scriptName +
+                 request.getConfig()->index;
+    scriptName += request.getConfig()->index;
+  }
+
+  envp.reserve(headers.size() + 10 + 1);  // 10 env variables + NULL
 
   envp.push_back(Utils::cstr("REDIRECT_STATUS=200"));  // For php-cgi at least
-  envp.push_back(Utils::cstr("SCRIPT_FILENAME=" + request.getConfig()->root +
-                             uriComponents.scriptName));
-  envp.push_back(Utils::cstr("SCRIPT_NAME=" + uriComponents.scriptName));
+  envp.push_back(Utils::cstr("DOCUMENT_ROOT=" + request.getConfig()->root));
+  envp.push_back(Utils::cstr("REQUEST_URI=" + request.getURI()));
+  envp.push_back(Utils::cstr("SCRIPT_FILENAME=" + scriptPath));
+  envp.push_back(Utils::cstr("SCRIPT_NAME=" + scriptName));
   envp.push_back(Utils::cstr("PATH_INFO=" + uriComponents.pathInfo));
   envp.push_back(Utils::cstr("REQUEST_METHOD=" + request.getMethod()));
   envp.push_back(Utils::cstr("QUERY_STRING=" + uriComponents.queryString));

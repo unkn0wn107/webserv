@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/24 16:21:51 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/25 17:00:41 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,21 +74,23 @@ LocationConfig& VirtualServer::getLocationConfig(const std::string& uri) {
 }
 
 HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
-  std::string    protocol = request.getProtocol();
-  std::string    method = request.getMethod();
-  std::string    uri = request.getURI();
-  std::string    body = request.getBody();
-  int            contentLength = request.getContentLength();
-  LocationConfig location = getLocationConfig(uri);
+  std::string protocol = request.getProtocol();
+  std::string method = request.getMethod();
+  std::string uri = request.getURI();
+  std::string body = request.getBody();
+  int         contentLength = request.getContentLength();
+
+  LocationConfig location;
+  try {
+    location = getLocationConfig(uri);
+  } catch (const std::exception& e) {
+    _log.error("Location not found for URI: " + uri);
+    return new HTTPResponse(HTTPResponse::NOT_FOUND, location.error_pages);
+  }
 
   if (protocol != "HTTP/1.1") {
     _log.error("Unsupported protocol");
     return new HTTPResponse(HTTPResponse::BAD_REQUEST, location.error_pages);
-  }
-
-  if (location.location.empty()) {
-    _log.error("Location not found for URI: " + uri);
-    return new HTTPResponse(HTTPResponse::NOT_FOUND, location.error_pages);
   }
 
   if (std::find(location.allowed_methods.begin(),

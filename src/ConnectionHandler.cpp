@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 15:31:52 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/25 17:04:11 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -178,7 +178,9 @@ void ConnectionHandler::_processRequest() {
   }
   _request = new HTTPRequest(_buffer);
 
-  if (_request->getHeader("Cache-Control") != "no-cache") {
+  bool noCache = (_request->getHeader("Cache-Control") == "no-cache");
+
+  if (!noCache) {
     HTTPResponse* cachedResponse = _cacheHandler.getResponse(*_request);
     if (cachedResponse) {
       _log.info("CONNECTION_HANDLER: Cache hit");
@@ -187,7 +189,8 @@ void ConnectionHandler::_processRequest() {
       _connectionStatus = SENDING;
       return;
     }
-  }
+  } else
+    _log.info("CONNECTION_HANDLER: no-cache required by client");
 
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
@@ -204,10 +207,14 @@ void ConnectionHandler::_processRequest() {
   }
 
   _response = vserv->handleRequest(*_request);
-  _response->addHeader(
-      "Cache-Control",
-      "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
-  _cacheHandler.storeResponse(*_request, *_response);
+  if (noCache)
+    _response->addHeader("Cache-Control", "no-cache");
+  else {
+    _response->addHeader(
+        "Cache-Control",
+        "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
+    _cacheHandler.storeResponse(*_request, *_response);
+  }
 
   _response->setCookie("sessionid", _request->getSessionId());
 

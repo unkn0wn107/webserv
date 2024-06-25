@@ -1,0 +1,3 @@
+[submodule "html-website-templates"]
+	path = html-website-templates
+	url = https://github.com/designmodo/html-website-templates.git

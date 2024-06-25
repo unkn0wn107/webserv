@@ -66,17 +66,30 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
   std::vector<char*> argv = _getArgv(request);
   std::vector<char*> envp = _getEnvp(request);
   pid_t              pid = fork();
-  if (pid == -1)
+  if (pid == -1) {
+    Utils::freeCharVector(argv);
+    Utils::freeCharVector(envp);
     throw ForkFailure("Failed to fork process");
-  else if (pid == 0) {
-    _executeChildProcess(request, pipefd, argv, envp);
-  } else {
+  } else if (pid == 0) {
     try {
-      return _executeParentProcess(pipefd, pid, argv, envp);
-    } catch (void *e) {
+      _executeChildProcess(request, pipefd, argv, envp);
       Utils::freeCharVector(argv);
       Utils::freeCharVector(envp);
-      throw e;
+    } catch (...) {
+      Utils::freeCharVector(argv);
+      Utils::freeCharVector(envp);
+      throw;
+    }
+  } else {
+    try {
+      HTTPResponse* response = _executeParentProcess(pipefd, pid);
+      Utils::freeCharVector(argv);
+      Utils::freeCharVector(envp);
+      return response;
+    } catch (...) {
+      Utils::freeCharVector(argv);
+      Utils::freeCharVector(envp);
+      throw;
     }
   }
   throw ExecutorError("CGI script fatal : out of pid branches !!");  // -Werror
@@ -92,12 +105,8 @@ const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request) {
   return "";
 }
 
-HTTPResponse* CGIHandler::_executeParentProcess(int                pipefd[2],
-                                                pid_t              pid,
-                                                std::vector<char*> argv,
-                                                std::vector<char*> envp) {
+HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
   close(pipefd[1]);  // Close the write end of the pipe
-
   fd_set read_fds;
   FD_ZERO(&read_fds);
   FD_SET(pipefd[0], &read_fds);
@@ -120,19 +129,20 @@ HTTPResponse* CGIHandler::_executeParentProcess(int                pipefd[2],
     }
     close(pipefd[0]);
 
+    // Log the output received from the CGI script
+    _log.info("CGI script output: " + output);
+
     int status;
     waitpid(pid, &status, 0);
 
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
       throw RuntimeError("CGI script failed");
     }
-
-    // Free only after last throw, where already freed
-    Utils::freeCharVector(argv);
-    Utils::freeCharVector(envp);
-
     // Parse output to create HTTPResponse
     std::size_t headerEndPos = output.find("\r\n\r\n");
+    if (headerEndPos == std::string::npos)
+      throw ExecutorError(
+          "Invalid CGI response: no header-body separator found");
     std::string headerPart = output.substr(0, headerEndPos);
     std::string bodyContent =
         output.substr(headerEndPos + 4);  // +4 to skip the "\r\n\r\n"
@@ -142,11 +152,15 @@ HTTPResponse* CGIHandler::_executeParentProcess(int                pipefd[2],
     std::string                        line;
     while (std::getline(headerStream, line)) {
       std::size_t colonPos = line.find(':');
-      if (colonPos != std::string::npos) {
-        std::string key = line.substr(0, colonPos);
-        std::string value = line.substr(colonPos + 2);  // +2 to skip ": "
-        headers[key] = value;
-      }
+      if (colonPos == std::string::npos)
+        throw ExecutorError("Invalid CGI response: malformed header line");
+      std::string key = line.substr(0, colonPos);
+      if (key.empty())
+        throw ExecutorError("Invalid CGI response: empty header key");
+      std::string value = line.substr(colonPos + 2);  // +2 to skip ": "
+      if (value.empty())
+        throw ExecutorError("Invalid CGI response: empty header value");
+      headers[key] = value;
     }
     headers["Content-Length"] = Utils::to_string(bodyContent.size());
     return new HTTPResponse(HTTPResponse::OK, headers, bodyContent);

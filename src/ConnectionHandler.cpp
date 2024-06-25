@@ -177,17 +177,13 @@ void ConnectionHandler::_processRequest() {
     _request = NULL;
   }
   _request = new HTTPRequest(_buffer);
-  std::string sessionId = _request->getSessionId();
-  if (sessionId.empty()) {
-    sessionId = generateSessionId();
-    _request->setSessionId(sessionId);
-  }
 
   if (_request->getHeader("Cache-Control") != "no-cache") {
     HTTPResponse* cachedResponse = _cacheHandler.getResponse(*_request);
     if (cachedResponse) {
       _log.info("CONNECTION_HANDLER: Cache hit");
       _response = cachedResponse;
+      _response->setCookie("sessionid", _request->getSessionId());
       _connectionStatus = SENDING;
       return;
     }
@@ -203,7 +199,6 @@ void ConnectionHandler::_processRequest() {
 
   if ((_response = vserv->checkRequest(*_request)) != NULL) {
     _log.error("CONNECTION_HANDLER: Request failed");
-    _response->setCookie("sessionid", sessionId);
     _connectionStatus = SENDING;
     return;
   }
@@ -214,9 +209,7 @@ void ConnectionHandler::_processRequest() {
       "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
   _cacheHandler.storeResponse(*_request, *_response);
 
-  if (_request->getHeader("Set-Cookie").empty()) {
-    _response->setCookie("sessionid", sessionId);
-  }
+  _response->setCookie("sessionid", _request->getSessionId());
 
   _connectionStatus = SENDING;
 }

@@ -73,7 +73,7 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
   } else {
     try {
       return _executeParentProcess(pipefd, pid, argv, envp);
-    } catch (const Exception& e) {
+    } catch (void *e) {
       Utils::freeCharVector(argv);
       Utils::freeCharVector(envp);
       throw e;

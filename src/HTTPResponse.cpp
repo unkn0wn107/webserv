@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/24 16:15:46 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/25 18:06:02 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -282,9 +282,10 @@ ssize_t HTTPResponse::_sendAll(int socket, const char* buffer, size_t length) {
   size_t  totalSent = 0;  // combien de bytes nous avons envoyé
   ssize_t bytesSent;
   int     trys = 0;
+  int     chunkSize = 1024;
 
   while (totalSent < length) {
-    bytesSent = send(socket, buffer + totalSent, length - totalSent, 0);
+    bytesSent = send(socket, buffer + totalSent, chunkSize, 0);
     if (bytesSent == -1) {
       if (trys > 3) {
         throw Exception("(send) Error sending response" +

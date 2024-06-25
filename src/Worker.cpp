@@ -125,6 +125,8 @@ void Worker::_acceptNewConnection(int fd) {
 }
 
 void Worker::_handleIncomingConnection(struct epoll_event event) {
+  // if (event)
+  _log.info("WORKER (" + Utils::to_string(_threadId) + "): Handle incoming connection for ");
   ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
   handler->processConnection();
   epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);

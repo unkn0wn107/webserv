@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 01:51:28 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/25 03:24:31 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,6 @@
 #include <sstream>
 #include <string>
 
-#include "CacheHandler.hpp"
 #include "Common.hpp"
 #include "ConnectionHandler.hpp"
 #include "Utils.hpp"
@@ -210,6 +209,9 @@ void ConnectionHandler::_processRequest() {
   }
 
   _response = vserv->handleRequest(*_request);
+  _response->addHeader(
+      "Cache-Control",
+      "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
   _cacheHandler.storeResponse(*_request, *_response);
 
   if (_request->getHeader("Set-Cookie").empty()) {

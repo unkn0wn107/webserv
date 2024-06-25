@@ -6,12 +6,13 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 01:48:57 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/25 03:14:43 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "CacheHandler.hpp"
 
+const time_t  CacheHandler::MAX_AGE = 3600;
 CacheHandler* CacheHandler::_instance = NULL;
 
 CacheHandler& CacheHandler::getInstance() {
@@ -28,32 +29,36 @@ void CacheHandler::deleteInstance() {
   }
 }
 
-CacheHandler::CacheHandler() {
+CacheHandler::CacheHandler() : _maxAge(MAX_AGE) {
   pthread_mutex_init(&_mutex, NULL);
 }
 
 CacheHandler::~CacheHandler() {
-  for (std::map<std::string, HTTPResponse*>::iterator it = _cache.begin();
+  for (std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator it =
+           _cache.begin();
        it != _cache.end(); ++it) {
-    delete it->second;
+    delete it->second.first;
   }
   _cache.clear();
   pthread_mutex_destroy(&_mutex);
 }
 
 HTTPResponse* CacheHandler::getResponse(const HTTPRequest& request) {
-  std::string key = _generateKey(request);
-
   pthread_mutex_lock(&_mutex);
-  std::map<std::string, HTTPResponse*>::const_iterator it = _cache.find(key);
+  std::map<std::string, std::pair<HTTPResponse*, time_t> >::const_iterator it =
+      _cache.find(_generateKey(request));
   if (it != _cache.end()) {
-    HTTPResponse* response = new HTTPResponse(*(it->second));
-    pthread_mutex_unlock(&_mutex);
-    return response;
-  } else {
-    pthread_mutex_unlock(&_mutex);
-    return NULL;
+    if (it->second.second + _maxAge > time(NULL)) {  // Check cache freshness
+      HTTPResponse* response = new HTTPResponse(*(it->second.first));
+      pthread_mutex_unlock(&_mutex);
+      return response;
+    } else {
+      delete it->second.first;  // Response
+      _cache.erase(it->first);  // <Response, Time>
+    }
   }
+  pthread_mutex_unlock(&_mutex);
+  return NULL;
 }
 
 void CacheHandler::storeResponse(const HTTPRequest&  request,
@@ -61,7 +66,7 @@ void CacheHandler::storeResponse(const HTTPRequest&  request,
   std::string key = _generateKey(request);
   pthread_mutex_lock(&_mutex);
   if (_cache.find(key) == _cache.end())
-    _cache[key] = new HTTPResponse(response);
+    _cache[key] = std::make_pair(new HTTPResponse(response), time(NULL));
   pthread_mutex_unlock(&_mutex);
 }
 

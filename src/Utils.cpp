@@ -3,15 +3,14 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:32 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 12:17:58 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/25 02:25:50 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Utils.hpp"
-
 
 template <typename T>
 T Utils::stoi(const std::string& str) {
@@ -86,7 +85,7 @@ template std::string Utils::to_string<int>(const int& num);
 template std::string Utils::to_string<unsigned int>(const unsigned int& num);
 template std::string Utils::to_string<float>(const float& num);
 template std::string Utils::to_string<double>(const double& num);
-template std::string Utils::to_string<ssize_t>(const ssize_t& num);
+template std::string Utils::to_string<long>(const long& num);
 
 void Utils::freeCharVector(std::vector<char*>& vec) {
   for (size_t i = 0; i < vec.size(); i++)

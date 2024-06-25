@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 12:36:59 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/24 16:15:46 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -269,7 +269,8 @@ void HTTPResponse::buildResponse() {
 }
 
 std::string HTTPResponse::defaultErrorPage(int status) {
-  for (int i = 0; i < NUM_STATUS_CODE_MESSAGES; i++) {
+  for (unsigned long i = 0;
+       i < sizeof(_defaultErrorPages) / sizeof(_defaultErrorPages[0]); i++) {
     if (_defaultErrorPages[i].first == status) {
       return std::string(_defaultErrorPages[i].second);
     }
@@ -277,18 +278,17 @@ std::string HTTPResponse::defaultErrorPage(int status) {
   return std::string("");
 }
 
-ssize_t HTTPResponse::_sendAll(int socket, const char *buffer, size_t length) {
-  size_t totalSent = 0; // combien de bytes nous avons envoyé
+ssize_t HTTPResponse::_sendAll(int socket, const char* buffer, size_t length) {
+  size_t  totalSent = 0;  // combien de bytes nous avons envoyé
   ssize_t bytesSent;
-  int trys = 0;
+  int     trys = 0;
 
-  _log.info("length to send: " + Utils::to_string(length));
   while (totalSent < length) {
     bytesSent = send(socket, buffer + totalSent, length - totalSent, 0);
-    _log.info("bytesSent: " + Utils::to_string(bytesSent));
     if (bytesSent == -1) {
       if (trys > 3) {
-        throw Exception("(send) Error sending response" + std::string(strerror(errno)));
+        throw Exception("(send) Error sending response" +
+                        std::string(strerror(errno)));
       }
       trys++;
       usleep(1000);
@@ -298,28 +298,28 @@ ssize_t HTTPResponse::_sendAll(int socket, const char *buffer, size_t length) {
     totalSent += bytesSent;
   }
 
-  return totalSent; // Retourne le nombre total de bytes envoyés
+  return totalSent;  // Retourne le nombre total de bytes envoyés
 }
 
 ssize_t HTTPResponse::_sendAllFile(int clientSocket, FILE* file) {
-    fseek(file, 0, SEEK_END);
-    off_t file_length = static_cast<off_t>(ftell(file));
-    fseek(file, 0, SEEK_SET);
+  fseek(file, 0, SEEK_END);
+  off_t file_length = static_cast<off_t>(ftell(file));
+  fseek(file, 0, SEEK_SET);
 
-    off_t offset = 0;
-    ssize_t bytesSent;
+  off_t   offset = 0;
+  ssize_t bytesSent;
 
-    while (offset < file_length) {
-        bytesSent = sendfile(clientSocket, fileno(file), &offset, file_length - offset);
-        if (bytesSent == -1) {
-            throw Exception("(sendfile) Error sending response");
-        }
+  while (offset < file_length) {
+    bytesSent =
+        sendfile(clientSocket, fileno(file), &offset, file_length - offset);
+    if (bytesSent == -1) {
+      throw Exception("(sendfile) Error sending response");
     }
-    return offset;  // Retourne le nombre total de bytes envoyés
+  }
+  return offset;  // Retourne le nombre total de bytes envoyés
 }
 
-int HTTPResponse::sendResponse(int clientSocket)
-{
+int HTTPResponse::sendResponse(int clientSocket) {
   buildResponse();
 
   _sendAll(clientSocket, _responseBuffer.c_str(), _responseBuffer.size());

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 01:05:11 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/24 22:11:19 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,9 +17,9 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <stdexcept>
 
 #include "Config.hpp"
+#include "Exception.hpp"
 #include "HTTPRequest.hpp"
 #include "Logger.hpp"
 #include "Utils.hpp"

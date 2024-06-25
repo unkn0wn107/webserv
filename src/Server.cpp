@@ -11,91 +11,152 @@
 /* ************************************************************************** */
 
 #include "Server.hpp"
+#include <climits>
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 #include "Utils.hpp"
 
 Server* Server::_instance = NULL;
+int     Server::_callCount = 1;
 
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
-      _workerIndex(0),
-      _activeWorkers(0) {
-
-  _setupWorkers();
+      _activeWorkers(0),
+      _event_count(0),
+      _events() {
+  _log.info("====================SERVER: Setup server " +
+            Utils::to_string(_callCount));
+  _setupEpoll();
   _setupServerSockets();
+  _setupWorkers();
   pthread_mutex_init(&_mutex, NULL);
-  pthread_cond_init(&_cond, NULL);
+  pthread_mutex_init(&_eventsMutex, NULL);
+  _callCount++;
+  _running = false;
+  _instance = this;
 }
 
 Server::~Server() {
   for (size_t i = 0; i < _workers.size(); i++) {
-    _workers[i]->stop();
     delete _workers[i];
   }
   _workers.clear();
-  pthread_cond_destroy(&_cond);
   pthread_mutex_destroy(&_mutex);
+  pthread_mutex_destroy(&_eventsMutex);
+  CacheHandler::deleteInstance();
+  ConfigManager::deleteInstance();
   Server::_instance = NULL;
 }
 
 Server& Server::getInstance() {
-  if (Server::_instance == NULL) {
-    Server::_instance = new Server();
+  if (_instance == NULL) {
+    Logger::getInstance().info("SERVER: Creating server instance");
+    _instance = new Server();
   }
-  return *Server::_instance;
+  return *_instance;
 }
 
 void Server::workerFinished() {
   pthread_mutex_lock(&_mutex);
   _activeWorkers--;
+  _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) +
+            ")");
   if (_activeWorkers == 0) {
-    pthread_cond_signal(&_cond);
+    _running = false;
+    _log.info("SERVER: All workers finished");
   }
   pthread_mutex_unlock(&_mutex);
 }
 
 void Server::start() {
+  _running = true;
   for (size_t i = 0; i < _workers.size(); i++) {
     _workers[i]->start();
     pthread_mutex_lock(&_mutex);
     _activeWorkers++;
     pthread_mutex_unlock(&_mutex);
   }
-  pthread_mutex_lock(&_mutex);
-  while (_activeWorkers > 0) {
-    pthread_cond_wait(&_cond, &_mutex);
+  _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) +
+            ")");
+  struct epoll_event events[MAX_EVENTS];
+  while (_running) {
+    _log.info("SERVER: Waiting for events...");
+    int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
+    if (nfds < 0) {
+      _log.error("SERVER: Failed to wait for events");
+      usleep(1000);
+      continue;
+    }
+    for (int i = 0; i < nfds && _running; i++) {
+      _addEvent(events[i]);
+      _log.info("SERVER: Added event to queue");
+    }
   }
-  pthread_mutex_unlock(&_mutex);
+  _log.info("SERVER:  events queue size: " + Utils::to_string(_events.size()));
+}
+
+void Server::_addEvent(struct epoll_event event) {
+  pthread_mutex_lock(&_eventsMutex);
+  _events.push(event);
+  pthread_mutex_unlock(&_eventsMutex);
+}
+
+struct epoll_event Server::getEvent() {
+  pthread_mutex_lock(&_eventsMutex);
+  if (_events.empty()) {
+    struct epoll_event event = {};
+    event.data.fd = -1;
+    pthread_mutex_unlock(&_eventsMutex);
+    return event;
+  }
+  struct epoll_event event = _events.front();
+  _events.pop();
+  pthread_mutex_unlock(&_eventsMutex);
+  _log.info("SERVER: Event popped");
+  return event;
 }
 
 void Server::stop(int signum) {
   if (signum == SIGINT || signum == SIGTERM || signum == SIGKILL) {
-    Server::_instance->_log.info("Server stopped from signal " + Utils::to_string(signum));
-    delete Server::_instance;
-    Server::_instance = NULL;
-    throw std::runtime_error("Server stopped");
+    Server::_instance->_log.info("Server stopped from signal " +
+                                 Utils::to_string(signum));
+    for (size_t i = 0; i < _workers.size(); i++) {
+      _log.info("SERVER: stopping worker " + Utils::to_string(i) + " (" +
+                Utils::to_string(_workers[i]->_threadId) + ")");
+      _workers[i]->stop();
+    }
+    _log.info("SERVER: workers stopped");
+    _running = false;
   }
 }
 
 void Server::_setupWorkers() {
   for (int i = 0; i < _config.worker_processes; i++) {
-    _workers.push_back(new Worker());
+    _workers.push_back(new Worker(*this, _epollSocket, _listenSockets));
+  }
+}
+
+void Server::_setupEpoll() {
+  _epollSocket = epoll_create1(0);
+  if (_epollSocket == -1) {
+    _log.error("Failed to create epoll socket");
+    throw std::runtime_error("Failed to create epoll socket");
   }
 }
 
 void Server::_setupServerSockets() {
   const std::set<ListenConfig>& uniqueConfigs = _config.unique_listen_configs;
 
+  _log.info("SERVER: Setup server sockets");
   for (std::set<ListenConfig>::const_iterator it = uniqueConfigs.begin();
        it != uniqueConfigs.end(); ++it) {
     const ListenConfig& listenConfig = *it;
     int                 sock = socket(AF_INET6, SOCK_STREAM, 0);
     if (sock < 0) {
       _log.error("(" + listenConfig.address + ":" +
-      Utils::to_string(listenConfig.port) +
-      ") Failed to create socket");
+                 Utils::to_string(listenConfig.port) +
+                 ") Failed to create socket");
       continue;
     }
 
@@ -179,8 +240,19 @@ void Server::_setupServerSockets() {
       close(sock);
       continue;
     }
-    _listenSockets[listenConfig] = sock;
-    _workers[_workerIndex]->assignConnection(sock, listenConfig);
-    _workerIndex = (_workerIndex + 1) % _config.worker_processes;
+
+    struct epoll_event event;
+    memset(&event, 0, sizeof(event));
+    event.data.fd = sock;
+    event.events = EPOLLIN | EPOLLET;
+    if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {
+      close(sock);
+      _log.error(std::string("SERVER (assign conn): Failed \"epoll_ctl\": ") +
+                 strerror(errno) + " (" + Utils::to_string(sock) + ")");
+      continue;
+    }
+    _log.info("SERVER (assign conn): Add socket to epoll : " +
+              Utils::to_string(sock));
+    _listenSockets[sock] = listenConfig;
   }
 }

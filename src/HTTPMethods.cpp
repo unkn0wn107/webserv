@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPMethods.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/18 23:47:06 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/24 14:22:56 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,9 @@ HTTPMethods::HTTPMethods(VirtualServer& server):
 	_log(Logger::getInstance())
 {}
 
-HTTPMethods::~HTTPMethods() {}
+HTTPMethods::~HTTPMethods() {
+
+}
 
 std::string HTTPMethods::_getPath(const std::string& uri,
                                     LocationConfig&    location) {
@@ -66,8 +68,8 @@ std::string HTTPMethods::_generateDirectoryListing(const std::string& path) {
 }
 
 HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
-                                        LocationConfig&    location) {
-  std::string   indexPath = path + "/" + location.index;
+                                      LocationConfig&    location) {
+  std::string indexPath = path + location.index;
   if (FileManager::doesFileExists(indexPath)) {
     HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", "text/html");
@@ -91,7 +93,6 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
 
 HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
   std::string uri = request.getURI();
-  _log.info("HTTPMethods::_handleGetRequest : URI : " + uri);
   LocationConfig location = _server.getLocationConfig(uri);
   std::string    path = _getPath(uri, location);
   struct stat    statbuf;
@@ -124,7 +125,6 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 	std::string path = _getPath(request.getURI(), location);
 	std::string contentType;
   contentType = request.getHeader("Content-Type");
-  _log.info("HTTPMethods::_handlePostRequest : Content-Type: " + contentType);
   if (contentType == "") {
     contentType = HTTPResponse::getContentType(path);
   }
@@ -181,8 +181,6 @@ HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
   std::string    uri = request.getURI();
   LocationConfig location = _server.getLocationConfig(uri);
   request.setConfig(&location);
-  _log.info("HTTPMethods::handleRequest : Protocol : " + protocol +
-            " Method : " + method + " URI : " + uri);
 
   if (protocol != "HTTP/1.1") {
     _log.error("HTTPMethods::handleRequest : Protocol not supported");

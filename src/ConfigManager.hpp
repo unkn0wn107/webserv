@@ -6,14 +6,13 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/29 18:30:10 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/24 22:54:21 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CONFIGMANAGER_H
 #define CONFIGMANAGER_H
 
-#include "Config.hpp"
 #include "Logger.hpp"
 
 class ConfigManager {
@@ -29,6 +28,7 @@ class ConfigManager {
   ConfigManager();
 
  public:
+  static void deleteInstance();
   ~ConfigManager();
   static ConfigManager& getInstance();
   const std::string     getFilePath() const;

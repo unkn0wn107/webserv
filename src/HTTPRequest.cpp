@@ -3,14 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/18 17:25:37 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/25 03:18:55 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPRequest.hpp"
+#include "Common.hpp"
 #include "Utils.hpp"
 
 const std::string HTTPRequest::supportedMethods[4] = {"GET", "HEAD", "DELETE",
@@ -38,15 +39,19 @@ void HTTPRequest::parseRequest() {
   _uri = URI::decode(rawUri);
   _uriComponents = URI::parse(rawUri);
 
-  std::cout << "URI: " << _uri << std::endl;
-  std::cout << "Method: " << _method << std::endl;
-  std::cout << "Protocol: " << _protocol << std::endl;
-  std::cout << "URI Components:" << std::endl;
-  std::cout << "  Extension: " << _uriComponents.extension << std::endl;
-  std::cout << "  Script Name: " << _uriComponents.scriptName << std::endl;
-  std::cout << "  Path Info: " << _uriComponents.pathInfo << std::endl;
-  std::cout << "  Query String: " << _uriComponents.queryString << std::endl;
+  _parseHeaders(requestStream);
 
+  if (_method == "POST" || _method == "PUT") {
+    std::stringstream bodyStream;
+    bodyStream << requestStream.rdbuf();
+    setBody(bodyStream.str());
+  }
+
+  _parseSession();
+}
+
+void HTTPRequest::_parseHeaders(std::istringstream& requestStream) {
+  std::string line;
   while (std::getline(requestStream, line) && !line.empty()) {
     if (line == "\r" || line.empty())
       break;
@@ -59,12 +64,22 @@ void HTTPRequest::parseRequest() {
       addHeader(key, value);
     }
   }
+}
 
-  if (_method == "POST" || _method == "PUT") {
-    std::stringstream bodyStream;
-    bodyStream << requestStream.rdbuf();
-    setBody(bodyStream.str());
+void HTTPRequest::_parseSession() {
+  std::string sessionId;
+  std::string cookieHeader = getHeader("Cookie");
+  std::size_t pos = cookieHeader.find("sessionid=");
+  if (pos != std::string::npos) {
+    std::size_t endPos = cookieHeader.find(";", pos);
+    if (endPos == std::string::npos)
+      sessionId = cookieHeader.substr(pos + 10);
+    else
+      sessionId = cookieHeader.substr(pos + 10, endPos - pos - 10);
   }
+  if (sessionId.empty())
+    sessionId = generateSessionId();
+  setSessionId(sessionId);
 }
 
 void HTTPRequest::setSessionId(const std::string& sessionId) {

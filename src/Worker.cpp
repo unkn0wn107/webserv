@@ -13,29 +13,34 @@
 #include "Worker.hpp"
 #include "Common.hpp"
 #include "ConfigManager.hpp"
-#include "Server.hpp"
 
-Worker::Worker()
-    : _config(ConfigManager::getInstance().getConfig()),
+Worker::Worker(Server&                      server,
+               int                          epollSocket,
+               std::map<int, ListenConfig>& listenSockets)
+    : _server(server),
+      _thread(0),
+      _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
-      _maxConnections(_config.worker_connections),
-      _currentConnections(0),
+      _epollSocket(epollSocket),
+      _listenSockets(listenSockets),
+      _load(0),
       _shouldStop(false)
 {
   _log.info("Worker constructor called");
 }
 
-Worker::~Worker() {
-  // _stop();
+Worker::~Worker() {}
 
-  // pthread_mutex_destroy(&_stopMutex);
-}
+void Worker::start() {
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-void  Worker::start() {
-  if (pthread_create(&_thread, NULL, _workerRoutine, this) != 0) {
+  if (pthread_create(&_thread, &attr, _workerRoutine, this) != 0) {
     _log.error("WORKER : Failed to create thread proc");
   }
-  pthread_detach(_thread);
+
+  pthread_attr_destroy(&attr);
 }
 
 void Worker::stop() {
@@ -51,8 +56,6 @@ std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(
     for (std::vector<ListenConfig>::iterator lit = it->listen.begin();
          lit != it->listen.end(); ++lit) {
       if (*lit == listenConfig) {
-        _log.info("WORKER: Associate VirtualServer to a conn: " +
-                  it->server_names[0] + "\n");
         virtualServers.push_back(new VirtualServer(*it));
         break;
       }
@@ -61,100 +64,74 @@ std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(
   return virtualServers;
 }
 
-void Worker::assignConnection(int                 clientSocket,
-                              const ListenConfig& listenConfig) {
-  struct epoll_event event;
-  event.data.fd = clientSocket;
-  event.events = EPOLLIN | EPOLLET;
-
-  if (_currentConnections >= _maxConnections) {
-    _log.error("WORKER: Max connections reached");
-    close(clientSocket);
-  } else {
-    if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, clientSocket, &event) == -1) {
-      close(clientSocket);
-      _log.error(std::string("WORKER (assign conn): Failed \"epoll_ctl\": ") +
-                 strerror(errno) + " (" + Utils::to_string(clientSocket) + ")");
-      return;
-    }
-    _listenSockets.push_back(clientSocket);
-    _listenConfigs[clientSocket] = listenConfig;
-    _virtualServers[clientSocket] = _setupAssociateVirtualServer(listenConfig);
-    _currentConnections++;
-  }
+int Worker::getLoad() {
+  return _load;
 }
 
 void Worker::_runEventLoop() {
-  struct epoll_event events[MAX_EVENTS];
-  int                nfds;
   while (!_shouldStop) {
-    nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
-    if (nfds <= 0) {
-      _log.error("Erreur lors de l'attente des événements epoll");
+    struct epoll_event event = _server.getEvent();
+    if (event.data.fd == -1) {
+      usleep(1000);
       continue;
     }
-
-    for (int n = 0; n < nfds; ++n) {
-      if (std::find(_listenSockets.begin(), _listenSockets.end(),
-                    events[n].data.fd) != _listenSockets.end())
-        _acceptNewConnection(events[n].data.fd);
-      else
-        _handleIncomingConnection(events[n]);
-    }
+    if (_listenSockets.find(event.data.fd) != _listenSockets.end() &&
+        event.events & EPOLLIN)
+      _acceptNewConnection(event.data.fd);
+    else
+      _handleIncomingConnection(event);
   }
+  _log.info("WORKER (" + Utils::to_string(_threadId) + "): End of event loop");
 }
 
 void Worker::_acceptNewConnection(int fd) {
   struct sockaddr_storage address;
-  socklen_t              addrlen = sizeof(address);
-  int                    new_socket;
-  struct epoll_event     event;
-  int trys = 0;
+  socklen_t               addrlen = sizeof(address);
+  int                     new_socket;
+  struct epoll_event      event;
 
-  _log.info("WORKER: \"accept\"");
-  while (true) {
+  while (!_shouldStop) {
     new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
-    if (new_socket < 0) {
-      if (trys > 3) {
-        _log.error("WORKER: Failed \"accept\"");
-        break;
-      }
-      trys++;
-      usleep(1000);
-      continue;
+    if (new_socket <= 0) {
+      _log.info("WORKER (" + Utils::to_string(_thread) +
+                "): Failed \"accept\" for fd =" + Utils::to_string(fd) + ": " +
+                strerror(errno));
+      break;
     }
-    trys = 0;
     if (set_non_blocking(new_socket) == -1) {
-      _log.error("WORKER: Failed \"set_non_blocking\"");
+      _log.error("WORKER (" + Utils::to_string(_thread) +
+                 "): Failed \"set_non_blocking\"");
       continue;
     }
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    ConnectionHandler* handler = new ConnectionHandler(
-        new_socket, _epollSocket, /*_listenConfigs[fd],*/ _virtualServers[fd]);
-    _handlers[new_socket] = handler;
+    ListenConfig                listenConfig = _listenSockets[fd];
+    std::vector<VirtualServer*> virtualServers =
+        _setupAssociateVirtualServer(listenConfig);
+    ConnectionHandler* handler =
+        new ConnectionHandler(new_socket, _epollSocket, virtualServers);
     event.data.ptr = handler;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
-      _log.error("WORKER (new conn): Failed \"epoll_ctl\"");
+      _log.error("WORKER (" + Utils::to_string(_thread) +
+                 "): Failed \"epoll_ctl\"");
       continue;
     }
   }
 }
 
-void Worker::_handleIncomingConnection(struct epoll_event& event) {
-  _log.info("WORKER: Handling incoming connection");
-  ConnectionHandler* handler = (ConnectionHandler*)event.data.ptr;
-  int connectionStatus = handler->getConnectionStatus();
-  if (connectionStatus == CLOSED) {
-    _log.info("WORKER: Connection closed");
-    delete handler;
-    return;
-  }
+void Worker::_handleIncomingConnection(struct epoll_event event) {
+  ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
   handler->processConnection();
+  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);
 }
 
 void* Worker::_workerRoutine(void* ref) {
   Worker* worker = static_cast<Worker*>(ref);
+  worker->_threadId = gettid();
+  worker->_log.info("WORKER (" + Utils::to_string(worker->_threadId) +
+                    "): Started");
   worker->_runEventLoop();
-  Server::getInstance().workerFinished();
+  worker->_log.info("WORKER (" + Utils::to_string(worker->_threadId) +
+                    "): Finished");
+  worker->_server.workerFinished();
   return NULL;
 }

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Logger.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/11 15:23:29 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/24 22:42:58 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,13 @@ Logger& Logger::getInstance() {
     _instance = new Logger();
   }
   return *_instance;
+}
+
+void Logger::deleteInstance() {
+  if (_instance != NULL) {
+    delete _instance;
+    _instance = NULL;
+  }
 }
 
 Logger::~Logger() {

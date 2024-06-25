@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/14 13:42:10 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/25 03:18:01 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,8 +54,8 @@ class HTTPRequest {
   void setBody(const std::string& body);
 
  private:
-  std::string                        _sessionId;
-  std::string                        _rawRequest;
+  std::string _sessionId;
+  std::string _rawRequest;
   // size_t                             _readn;
   std::string                        _method;
   std::string                        _uri;
@@ -64,6 +64,9 @@ class HTTPRequest {
   std::string                        _body;
   std::string                        _protocol;
   LocationConfig*                    _config;
+
+  void _parseHeaders(std::istringstream& requestStream);
+  void _parseSession();
 };
 
 #endif

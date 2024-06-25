@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/21 16:36:27 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/25 00:40:40 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@ NAME = webserv
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
-DEBUGFLAGS = -g3 -fsanitize=address
+DEBUGFLAGS = -g3
 
 SRC_DIR = src
 OBJ_DIR = obj
@@ -30,9 +30,9 @@ export NGINX_PORT_1 ?= 8000
 export NGINX_PORT_2 ?= 8001
 
 SRC = $(SRC_DIR)/Server.cpp \
-		$(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
+		$(SRC_DIR)/Config.cpp $(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
 		$(SRC_DIR)/FileManager.cpp \
-		$(SRC_DIR)/ConnectionHandler.cpp \
+		$(SRC_DIR)/ConnectionHandler.cpp $(SRC_DIR)/CacheHandler.cpp \
 		$(SRC_DIR)/Worker.cpp \
 		$(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp $(SRC_DIR)/URI.cpp \
 		$(SRC_DIR)/CGIHandler.cpp $(SRC_DIR)/FileHandler.cpp \
@@ -59,7 +59,7 @@ $(OBJ_DIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 debug: $(DEBUG_OBJ)
-	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) $(DEBUG_OBJ) -o $(NAME)
+	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) $(DEBUG_OBJ) -lpthread -o $(NAME)
 
 $(DEBUG_OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(DEBUG_OBJ_DIR)
@@ -67,6 +67,9 @@ $(DEBUG_OBJ_DIR)/%.o: %.cpp
 
 run: daemon
 	$(MAKE) wait-for-healthy
+	docker compose exec -it webserv make
+	docker compose exec -it webserv bash -c "kill 1"
+	sleep 1
 	@make logs
 
 daemon:
@@ -78,12 +81,17 @@ watch:
 		inotifywait -qre close_write /app/src; \
 	done
 
-
 dev:
 	export BUILD_TYPE=debug
 	docker compose up --build -d webserv-dev
 	docker compose exec -it webserv-dev make debug
 	docker compose exec -it webserv-dev bash -c "./webserv"
+
+valgrind:
+	export BUILD_TYPE=debug
+	docker compose up --build -d webserv-dev
+	docker compose exec -it webserv-dev make debug
+	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./webserv"
 
 logs:
 	docker compose logs -f

@@ -23,7 +23,6 @@ Worker::Worker()
       _shouldStop(false)
 {
   _log.info("Worker constructor called");
-  _setupEpoll();
 }
 
 Worker::~Worker() {
@@ -41,15 +40,6 @@ void  Worker::start() {
 
 void Worker::stop() {
   _shouldStop = true;
-}
-
-void Worker::_setupEpoll() {
-  _epollSocket = epoll_create1(0);
-  if (_epollSocket <= 0) {
-    _log.error(std::string("WORKER: Failed \"epoll_create1\": ") +
-        strerror(errno));
-    exit(EXIT_FAILURE);
-  }
 }
 
 std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(

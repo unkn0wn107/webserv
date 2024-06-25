@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 18:06:02 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/25 18:59:41 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -180,7 +180,13 @@ HTTPResponse::HTTPResponse()
   _protocol = "HTTP/1.1";
 }
 
-HTTPResponse::~HTTPResponse() {}
+HTTPResponse::~HTTPResponse() {
+  _headers.clear();
+  _error_pages.clear();
+  _body.clear();
+  _file.clear();
+  _responseBuffer.clear();
+}
 
 HTTPResponse::HTTPResponse(const std::string& protocol)
     : _log(Logger::getInstance()), _statusCode(HTTPResponse::OK) {
@@ -282,10 +288,9 @@ ssize_t HTTPResponse::_sendAll(int socket, const char* buffer, size_t length) {
   size_t  totalSent = 0;  // combien de bytes nous avons envoyé
   ssize_t bytesSent;
   int     trys = 0;
-  int     chunkSize = 1024;
 
   while (totalSent < length) {
-    bytesSent = send(socket, buffer + totalSent, chunkSize, 0);
+    bytesSent = send(socket, buffer + totalSent, length - totalSent, 0);
     if (bytesSent == -1) {
       if (trys > 3) {
         throw Exception("(send) Error sending response" +

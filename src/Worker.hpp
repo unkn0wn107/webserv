@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/25 15:35:58 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/25 18:29:23 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,10 +48,8 @@ class Worker {
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
   int                                         _epollSocket;
   std::map<int, ListenConfig>                 _listenSockets;
-  // int                                         _maxConnections;
   int                                         _load;
   bool                                        _shouldStop;
-  // pthread_mutex_t                              _queueMutex;
 
   static void* _workerRoutine(void* ref);
 

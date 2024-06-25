@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPMethods.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/24 14:22:56 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/25 19:36:03 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,9 +24,9 @@ HTTPMethods::~HTTPMethods() {
 std::string HTTPMethods::_getPath(const std::string& uri,
                                     LocationConfig&    location) {
   if (location.root.empty()) {
-    return _server.getRoot() + uri;
+    return _server.getRoot() + "/" + uri;
   }
-  return location.root + uri;
+  return location.root + "/" + uri;
 }
 
 std::string HTTPMethods::_generateDirectoryListing(const std::string& path) {
@@ -94,7 +94,9 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
 HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
   std::string uri = request.getURI();
   LocationConfig location = _server.getLocationConfig(uri);
-  std::string    path = _getPath(uri, location);
+  _log.info("HTTPMethods::_handleGetRequest : scriptName: " + request.getURIComponents().scriptName);
+  std::string    path = _getPath(request.getURIComponents().scriptName, location);
+  _log.info("HTTPMethods::_handleGetRequest : path: " + path);
   struct stat    statbuf;
   if (stat(path.c_str(), &statbuf) == -1) {
     _log.error("HTTPMethods::_handleGetRequest : Path not found: " + path);
@@ -186,7 +188,7 @@ HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
     _log.error("HTTPMethods::handleRequest : Protocol not supported");
     return new HTTPResponse(HTTPResponse::BAD_REQUEST, location.error_pages);
   }
-  if (CGIHandler::isScript(request)) {
+  if (location.cgi && CGIHandler::isScript(request)) {
     _log.info("Handling CGI request for URI: " + request.getURI());
     try {
       return CGIHandler::processRequest(request);

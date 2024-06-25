@@ -1,3 +1,6 @@
 [submodule "html-website-templates"]
 	path = html-website-templates
 	url = https://github.com/designmodo/html-website-templates.git
+[submodule "nextflix"]
+	path = nextflix
+	url = https://github.com/ayushiee/nextflix.git

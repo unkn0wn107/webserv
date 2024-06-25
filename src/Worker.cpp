@@ -75,11 +75,17 @@ void Worker::_runEventLoop() {
       usleep(1000);
       continue;
     }
+    std::clock_t _start = std::clock();
     if (_listenSockets.find(event.data.fd) != _listenSockets.end() &&
         event.events & EPOLLIN)
       _acceptNewConnection(event.data.fd);
     else
       _handleIncomingConnection(event);
+    std::clock_t end = std::clock();
+    double duration = static_cast<double>(end - _start) / CLOCKS_PER_SEC;
+    if (duration > 0.005) {
+      _log.warning("WORKER (" + Utils::to_string(_threadId) + "): Event loop time: " + Utils::to_string(duration) + " seconds");
+    }
   }
   _log.info("WORKER (" + Utils::to_string(_threadId) + "): End of event loop");
 }

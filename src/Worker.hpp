@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/25 12:39:00 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/25 15:35:58 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <queue>
+#include <ctime>
 
 #include "ConnectionHandler.hpp"
 #include "Logger.hpp"

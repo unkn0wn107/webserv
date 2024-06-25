@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 12:55:28 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/25 15:31:52 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -240,8 +240,9 @@ void ConnectionHandler::_processData() {
 }
 
 void ConnectionHandler::processConnection() {
+  std::clock_t start = std::clock();  // Timestamp de début
+
   struct epoll_event event;
-  event.data.fd = _clientSocket;
   event.data.ptr = this;
   _processData();
   if (_connectionStatus == READING) {
@@ -249,6 +250,7 @@ void ConnectionHandler::processConnection() {
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
                  strerror(errno));
+      close(_clientSocket);  // Fermer le fd en cas d'erreur
       return;
     }
   } else if (_connectionStatus == SENDING) {
@@ -256,6 +258,7 @@ void ConnectionHandler::processConnection() {
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
                  strerror(errno));
+      close(_clientSocket);  // Fermer le fd en cas d'erreur
       return;
     }
   }
@@ -274,6 +277,12 @@ void ConnectionHandler::processConnection() {
     _log.info("Response : " + status + " " + contentLength);
     epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
     close(_clientSocket);
+    std::clock_t end = std::clock();  // Timestamp de fin
+    double duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;  // Calcul de la durée
+    if (duration > 0.005) {
+      _log.warning("CONNECTION_HANDLER: =================================Processing time: " + Utils::to_string(duration) + " seconds");
+    }
     delete this;
   }
+
 }

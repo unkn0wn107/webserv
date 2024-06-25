@@ -31,6 +31,8 @@ ConnectionHandler::ConnectionHandler(
       _buffer(new char[BUFFER_SIZE]),
       _readn(0),
       _vservPool(virtualServers),
+      _request(NULL),
+      _response(NULL),
       _cacheHandler(CacheHandler::getInstance()) {
   memset(_buffer, 0, BUFFER_SIZE);
 }

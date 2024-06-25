@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/20 02:57:03 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/25 18:08:07 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -149,10 +149,7 @@ class CGIHandler {
    * for the CGI script.
    * @return HTTPResponse object containing the response from the CGI script.
    */
-  static HTTPResponse* _executeParentProcess(int                pipefd[2],
-                                             pid_t              pid,
-                                             std::vector<char*> argv,
-                                             std::vector<char*> envp);
+  static HTTPResponse* _executeParentProcess(int pipefd[2], pid_t pid);
 
   /**
    * Executes the child process logic for CGI script execution.

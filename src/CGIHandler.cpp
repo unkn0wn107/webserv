@@ -141,7 +141,7 @@ HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
     close(pipefd[0]);
 
     // Log the output received from the CGI script
-    _log.info("CGI script output: " + output);
+    // _log.info("CGI script output: " + output);
 
     int status;
     waitpid(pid, &status, 0);

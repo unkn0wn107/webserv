@@ -1,0 +1,38 @@
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                    aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Project name</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+            <ul class="nav navbar-nav">
+                <li id="home" class="active"><a href="/">Home</a></li>
+                <li id="features"><a href="/how-it-works/features">Features</a></li>
+                <li id="contact"><a href="/contact">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<script type="text/javascript">
+    <!-- select currently selected menu item -->
+    $("#home").removeClass("active");
+    $("#features").removeClass("active");
+    $("#contact").removeClass("active");
+
+    var containsFeatures = document.URL.indexOf("features") > -1;
+    var containsContact = document.URL.indexOf("contact") > -1;
+
+    if (containsFeatures) {
+        $("#features").attr('class', 'active');
+    } else if (containsContact) {
+        $("#contact").attr('class', 'active');
+    } else {
+        $("#home").attr('class', 'active');
+    }
+</script>

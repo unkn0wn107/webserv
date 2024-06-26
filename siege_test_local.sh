@@ -4,19 +4,22 @@ SIEGE_URLS_FILE="siegeurls.txt"
 SIEGE_LOG_FILE="siege.log"
 TEST_FAILED=0
 
+PORT=8080
+ADDR=localhost
+
 cat <<EOL > $SIEGE_URLS_FILE
-http://${CONTAINER}:${PORT}/
-http://${CONTAINER}:${8081}/
-http://${CONTAINER}:${8082}/
-http://${CONTAINER}:${8083}/
-http://${CONTAINER}:${8084}/
-http://${CONTAINER}:${PORT}/nonexistent
-http://${CONTAINER}:${PORT}/cgi/hello.py?name=Marvin
-http://${CONTAINER}:${PORT}/cgi/hello.php?name=Marvin
-http://${CONTAINER}:${PORT}/cgi/hello.js?name=Marvin
-http://${CONTAINER}:${PORT}/cgi/post.py POST {"name": "Marvin"}
-http://${CONTAINER}:${PORT}/cgi/post.php POST {"name": "Marvin"}
-http://${CONTAINER}:${PORT}/cgi/post.js POST {"name": "Marvin"}
+http://${ADDR}:${PORT}/
+# http://${ADDR}:${8081}/
+# http://${ADDR}:${8082}/
+# http://${ADDR}:${8083}/
+# http://${ADDR}:${8084}/
+http://${ADDR}:${PORT}/nonexistent
+http://${ADDR}:${PORT}/cgi/hello.py?name=Marvin
+http://${ADDR}:${PORT}/cgi/hello.php?name=Marvin
+http://${ADDR}:${PORT}/cgi/hello.js?name=Marvin
+http://${ADDR}:${PORT}/cgi/post.py POST {"name": "Marvin"}
+http://${ADDR}:${PORT}/cgi/post.php POST {"name": "Marvin"}
+http://${ADDR}:${PORT}/cgi/post.js POST {"name": "Marvin"}
 EOL
 
 cat $SIEGE_URLS_FILE > $SIEGE_LOG_FILE

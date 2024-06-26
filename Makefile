@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
+#    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/26 16:55:25 by mchenava         ###   ########.fr        #
+#    Updated: 2024/06/26 19:11:30 by  mchenava        ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -65,7 +65,7 @@ setup:
 		fi; \
 	done; \
 	NUM=1; \
-	for dir in /home/mchenava/webserv/html-website-templates/* ; do \
+	for dir in /mnt/e/webserv/html-website-templates/* ; do \
 		if [ "$$(basename "$$dir")" != "images" ] && [ "$$(basename "$$dir")" != "README.md"  ]; then \
 			echo "$$dir"; \
 			mv "$$dir" /home/mchenava/webserv/html-website-templates/static$$NUM || true; \
@@ -141,6 +141,7 @@ siege: stop daemon
 	$(MAKE) wait-for-healthy
 	echo "init" > siege.log
 	docker compose up siege
+	# make logs
 	@make clean
 	cat siege.log
 

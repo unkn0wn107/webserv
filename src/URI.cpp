@@ -6,39 +6,24 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/03 17:01:22 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/07 02:49:59 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/26 00:53:20 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "URI.hpp"
 
 URI::Components URI::parse(const std::string& uri) {
-  size_t lastDotPos = uri.find_last_of('.');
-  size_t nextSlashPos = uri.find('/', lastDotPos);
-  size_t queryPos = uri.find('?');
-
   Components components;
 
-  if (lastDotPos != std::string::npos) {
-    if (nextSlashPos != std::string::npos) {
-      components.extension = uri.substr(lastDotPos, nextSlashPos - lastDotPos);
-      if (queryPos != std::string::npos && queryPos > nextSlashPos) {
-        components.pathInfo = uri.substr(nextSlashPos, queryPos - nextSlashPos);
-        components.queryString = uri.substr(queryPos + 1);
-      } else {
-        components.pathInfo = uri.substr(nextSlashPos);
-      }
-      components.scriptName = uri.substr(0, nextSlashPos);
-    } else {
-      if (queryPos != std::string::npos) {
-        components.extension = uri.substr(lastDotPos, queryPos - lastDotPos);
-        components.queryString = uri.substr(queryPos + 1);
-      } else {
-        components.extension = uri.substr(lastDotPos);
-      }
-      components.scriptName = uri.substr(0, lastDotPos) + components.extension;
-    }
-  }
+  std::string::const_iterator it = uri.begin();
+  std::string::const_iterator end = uri.end();
+
+  components.path = _parsePath(it, end);
+  components.query = _parseQuery(it, end);
+
+  components.extension = _getExtension(components.path);
+  components.scriptName = _getScriptName(components.path);
+  components.pathInfo = _getPathInfo(components.path);
 
   return components;
 }
@@ -99,4 +84,45 @@ std::map<std::string, std::string> URI::getParams(const std::string& uri) {
     }
   }
   return queryParams;
+}
+
+std::string URI::_parsePath(std::string::const_iterator& it,
+                            std::string::const_iterator  end) {
+  std::string::const_iterator path_end = std::find(it, end, '?');
+  std::string                 path(it, path_end);
+  it = path_end;
+  return path;
+}
+
+std::string URI::_parseQuery(std::string::const_iterator& it,
+                             std::string::const_iterator  end) {
+  if (it != end && *it == '?') {
+    ++it;  // Skip '?'
+    std::string::const_iterator query_end = std::find(it, end, '#');
+    std::string                 query(it, query_end);
+    it = query_end;
+    return query;
+  }
+  return "";
+}
+
+std::string URI::_getExtension(const std::string& path) {
+  size_t pos = path.find_last_of('.');
+  if (pos != std::string::npos)
+    return path.substr(pos + 1);
+  return "";
+}
+
+std::string URI::_getScriptName(const std::string& path) {
+  size_t pos = path.find_last_of('/');
+  if (pos != std::string::npos)
+    return path.substr(pos + 1);
+  return path;
+}
+
+std::string URI::_getPathInfo(const std::string& path) {
+  size_t pos = path.find_last_of('/');
+  if (pos != std::string::npos)
+    return path.substr(0, pos);
+  return "";
 }

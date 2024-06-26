@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 03:18:55 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/26 01:14:02 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,7 @@ void HTTPRequest::parseRequest() {
   lineStream >> _method >> rawUri >> _protocol;
 
   _uri = URI::decode(rawUri);
-  _uriComponents = URI::parse(rawUri);
+  _uriComponents = URI::parse(_uri);
 
   _parseHeaders(requestStream);
 

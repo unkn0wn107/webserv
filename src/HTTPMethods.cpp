@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPMethods.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/25 19:36:03 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/26 01:03:35 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,12 +21,12 @@ HTTPMethods::~HTTPMethods() {
 
 }
 
-std::string HTTPMethods::_getPath(const std::string& uri,
+std::string HTTPMethods::_getPath(const std::string& uriPath,
                                     LocationConfig&    location) {
   if (location.root.empty()) {
-    return _server.getRoot() + "/" + uri;
+    return _server.getRoot() + uriPath;
   }
-  return location.root + "/" + uri;
+  return location.root + uriPath;
 }
 
 std::string HTTPMethods::_generateDirectoryListing(const std::string& path) {
@@ -92,10 +92,10 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
 }
 
 HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
-  std::string uri = request.getURI();
-  LocationConfig location = _server.getLocationConfig(uri);
-  _log.info("HTTPMethods::_handleGetRequest : scriptName: " + request.getURIComponents().scriptName);
-  std::string    path = _getPath(request.getURIComponents().scriptName, location);
+  std::string uriPath = request.getURIComponents().path;
+  LocationConfig location = _server.getLocationConfig(uriPath);
+  _log.info("HTTPMethods::_handleGetRequest : URI path: " + uriPath);
+  std::string    path = _getPath(uriPath, location);
   _log.info("HTTPMethods::_handleGetRequest : path: " + path);
   struct stat    statbuf;
   if (stat(path.c_str(), &statbuf) == -1) {
@@ -120,11 +120,12 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
 }
 
 HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
-	LocationConfig location = _server.getLocationConfig(request.getURI());
+  std::string uriPath = request.getURIComponents().path;
+	LocationConfig location = _server.getLocationConfig(uriPath);
 	if (location.upload == false) {
 		return new HTTPResponse(HTTPResponse::FORBIDDEN, location.error_pages);
 	}
-	std::string path = _getPath(request.getURI(), location);
+	std::string path = _getPath(uriPath, location);
 	std::string contentType;
   contentType = request.getHeader("Content-Type");
   if (contentType == "") {
@@ -152,11 +153,12 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 }
 
 HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
-	LocationConfig location = _server.getLocationConfig(request.getURI());
+	std::string uriPath = request.getURIComponents().path;
+	LocationConfig location = _server.getLocationConfig(uriPath);
 	if (location.delete_ == false) {
 		return new HTTPResponse(HTTPResponse::FORBIDDEN, location.error_pages);
 	}
-	std::string path = _getPath(request.getURI(), location);
+	std::string path = _getPath(uriPath, location);
 	if (remove(path.c_str()) == 0) {
     HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", "text/html");
@@ -178,10 +180,10 @@ HTTPResponse* HTTPMethods::_handleHeadRequest(HTTPRequest& request) {
 }
 
 HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
-	std::string    protocol = request.getProtocol();
+  std::string    protocol = request.getProtocol();
   std::string    method = request.getMethod();
-  std::string    uri = request.getURI();
-  LocationConfig location = _server.getLocationConfig(uri);
+  std::string    uriPath = request.getURIComponents().path;
+  LocationConfig location = _server.getLocationConfig(uriPath);
   request.setConfig(&location);
 
   if (protocol != "HTTP/1.1") {
@@ -189,7 +191,7 @@ HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
     return new HTTPResponse(HTTPResponse::BAD_REQUEST, location.error_pages);
   }
   if (location.cgi && CGIHandler::isScript(request)) {
-    _log.info("Handling CGI request for URI: " + request.getURI());
+    _log.info("Handling CGI request for URI path: " + uriPath);
     try {
       return CGIHandler::processRequest(request);
     } catch (const CGIHandler::CGIDisabled& e) {

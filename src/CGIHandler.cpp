@@ -17,10 +17,10 @@ Logger& CGIHandler::_log = Logger::getInstance();
 CGIHandler::CGIHandler() {}
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
-    std::make_pair(".php", "/usr/bin/php-cgi"),
-    std::make_pair(".py", "/usr/bin/python3"),
-    std::make_pair(".js", "/usr/bin/node"),
-    std::make_pair(".bla", "/usr/bin/ubuntu_cgi_tester")};
+    std::make_pair("php", "/usr/bin/php-cgi"),
+    std::make_pair("py", "/usr/bin/python3"),
+    std::make_pair("js", "/usr/bin/node"),
+    std::make_pair("bla", "/usr/bin/ubuntu_cgi_tester")};
 
 const int CGIHandler::_NUM_AVAILABLE_CGIS =
     sizeof(CGIHandler::_AVAILABLE_CGIS) /
@@ -45,11 +45,12 @@ void CGIHandler::_checkIfProcessingPossible(const HTTPRequest& request,
     throw CGINotExecutable("CGI not executable: " + runtime);
 
   std::string scriptPath =
-      request.getConfig()->root + request.getURIComponents().scriptName;
-  if (FileManager::isDirectory(scriptPath))
-    scriptPath = request.getConfig()->root + request.getConfig()->location +
-                 request.getURIComponents().scriptName +
-                 request.getConfig()->index;
+      request.getConfig()->root + request.getURIComponents().path;
+  if (FileManager::isDirectory(scriptPath)) {
+    if (scriptPath[scriptPath.length() - 1] != '/')
+      scriptPath += "/";
+    scriptPath += request.getConfig()->index;
+  }
 
   if (!FileManager::doesFileExists(scriptPath))
     throw ScriptNotFound("Script not found: " + scriptPath);
@@ -103,10 +104,9 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
 const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request) {
   LocationConfig* location = request.getConfig();
   std::string     extension = request.getURIComponents().extension;
-  std::string     scriptPath =
-      request.getConfig()->root + request.getURIComponents().scriptName;
-  if (FileManager::isDirectory(scriptPath))
-    extension = location->index.substr(location->index.find_last_of('.'));
+  if (FileManager::isDirectory(request.getConfig()->root +
+                               request.getURIComponents().path))
+    extension = location->index.substr(location->index.find_last_of('.') + 1);
 
   for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
     if (CGIHandler::_AVAILABLE_CGIS[i].first == extension) {
@@ -236,11 +236,12 @@ std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request) {
   std::vector<char*> argv;
 
   std::string scriptPath =
-      request.getConfig()->root + request.getURIComponents().scriptName;
-  if (FileManager::isDirectory(scriptPath))
-    scriptPath = request.getConfig()->root + request.getConfig()->location +
-                 request.getURIComponents().scriptName +
-                 request.getConfig()->index;
+      request.getConfig()->root + request.getURIComponents().path;
+  if (FileManager::isDirectory(scriptPath)) {
+    if (scriptPath[scriptPath.length() - 1] != '/')
+      scriptPath += "/";
+    scriptPath += request.getConfig()->index;
+  }
 
   argv.reserve(3);
   argv.push_back(Utils::cstr(_identifyRuntime(request)));
@@ -257,11 +258,13 @@ std::vector<char*> CGIHandler::_getEnvp(const HTTPRequest& request) {
   const URI::Components uriComponents = request.getURIComponents();
 
   std::string scriptName = uriComponents.scriptName;
-  std::string scriptPath = request.getConfig()->root + uriComponents.scriptName;
+  std::string scriptPath = request.getConfig()->root + uriComponents.path;
   if (FileManager::isDirectory(scriptPath)) {
-    scriptPath = request.getConfig()->root + request.getConfig()->location +
-                 request.getURIComponents().scriptName +
-                 request.getConfig()->index;
+    if (scriptPath[scriptPath.length() - 1] != '/')
+      scriptPath += "/";
+    scriptPath += request.getConfig()->index;
+    if (scriptName[scriptName.length() - 1] != '/')
+      scriptName += "/";
     scriptName += request.getConfig()->index;
   }
 
@@ -274,7 +277,7 @@ std::vector<char*> CGIHandler::_getEnvp(const HTTPRequest& request) {
   envp.push_back(Utils::cstr("SCRIPT_NAME=" + scriptName));
   envp.push_back(Utils::cstr("PATH_INFO=" + uriComponents.pathInfo));
   envp.push_back(Utils::cstr("REQUEST_METHOD=" + request.getMethod()));
-  envp.push_back(Utils::cstr("QUERY_STRING=" + uriComponents.queryString));
+  envp.push_back(Utils::cstr("QUERY_STRING=" + uriComponents.query));
   envp.push_back(Utils::cstr("REMOTE_HOST=localhost"));
   envp.push_back(Utils::cstr("CONTENT_LENGTH=" +
                              Utils::to_string(request.getBody().length())));

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/26 17:10:26 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/26 23:30:52 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -256,7 +256,9 @@ void HTTPResponse::_errorResponse() {
   if (_statusCode >= 300) {
     if (_error_pages.find(_statusCode) != _error_pages.end()) {
       _file = _error_pages[_statusCode];
+      _log.info("Error page: " + _file);
     } else {
+      _log.info("Default error page");
       _body = HTTPResponse::defaultErrorPage(_statusCode);
     }
   }
@@ -310,12 +312,13 @@ ssize_t HTTPResponse::_sendAll(int socket, const char* buffer, size_t length) {
 ssize_t HTTPResponse::_sendAllFile(int clientSocket, FILE* file) {
   int file_length = FileManager::getFileSize(_file);
   _log.info("File length: " + Utils::to_string(file_length));
-  off_t offset = 0;
+  off_t   offset = 0;
   ssize_t bytesSent;
   int     totalSent = 0;
   int     trys = 0;
   while (offset < file_length) {
-    bytesSent = sendfile(clientSocket, fileno(file), &offset, file_length - offset);
+    bytesSent =
+        sendfile(clientSocket, fileno(file), &offset, file_length - offset);
     if (bytesSent == -1) {
       if (trys > 10) {
         throw Exception("(sendfile) Error sending response" +

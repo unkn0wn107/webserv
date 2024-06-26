@@ -4,6 +4,10 @@ services:
     ports:
       - "8080:8080"
       - "8081:8081"
+      - "8090:8090"
+      - "8091:8091"
+      - "8092:8092"
+      - "8093:8093"
     volumes:
       - ./site:/var/www/html/test_site
       - ./html-website-templates:/var/www/html/static_templates
@@ -27,6 +31,10 @@ services:
     ports:
       - "8080:8080"
       - "8081:8081"
+      - "8090:8090"
+      - "8091:8091"
+      - "8092:8092"
+      - "8093:8093"
     volumes:
       - ./site:/var/www/html/test_site
       - ./html-website-templates:/var/www/html/static_templates

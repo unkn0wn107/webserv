@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/26 23:30:52 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/27 01:01:34 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -176,25 +176,27 @@ std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
     std::make_pair(505, std::string(ERR_PAGE_505))};
 
 HTTPResponse::HTTPResponse()
-    : _log(Logger::getInstance()), _statusCode(HTTPResponse::OK) {
+    : _log(Logger::getInstance()),
+      _statusCode(HTTPResponse::OK),
+      _config(NULL) {
   _protocol = "HTTP/1.1";
 }
 
 HTTPResponse::~HTTPResponse() {
   _headers.clear();
-  _error_pages.clear();
   _body.clear();
   _file.clear();
   _responseBuffer.clear();
 }
 
 HTTPResponse::HTTPResponse(const std::string& protocol)
-    : _log(Logger::getInstance()), _statusCode(HTTPResponse::OK) {
+    : _log(Logger::getInstance()),
+      _statusCode(HTTPResponse::OK),
+      _config(NULL) {
   _protocol = protocol;
 }
 
-HTTPResponse::HTTPResponse(int                        statusCode,
-                           std::map<int, std::string> error_pages)
+HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
     : _log(Logger::getInstance()),
       _statusCode(statusCode),
       _statusMessage(getStatusMessage(statusCode)),
@@ -202,28 +204,13 @@ HTTPResponse::HTTPResponse(int                        statusCode,
       _body(""),
       _file(""),
       _protocol("HTTP/1.1"),
-      _error_pages(error_pages) {
+      _config(config) {
   if (statusCode < 100 || statusCode > 599) {
     throw std::invalid_argument("Invalid status code");
   }
   _errorResponse();
-}
-
-HTTPResponse::HTTPResponse(int             statusCode,
-                           LocationConfig& config,
-                           std::string     redirectUrl)
-    : _log(Logger::getInstance()),
-      _statusCode(statusCode),
-      _statusMessage(getStatusMessage(statusCode)),
-      _headers(std::map<std::string, std::string>()),
-      _body(""),
-      _file(""),
-      _protocol("HTTP/1.1"),
-      _error_pages(config.error_pages) {
-  if (statusCode < 300 || statusCode >= 400)
-    throw std::invalid_argument("Not a redirect response");
-  _errorResponse();
-  addHeader("Location", redirectUrl);
+  if (statusCode >= 300 && statusCode < 400)
+    addHeader("Location", _config->returnUrl);
 }
 
 HTTPResponse::HTTPResponse(int statusCode)
@@ -234,28 +221,17 @@ HTTPResponse::HTTPResponse(int statusCode)
       _body(""),
       _file(""),
       _protocol("HTTP/1.1"),
-      _error_pages(std::map<int, std::string>()) {
+      _config(NULL) {
   if (statusCode != 200) {
     throw std::invalid_argument("Invalid status code");
   }
 }
 
-HTTPResponse::HTTPResponse(int                                statusCode,
-                           std::map<std::string, std::string> headers,
-                           std::string                        body)
-    : _log(Logger::getInstance()),
-      _statusCode(statusCode),
-      _statusMessage(getStatusMessage(statusCode)),
-      _headers(headers),
-      _body(body),
-      _file(""),
-      _protocol("HTTP/1.1"),
-      _error_pages(std::map<int, std::string>()) {}
-
 void HTTPResponse::_errorResponse() {
   if (_statusCode >= 300) {
-    if (_error_pages.find(_statusCode) != _error_pages.end()) {
-      _file = _error_pages[_statusCode];
+    if (_config &&
+        _config->error_pages.find(_statusCode) != _config->error_pages.end()) {
+      _file = _config->root + _config->error_pages[_statusCode];
       _log.info("Error page: " + _file);
     } else {
       _log.info("Default error page");
@@ -263,7 +239,9 @@ void HTTPResponse::_errorResponse() {
     }
   }
   addHeader("Content-Type", "text/html");
-  addHeader("Content-Length", Utils::to_string(_body.length()));
+  addHeader("Content-Length",
+            _file.empty() ? Utils::to_string(_body.length())
+                          : Utils::to_string(FileManager::getFileSize(_file)));
 }
 
 void HTTPResponse::buildResponse() {
@@ -344,6 +322,7 @@ int HTTPResponse::sendResponse(int clientSocket) {
     return sendResponse(404, clientSocket);
   FILE* file = fopen(_file.c_str(), "r");
   if (file) {
+    _log.info("Sending file: " + _file);
     _sendAllFile(clientSocket, file);
     fclose(file);
   } else {
@@ -357,10 +336,8 @@ int HTTPResponse::sendResponse(int statusCode, int clientSocket) {
   std::string statusLine = "HTTP/1.1 " + Utils::to_string(statusCode) + " " +
                            getStatusMessage(statusCode) + "\r\n";
   std::string headers = "Content-Type: text/html\r\n";
-  headers += "Content-Length: " +
-             Utils::to_string(defaultErrorPage(statusCode).length()) +
-             "\r\n\r\n";
   std::string body = defaultErrorPage(statusCode);
+  headers += "Content-Length: " + Utils::to_string(body.length()) + "\r\n\r\n";
   std::string response = statusLine + headers + body;
   if (send(clientSocket, response.c_str(), response.length(), 0) == -1) {
     return -1;

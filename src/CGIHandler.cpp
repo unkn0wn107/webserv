@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/10 00:45:22 by agaley           ###   ########.fr   */
+/*   Updated: 2024/06/27 01:00:24 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -171,7 +171,10 @@ HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
       headers[key] = value;
     }
     headers["Content-Length"] = Utils::to_string(bodyContent.size());
-    return new HTTPResponse(HTTPResponse::OK, headers, bodyContent);
+    HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
+    response->setHeaders(headers);
+    response->setBody(bodyContent);
+    return response;
   }
   throw ExecutorError("CGI script failed : out of timeout loop");
 }

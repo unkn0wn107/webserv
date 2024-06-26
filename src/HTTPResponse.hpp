@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/18 21:49:55 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/27 00:17:47 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,23 +69,19 @@ class HTTPResponse {
   std::string                        _body;
   std::string                        _file;
   std::string                        _protocol;
-  std::map<int, std::string>         _error_pages;
+  LocationConfig*                    _config;
   std::string                        _responseBuffer;
   static std::pair<int, std::string> _defaultErrorPages[];
 
-  void _errorResponse();
-  ssize_t _sendAll(int socket, const char *buffer, size_t length);
+  void    _errorResponse();
+  ssize_t _sendAll(int socket, const char* buffer, size_t length);
   ssize_t _sendAllFile(int socket, FILE* file);
 
  public:
   HTTPResponse();
   HTTPResponse(int statusCode);
   HTTPResponse(const std::string& protocol);
-  HTTPResponse(int statusCode, std::map<int, std::string> error_pages);
-  HTTPResponse(int statusCode, LocationConfig& config, std::string redirectUrl);
-  HTTPResponse(int                                statusCode,
-               std::map<std::string, std::string> headers,
-               std::string                        body);
+  HTTPResponse(int statusCode, LocationConfig* config);
   ~HTTPResponse();
 
   static std::string getContentType(const std::string& path);

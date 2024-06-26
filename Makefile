@@ -6,7 +6,7 @@
 #    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/26 16:44:44 by mchenava         ###   ########.fr        #
+#    Updated: 2024/06/26 16:55:25 by mchenava         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -139,6 +139,7 @@ test-compare: stop daemon
 
 siege: stop daemon
 	$(MAKE) wait-for-healthy
+	echo "init" > siege.log
 	docker compose up siege
 	@make clean
 	cat siege.log

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/26 11:30:59 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/26 15:29:22 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -241,6 +241,7 @@ void ConnectionHandler::_processData() {
     } catch (const Exception& e) {
       _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +
                  e.what());
+      _connectionStatus = CLOSED;
       return;
     }
   }

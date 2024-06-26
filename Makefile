@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+         #
+#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/26 19:11:30 by  mchenava        ###   ########.fr        #
+#    Updated: 2024/06/27 01:03:46 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -94,7 +94,7 @@ $(DEBUG_OBJ_DIR)/%.o: %.cpp
 run: daemon
 	$(MAKE) wait-for-healthy
 	docker compose exec -it webserv make
-	docker compose exec -it webserv ash -c "kill 1"
+	docker compose exec -it webserv bash -c "kill 1"
 	sleep 1
 	@make logs
 

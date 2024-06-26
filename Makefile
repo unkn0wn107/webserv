@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
+#    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/26 02:36:25 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/26 10:53:29 by mchenava         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -17,8 +17,8 @@ CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
 DEBUGFLAGS = -g3
 
 SRC_DIR = src
-OBJ_DIR = obj
-DEBUG_OBJ_DIR = obj_debug
+OBJ_DIR = .obj
+DEBUG_OBJ_DIR = .obj_debug
 LOG_DIR = ./logs
 
 LOG_FILE_EXT = .log

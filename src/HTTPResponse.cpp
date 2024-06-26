@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 18:59:41 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/26 10:42:42 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -314,13 +314,21 @@ ssize_t HTTPResponse::_sendAllFile(int clientSocket, FILE* file) {
 
   off_t   offset = 0;
   ssize_t bytesSent;
-
+  int     trys = 0;
   while (offset < file_length) {
     bytesSent =
         sendfile(clientSocket, fileno(file), &offset, file_length - offset);
     if (bytesSent == -1) {
-      throw Exception("(sendfile) Error sending response");
+      if (trys > 3) {
+        throw Exception("(sendfile) Error sending response" +
+                        std::string(strerror(errno)));
+      }
+      trys++;
+      usleep(1000);
+      continue;
     }
+    trys = 0;
+    offset += bytesSent;
   }
   return offset;  // Retourne le nombre total de bytes envoyés
 }

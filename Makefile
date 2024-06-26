@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/25 00:40:40 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/26 02:36:25 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -28,6 +28,8 @@ export BUILD_TYPE ?= production
 export MY_UID ?= $(id -u)
 export NGINX_PORT_1 ?= 8000
 export NGINX_PORT_2 ?= 8001
+export CONTAINER ?= webserv-production
+export PORT ?= 8080
 
 SRC = $(SRC_DIR)/Server.cpp \
 		$(SRC_DIR)/Config.cpp $(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
@@ -102,14 +104,26 @@ stop:
 test: stop daemon
 	$(MAKE) wait-for-healthy
 	./test.sh
-	$(MAKE) stop
+	@make clean
 
 test-compare: stop daemon
 	@$(MAKE) nginxd
 	$(MAKE) wait-for-healthy
 	$(MAKE) wait-for-nginx-healthy
 	./test_compare.sh
-	@$(MAKE) stop
+	@make clean
+
+siege: stop daemon
+	$(MAKE) wait-for-healthy
+	docker compose up siege
+	@make clean
+	cat siege.log
+
+siege-nginx: stop nginxd
+	$(MAKE) wait-for-nginx-healthy
+	CONTAINER=nginx docker compose up siege
+	@make clean
+	cat siege.log
 
 run_tests:
 	@./test.sh
@@ -143,13 +157,16 @@ nginx:
 nginxd:
 	NGINX_PORT_1=$(NGINX_PORT_1) NGINX_PORT_2=$(NGINX_PORT_2) docker compose up -d nginx --build
 
+docker-clean:
+	docker compose down --rmi all
+
 docker-fclean:
 	docker system prune --all --volumes -f
 
 -include $(DEPS)
 -include $(DEBUG_DEPS)
 
-clean: docker-stop
+clean: docker-stop docker-clean
 	rm -f $(OBJ) $(DEBUG_OBJ)
 	rm -f $(DEPS) $(DEBUG_DEPS)
 

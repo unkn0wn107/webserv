@@ -8,7 +8,7 @@ RUN mkdir -p /var/www/html
 
 WORKDIR /app
 
-COPY ./build.sh .
+COPY --chmod=755 ./build.sh .
 
 ENTRYPOINT [ "./build.sh" ]
 CMD ["tail", "-f", "/dev/null"]

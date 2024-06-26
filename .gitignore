@@ -1,6 +1,7 @@
 webserv
 logs/*
 */*.log
+siege.log
 
 # Prerequisites
 *.d

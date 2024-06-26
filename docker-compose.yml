@@ -19,6 +19,8 @@ services:
       GID: ${MY_GID}
       BUILD_TYPE: ${BUILD_TYPE}
     restart: unless-stopped
+    networks:
+      - web-siege-network
 
   webserv-dev:
     container_name: webserv-dev
@@ -33,26 +35,13 @@ services:
       - ./Makefile:/app/Makefile
     build:
       context: .
-      dockerfile: DockerfileDevEnv
+      dockerfile: Dockerfile.dev
       args:
         BUILD_TYPE: ${BUILD_TYPE}
     environment:
       UID: ${MY_UID}
       GID: ${MY_GID}
       BUILD_TYPE: ${BUILD_TYPE}
-    # develop:
-    #   watch:
-    #     - action: rebuild
-    #       path: ./src
-    #       target: /app/
-    #     - action: rebuild
-    #       path: ./Makefile
-    #       target: /app/
-    #     - action: rebuild
-    #       path: ./Dockerfile
-    #     - action: sync+restart
-    #       path: ./default.conf
-    #       target: /app/default.conf
 
   nginx:
     container_name: nginx
@@ -67,3 +56,24 @@ services:
       context: nginx
       dockerfile: Dockerfile
     restart: unless-stopped
+    networks:
+      - nginx-siege-network
+
+  siege:
+    container_name: siege
+    build:
+      context: .
+      dockerfile: Dockerfile.siege
+    environment:
+      CONTAINER: ${CONTAINER}
+      PORT: ${PORT}
+    volumes:
+      - ./siege_test.sh:/app/siege_test.sh
+      - ./siege.log:/app/siege.log
+    networks:
+      - web-siege-network
+      - nginx-siege-network
+
+networks:
+  web-siege-network:
+  nginx-siege-network:

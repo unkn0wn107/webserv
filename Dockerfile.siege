@@ -1,0 +1,12 @@
+FROM debian:bullseye-slim
+RUN apt-get update
+RUN apt-get install -y siege
+
+RUN mkdir /app
+
+WORKDIR /app
+
+COPY --chmod=755 ./siege_test.sh .
+
+ENTRYPOINT [ "./siege_test.sh" ]
+# CMD ["tail", "-f", "/dev/null"]

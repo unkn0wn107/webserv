@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/26 14:56:03 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/26 17:10:26 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -312,21 +312,23 @@ ssize_t HTTPResponse::_sendAllFile(int clientSocket, FILE* file) {
   _log.info("File length: " + Utils::to_string(file_length));
   off_t offset = 0;
   ssize_t bytesSent;
+  int     totalSent = 0;
   int     trys = 0;
   while (offset < file_length) {
     bytesSent = sendfile(clientSocket, fileno(file), &offset, file_length - offset);
     if (bytesSent == -1) {
-      if (trys > 3) {
+      if (trys > 10) {
         throw Exception("(sendfile) Error sending response" +
                         std::string(strerror(errno)));
       }
       trys++;
-      usleep(1000);
+      usleep(1000 * (1 << trys));
       continue;
     }
     trys = 0;
+    totalSent += bytesSent;
   }
-  return offset;
+  return totalSent;
 }
 
 int HTTPResponse::sendResponse(int clientSocket) {

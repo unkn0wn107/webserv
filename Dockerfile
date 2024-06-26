@@ -1,10 +1,14 @@
-FROM debian:bullseye-slim
-RUN apt-get update
-RUN apt-get install -y curl
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh && bash nodesource_setup.sh
-RUN apt-get install -y make clang python3 php-cgi libpthread-stubs0-dev nodejs
+FROM alpine:3.20
+
+RUN apk add --no-cache make nodejs clang python3 php82-cgi inotify-tools curl
+RUN ln -sf /usr/bin/clang++ /usr/bin/c++ && mkdir -p /var/www/html \
+    && ln -sf /usr/bin/php-cgi82 /usr/bin/php-cgi
 
 RUN mkdir -p /var/www/html
+
+ARG UID
+ARG GID
+RUN export MY_UID=${UID} && export MY_GID=${GID}
 
 WORKDIR /app
 

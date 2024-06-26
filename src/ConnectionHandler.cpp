@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 17:49:36 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/26 11:30:59 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -277,15 +277,13 @@ void ConnectionHandler::processConnection() {
     std::string status = Utils::to_string(_response->getStatusCode());
     std::string contentLength =
         _response->getHeaders().find("Content-Length")->second;
-    _log.info("CONNECTION_HANDLER: Connection closed, client socket: " +
-              Utils::to_string(_clientSocket));
     _log.info("Request : " + host + " - " + method + " " + uri + " " +
               protocol);
-    _log.info("Response : " + status + " " + contentLength);
+    _log.info("Response : " + status + " sent " + contentLength + " bytes");
     epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
     close(_clientSocket);
-    std::clock_t end = std::clock();  // Timestamp de fin
-    double duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;  // Calcul de la durée
+    std::clock_t end = std::clock();
+    double duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;
     if (duration > 0.005) {
       _log.warning("CONNECTION_HANDLER: =================================Processing time: " + Utils::to_string(duration) + " seconds");
     }

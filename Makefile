@@ -6,7 +6,7 @@
 #    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/26 10:53:29 by mchenava         ###   ########.fr        #
+#    Updated: 2024/06/26 15:07:45 by mchenava         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -50,7 +50,14 @@ DEBUG_DEPS = $(patsubst $(SRC_DIR)/%.cpp, $(DEBUG_OBJ_DIR)/%.d, $(SRC))
 
 VPATH = $(SRC_DIR)
 
-all: $(NAME)
+all: $(NAME) setup
+
+setup:
+	NUM=1; \
+	for file in /var/www/html/static_templates/*; do \
+		ln -s $$file /var/www/html/static_templates/static$$NUM; \
+		NUM=$$((NUM + 1)); \
+	done
 
 $(NAME): $(OBJ) update_gitignore
 	$(CXX) $(CXXFLAGS) $(OBJ) -lpthread -o $(NAME)

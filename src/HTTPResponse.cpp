@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/26 10:42:42 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/26 14:56:03 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -308,16 +308,13 @@ ssize_t HTTPResponse::_sendAll(int socket, const char* buffer, size_t length) {
 }
 
 ssize_t HTTPResponse::_sendAllFile(int clientSocket, FILE* file) {
-  fseek(file, 0, SEEK_END);
-  off_t file_length = static_cast<off_t>(ftell(file));
-  fseek(file, 0, SEEK_SET);
-
-  off_t   offset = 0;
+  int file_length = FileManager::getFileSize(_file);
+  _log.info("File length: " + Utils::to_string(file_length));
+  off_t offset = 0;
   ssize_t bytesSent;
   int     trys = 0;
   while (offset < file_length) {
-    bytesSent =
-        sendfile(clientSocket, fileno(file), &offset, file_length - offset);
+    bytesSent = sendfile(clientSocket, fileno(file), &offset, file_length - offset);
     if (bytesSent == -1) {
       if (trys > 3) {
         throw Exception("(sendfile) Error sending response" +
@@ -328,9 +325,8 @@ ssize_t HTTPResponse::_sendAllFile(int clientSocket, FILE* file) {
       continue;
     }
     trys = 0;
-    offset += bytesSent;
   }
-  return offset;  // Retourne le nombre total de bytes envoyés
+  return offset;
 }
 
 int HTTPResponse::sendResponse(int clientSocket) {
@@ -339,7 +335,6 @@ int HTTPResponse::sendResponse(int clientSocket) {
   _sendAll(clientSocket, _responseBuffer.c_str(), _responseBuffer.size());
   if (_file.empty())
     return 0;
-  _log.info("Sending file: " + _file);
   if (!FileManager::doesFileExists(_file))
     return sendResponse(404, clientSocket);
   FILE* file = fopen(_file.c_str(), "r");

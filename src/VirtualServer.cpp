@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/25 17:00:41 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/26 11:23:33 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -89,7 +89,7 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
   }
 
   if (protocol != "HTTP/1.1") {
-    _log.error("Unsupported protocol");
+    _log.error("Unsupported protocol: " + protocol);
     return new HTTPResponse(HTTPResponse::BAD_REQUEST, location.error_pages);
   }
 

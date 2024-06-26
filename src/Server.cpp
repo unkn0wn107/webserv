@@ -81,16 +81,13 @@ void Server::start() {
             ")");
   struct epoll_event events[MAX_EVENTS];
   while (_running) {
-    _log.info("SERVER: Waiting for events...");
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
     if (nfds < 0) {
-      _log.error("SERVER: Failed to wait for events");
       usleep(1000);
       continue;
     }
     for (int i = 0; i < nfds && _running; i++) {
       _addEvent(events[i]);
-      _log.info("SERVER: Added event to queue");
     }
   }
   _log.info("SERVER:  events queue size: " + Utils::to_string(_events.size()));
@@ -113,7 +110,6 @@ struct epoll_event Server::getEvent() {
   struct epoll_event event = _events.front();
   _events.pop();
   pthread_mutex_unlock(&_eventsMutex);
-  _log.info("SERVER: Event popped");
   return event;
 }
 

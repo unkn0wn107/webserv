@@ -99,9 +99,6 @@ void Worker::_acceptNewConnection(int fd) {
   while (!_shouldStop) {
     new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
     if (new_socket <= 0) {
-      _log.info("WORKER (" + Utils::to_string(_thread) +
-                "): Failed \"accept\" for fd =" + Utils::to_string(fd) + ": " +
-                strerror(errno));
       break;
     }
     if (set_non_blocking(new_socket) == -1) {

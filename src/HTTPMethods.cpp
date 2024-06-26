@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPMethods.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/26 01:03:35 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/26 16:33:37 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -130,10 +130,18 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
   contentType = request.getHeader("Content-Type");
   if (contentType == "") {
     contentType = HTTPResponse::getContentType(path);
+    if (contentType == "") {
+      _log.error("HTTPMethods::_handlePostRequest : No content type found");
+      return new HTTPResponse(HTTPResponse::BAD_REQUEST, location.error_pages);
+    }
   }
   else {
-    std::string extension = HTTPResponse::getExtensionFromContentType(contentType);
-    path += "." + extension;
+    std::string extension ="";
+    std::string is_extension = HTTPResponse::getContentType(path);
+    if (is_extension == "") {
+      extension = HTTPResponse::getExtensionFromContentType(contentType);
+      path += "." + extension;
+    }
   }
 	std::ofstream file(path.c_str());
 	if (file) {
@@ -142,10 +150,10 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
 			return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, location.error_pages);
 		}
 		file.close();
-		HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
-		response->addHeader("Content-Type", "text/html");
-		response->addHeader("Content-Length", Utils::to_string(path.size() + 67));
-		response->setBody("<html><body>File uploaded successfully. File path: " + path + "</body></html>");
+		HTTPResponse* response = new HTTPResponse(HTTPResponse::CREATED);
+		response->setHeaders(request.getHeaders());
+    response->addHeader("Location", uriPath);
+		response->setFile(path);
 		return response;
 	}
 	_log.error("HTTPMethods::_handlePostRequest : File open error: " + path + " | error: " + strerror(errno));
@@ -163,9 +171,13 @@ HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
     HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", "text/html");
     response->addHeader("Content-Length", Utils::to_string(path.size() + 66));
-    response->setBody("<html><body>File deleted successfully. File path: " + path + "</body></html>");
+    response->setBody("<html><body>File deleted.</body></html>");
 		return response;
 	} else {
+    if (errno == ENOENT) {
+      _log.error("HTTPMethods::_handleDeleteRequest : File not found");
+      return new HTTPResponse(HTTPResponse::NO_CONTENT, location.error_pages);
+    }
     _log.error("HTTPMethods::_handleDeleteRequest : File delete error");
 		return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, location.error_pages);
 	}

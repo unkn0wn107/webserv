@@ -6,7 +6,7 @@
 #    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/26 15:07:45 by mchenava         ###   ########.fr        #
+#    Updated: 2024/06/26 16:44:44 by mchenava         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -54,9 +54,26 @@ all: $(NAME) setup
 
 setup:
 	NUM=1; \
-	for file in /var/www/html/static_templates/*; do \
-		ln -s $$file /var/www/html/static_templates/static$$NUM; \
-		NUM=$$((NUM + 1)); \
+	for dir in /var/www/html/static_templates/* ; do \
+		if [ "$$(basename "$$dir")" != "images" ] && [ "$$(basename "$$dir")" != "README.md"  ]; then \
+			echo "$$dir"; \
+			mv "$$dir" /var/www/html/static_templates/static$$NUM || true; \
+			NUM=$$((NUM + 1)); \
+			if [ "$$NUM" -eq 5 ]; then \
+				break; \
+			fi; \
+		fi; \
+	done; \
+	NUM=1; \
+	for dir in /home/mchenava/webserv/html-website-templates/* ; do \
+		if [ "$$(basename "$$dir")" != "images" ] && [ "$$(basename "$$dir")" != "README.md"  ]; then \
+			echo "$$dir"; \
+			mv "$$dir" /home/mchenava/webserv/html-website-templates/static$$NUM || true; \
+			NUM=$$((NUM + 1)); \
+			if [ "$$NUM" -eq 5 ]; then \
+				break; \
+			fi; \
+		fi; \
 	done
 
 $(NAME): $(OBJ) update_gitignore
@@ -77,7 +94,7 @@ $(DEBUG_OBJ_DIR)/%.o: %.cpp
 run: daemon
 	$(MAKE) wait-for-healthy
 	docker compose exec -it webserv make
-	docker compose exec -it webserv bash -c "kill 1"
+	docker compose exec -it webserv ash -c "kill 1"
 	sleep 1
 	@make logs
 

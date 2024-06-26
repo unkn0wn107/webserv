@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+         #
+#    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/26 15:07:45 by mchenava         ###   ########.fr        #
+#    Updated: 2024/06/26 16:42:55 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -122,6 +122,7 @@ test-compare: stop daemon
 
 siege: stop daemon
 	$(MAKE) wait-for-healthy
+	echo "init" > siege.log
 	docker compose up siege
 	@make clean
 	cat siege.log

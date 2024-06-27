@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/10 00:45:22 by agaley           ###   ########.fr   */
+/*   Updated: 2024/06/27 01:58:11 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,9 +53,9 @@ void CGIHandler::_checkIfProcessingPossible(const HTTPRequest& request,
   }
 
   if (!FileManager::doesFileExists(scriptPath))
-    throw ScriptNotFound("Script not found: " + scriptPath);
+    throw ScriptNotFound("CGI: Script not found: " + scriptPath);
   if (!FileManager::isFileExecutable(scriptPath))
-    throw ScriptNotExecutable("Script not executable: " + scriptPath);
+    throw ScriptNotExecutable("CGI: Script not executable: " + scriptPath);
 }
 
 HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
@@ -66,7 +66,7 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
   if (pipe(pipefd) == -1)
     throw PipeFailure("Failed to create pipe");
 
-  _log.info("Executing: " + request.getURIComponents().scriptName +
+  _log.info("CGI: executing: " + request.getURIComponents().scriptName +
             " with runtime: " + runtime);
 
   std::vector<char*> argv = _getArgv(request);
@@ -75,7 +75,7 @@ HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
   if (pid == -1) {
     Utils::freeCharVector(argv);
     Utils::freeCharVector(envp);
-    throw ForkFailure("Failed to fork process");
+    throw ForkFailure("CGI: Failed to fork process");
   } else if (pid == 0) {
     try {
       _executeChildProcess(request, pipefd, argv, envp);
@@ -127,10 +127,10 @@ HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
 
   int retval = select(pipefd[0] + 1, &read_fds, NULL, NULL, &timeout);
   if (retval == -1) {
-    throw ExecutorError("Select error");
+    throw ExecutorError("CGI: Select error");
   } else if (retval == 0) {
     kill(pid, SIGKILL);
-    throw TimeoutException("CGI script execution timed out");
+    throw TimeoutException("CGI: script execution timed out");
   } else {
     std::string output;
     char        buffer[1024];
@@ -140,20 +140,17 @@ HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
     }
     close(pipefd[0]);
 
-    // Log the output received from the CGI script
-    // _log.info("CGI script output: " + output);
-
     int status;
     waitpid(pid, &status, 0);
 
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-      throw RuntimeError("CGI script failed");
+      throw RuntimeError("CGI: script failed");
     }
     // Parse output to create HTTPResponse
     std::size_t headerEndPos = output.find("\r\n\r\n");
     if (headerEndPos == std::string::npos)
       throw ExecutorError(
-          "Invalid CGI response: no header-body separator found");
+          "CGI: Invalid response: no header-body separator found");
     std::string headerPart = output.substr(0, headerEndPos);
     std::string bodyContent =
         output.substr(headerEndPos + 4);  // +4 to skip the "\r\n\r\n"
@@ -164,19 +161,22 @@ HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
     while (std::getline(headerStream, line)) {
       std::size_t colonPos = line.find(':');
       if (colonPos == std::string::npos)
-        throw ExecutorError("Invalid CGI response: malformed header line");
+        throw ExecutorError("CGI: Invalid response: malformed header line");
       std::string key = line.substr(0, colonPos);
       if (key.empty())
-        throw ExecutorError("Invalid CGI response: empty header key");
+        throw ExecutorError("CGI: Invalid response: empty header key");
       std::string value = line.substr(colonPos + 2);  // +2 to skip ": "
       if (value.empty())
-        throw ExecutorError("Invalid CGI response: empty header value");
+        throw ExecutorError("CGI: Invalid response: empty header value");
       headers[key] = value;
     }
     headers["Content-Length"] = Utils::to_string(bodyContent.size());
-    return new HTTPResponse(HTTPResponse::OK, headers, bodyContent);
+    HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
+    response->setHeaders(headers);
+    response->setBody(bodyContent);
+    return response;
   }
-  throw ExecutorError("CGI script failed : out of timeout loop");
+  throw ExecutorError("CGI: script failed : out of timeout loop");
 }
 
 void CGIHandler::_executeChildProcess(const HTTPRequest& request,
@@ -186,15 +186,15 @@ void CGIHandler::_executeChildProcess(const HTTPRequest& request,
   close(pipefd[0]);  // Close the read end of the pipe
   // Redirect stdout to pipe
   if (dup2(pipefd[1], STDOUT_FILENO) == -1)
-    throw ExecutorError("dup2 failed: unable to redirect stdout to pipe");
+    throw ExecutorError("CGI: dup2 failed: unable to redirect stdout to pipe");
   close(pipefd[1]);
 
   // Handling POST data by redirecting stdin to a pipe
   int postPipe[2];
   if (pipe(postPipe) == -1)
-    throw PipeFailure("pipe failed: unable to create pipe for POST data");
+    throw PipeFailure("CGI: pipe failed: unable to create pipe for POST data");
   if (dup2(postPipe[0], STDIN_FILENO) == -1)
-    throw ExecutorError("dup2 failed: unable to redirect stdin to pipe");
+    throw ExecutorError("CGI: dup2 failed: unable to redirect stdin to pipe");
   close(postPipe[0]);  // Close the read end of the pipe
 
   // Write POST data to postPipe[1] so it can be read from postPipe[0]
@@ -210,7 +210,8 @@ void CGIHandler::_executeChildProcess(const HTTPRequest& request,
         if (trys > 3) {
           close(postPipe[1]);
           throw ExecutorError(
-              "write failed: unable to write POST data to pipe after multiple "
+              "CGI: write failed: unable to write POST data to pipe after "
+              "multiple "
               "retries");
         }
         trys++;
@@ -219,7 +220,7 @@ void CGIHandler::_executeChildProcess(const HTTPRequest& request,
       } else {
         close(postPipe[1]);
         throw ExecutorError(
-            "write failed: unable to write POST data to pipe, error: " +
+            "CGI: write failed: unable to write POST data to pipe, error: " +
             std::string(strerror(errno)));
       }
     }
@@ -229,7 +230,7 @@ void CGIHandler::_executeChildProcess(const HTTPRequest& request,
   }
   close(postPipe[1]);
   execve(argv[0], &argv[0], &envp[0]);
-  throw ExecutorError("execve failed: unable to execute CGI script");
+  throw ExecutorError("CGI: execve failed: unable to execute CGI script");
 }
 
 std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request) {

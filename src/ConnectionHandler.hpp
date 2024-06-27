@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 15:27:21 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/27 01:38:14 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,10 +16,9 @@
 #include <pthread.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <vector>
 #include <ctime>
+#include <vector>
 
-#include "CacheHandler.hpp"
 #include "Config.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
@@ -74,7 +73,6 @@ class ConnectionHandler {
   std::vector<VirtualServer*> _vservPool;
   HTTPRequest*                _request;
   HTTPResponse*               _response;
-  CacheHandler&               _cacheHandler;
   // pthread_mutex_t             _mutex;
 
   void           _receiveRequest();

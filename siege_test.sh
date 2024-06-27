@@ -6,10 +6,10 @@ TEST_FAILED=0
 
 cat <<EOL > $SIEGE_URLS_FILE
 http://${CONTAINER}:${PORT}/
-http://${CONTAINER}:${8081}/
-http://${CONTAINER}:${8082}/
-http://${CONTAINER}:${8083}/
-http://${CONTAINER}:${8084}/
+http://${CONTAINER}:8090/
+http://${CONTAINER}:8091/
+http://${CONTAINER}:8092/
+http://${CONTAINER}:8093/
 http://${CONTAINER}:${PORT}/nonexistent
 http://${CONTAINER}:${PORT}/cgi/hello.py?name=Marvin
 http://${CONTAINER}:${PORT}/cgi/hello.php?name=Marvin
@@ -35,6 +35,8 @@ else
     echo "OK: Siege test passed with no-cache."
 fi
 printf "\n"
+
+sleep 2
 
 echo "Running siege with caching enabled"
 echo "Running siege with caching enabled" >> $SIEGE_LOG_FILE

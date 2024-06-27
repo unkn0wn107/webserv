@@ -1,7 +1,6 @@
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 RUN apt-get update
 RUN apt-get install -y curl
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh && bash nodesource_setup.sh
 RUN apt-get install -y make clang python3 php-cgi libpthread-stubs0-dev nodejs valgrind
 
 RUN apt-get install -y git

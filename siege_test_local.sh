@@ -9,10 +9,6 @@ ADDR=localhost
 
 cat <<EOL > $SIEGE_URLS_FILE
 http://${ADDR}:${PORT}/
-# http://${ADDR}:${8081}/
-# http://${ADDR}:${8082}/
-# http://${ADDR}:${8083}/
-# http://${ADDR}:${8084}/
 http://${ADDR}:${PORT}/nonexistent
 http://${ADDR}:${PORT}/cgi/hello.py?name=Marvin
 http://${ADDR}:${PORT}/cgi/hello.php?name=Marvin

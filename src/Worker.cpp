@@ -16,8 +16,10 @@
 
 Worker::Worker(Server&                      server,
                int                          epollSocket,
-               std::map<int, ListenConfig>& listenSockets)
+               std::map<int, ListenConfig>& listenSockets,
+               EventQueue& events)
     : _server(server),
+      _events(events),
       _thread(0),
       _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
@@ -70,8 +72,8 @@ int Worker::getLoad() {
 
 void Worker::_runEventLoop() {
   while (!_shouldStop) {
-    struct epoll_event event = _server.getEvent();
-    if (event.data.fd == -1) {
+    struct epoll_event event;
+    if (!_events.try_pop(event)) {
       usleep(1000);
       continue;
     }

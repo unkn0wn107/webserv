@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/24 23:04:40 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/27 16:17:38 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@
 #include "Config.hpp"
 #include "Logger.hpp"
 #include "Worker.hpp"
+#include "EventQueue.hpp"
 
 #define SHUTDOWN_DELAY 200000
 
@@ -45,22 +46,17 @@ class Server {
   int                                         _event_count;
   pthread_mutex_t                             _eventsMutex;
   bool                                        _running;
-  std::queue<struct epoll_event>              _events;
+  EventQueue                                  _events;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
 
   void                        _setupServerSockets();
   void                        _setupWorkers();
   void                        _setupEpoll();
-  void                        _addEvent(struct epoll_event event);
-  std::vector<VirtualServer*> _setupAssociateVirtualServers(
-      const ListenConfig& listenConfig);
 
  public:
   Server();
   static Server&              getInstance();
-  std::vector<VirtualServer*> getVirtualServer(int fd);
   void                        workerFinished();
-  struct epoll_event          getEvent();
   ~Server();
 
   void start();

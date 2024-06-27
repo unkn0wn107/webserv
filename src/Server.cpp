@@ -15,6 +15,7 @@
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 #include "Utils.hpp"
+#include "EventQueue.hpp"
 
 Server* Server::_instance = NULL;
 int     Server::_callCount = 1;
@@ -87,30 +88,9 @@ void Server::start() {
       continue;
     }
     for (int i = 0; i < nfds && _running; i++) {
-      _addEvent(events[i]);
+      _events.push(events[i]);
     }
   }
-  _log.info("SERVER:  events queue size: " + Utils::to_string(_events.size()));
-}
-
-void Server::_addEvent(struct epoll_event event) {
-  pthread_mutex_lock(&_eventsMutex);
-  _events.push(event);
-  pthread_mutex_unlock(&_eventsMutex);
-}
-
-struct epoll_event Server::getEvent() {
-  pthread_mutex_lock(&_eventsMutex);
-  if (_events.empty()) {
-    struct epoll_event event = {};
-    event.data.fd = -1;
-    pthread_mutex_unlock(&_eventsMutex);
-    return event;
-  }
-  struct epoll_event event = _events.front();
-  _events.pop();
-  pthread_mutex_unlock(&_eventsMutex);
-  return event;
 }
 
 void Server::stop(int signum) {
@@ -129,7 +109,7 @@ void Server::stop(int signum) {
 
 void Server::_setupWorkers() {
   for (int i = 0; i < _config.worker_processes; i++) {
-    _workers.push_back(new Worker(*this, _epollSocket, _listenSockets));
+    _workers.push_back(new Worker(*this, _epollSocket, _listenSockets, _events));
   }
 }
 

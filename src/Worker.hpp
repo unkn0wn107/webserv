@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/25 18:29:23 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/27 16:17:46 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,7 @@
 #include "Common.hpp"
 #include "VirtualServer.hpp"
 #include "Server.hpp"
+#include "EventQueue.hpp"
 
 
 #define MAX_EVENTS 10
@@ -41,6 +42,7 @@ class Server;
 class Worker {
  private:
   Server&                                     _server;
+  EventQueue&                                 _events;
   pthread_t                                   _thread;
   Config&                                     _config;
   Logger&                                     _log;
@@ -61,7 +63,9 @@ class Worker {
 
  public:
   int                                         _threadId;
-  Worker(Server& server, int epollSocket, std::map<int, ListenConfig>& listenSockets);
+  Worker(Server& server, int epollSocket,
+         std::map<int, ListenConfig>& listenSockets,
+         EventQueue& events);
   ~Worker();
   void stop();
   void start();

@@ -90,7 +90,8 @@
     "xlocbuf": "cpp",
     "xlocmes": "cpp",
     "xlocmon": "cpp",
-    "xloctime": "cpp"
+    "xloctime": "cpp",
+    "queue": "cpp"
   },
   "docwriter.style": "Doxygen"
 }

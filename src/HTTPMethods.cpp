@@ -3,30 +3,24 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPMethods.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/27 10:29:15 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/27 15:19:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPMethods.hpp"
 
-HTTPMethods::HTTPMethods(VirtualServer& server):
-	_server(server),
-	_log(Logger::getInstance()),
-	_cacheHandler(CacheHandler::getInstance())
-{}
+HTTPMethods::HTTPMethods(VirtualServer& server)
+    : _server(server), _log(Logger::getInstance()) {}
 
-HTTPMethods::~HTTPMethods() {
-
-}
+HTTPMethods::~HTTPMethods() {}
 
 std::string HTTPMethods::_getPath(const std::string& uriPath,
-                                    LocationConfig&    location) {
-  std::string path;
+                                  LocationConfig&    location) {
   if (location.root.empty()) {
-    path = _server.getRoot() + uriPath;
+    return _server.getRoot() + uriPath;
   }
   return location.root + uriPath;
 }
@@ -75,7 +69,8 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
   if (FileManager::doesFileExists(indexPath)) {
     HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", "text/html");
-    response->addHeader("Content-Length", Utils::to_string(FileManager::getFileSize(indexPath)));
+    response->addHeader("Content-Length",
+                        Utils::to_string(FileManager::getFileSize(indexPath)));
     response->setFile(indexPath);
     return response;
   } else if (location.autoindex) {
@@ -87,48 +82,52 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
     response->setBody(directoryListing);
     return response;
   } else {
-    _log.error(
-        "HTTPMethods::_autoindex : Directory index not available");
+    _log.error("HTTPMethods::_autoindex : Directory index not available");
     return new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
   }
 }
 
 HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
-  std::string uriPath = request.getURIComponents().path;
+  std::string    uriPath = request.getURIComponents().path;
   LocationConfig location = _server.getLocationConfig(uriPath);
   _log.info("HTTPMethods::_handleGetRequest : URI path: " + uriPath);
-  std::string    path = _getPath(uriPath, location);
+  std::string path = _getPath(uriPath, location);
   _log.info("HTTPMethods::_handleGetRequest : path: " + path);
-  struct stat    statbuf;
+  struct stat statbuf;
   if (stat(path.c_str(), &statbuf) == -1) {
     _log.error("HTTPMethods::_handleGetRequest : Path not found: " + path);
     return new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
   }
 
+  HTTPResponse* response;
   if (FileManager::isDirectory(path)) {
-    return _autoindex(path, location);
-  }
-  std::string   contentType = HTTPResponse::getContentType(path);
-  if (FileManager::doesFileExists(path)) {
-    HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
+    response = _autoindex(path, location);
+  } else if (FileManager::doesFileExists(path)) {
+    std::string contentType = HTTPResponse::getContentType(path);
+    response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", contentType);
-    response->addHeader("Content-Length", Utils::to_string(FileManager::getFileSize(path)));
+    response->addHeader("Content-Length",
+                        Utils::to_string(FileManager::getFileSize(path)));
     response->setFile(path);
-    return response;
+  } else {
+    _log.error("HTTPMethods::_handleGetRequest : File not found");
+    return new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
   }
 
-  _log.error("HTTPMethods::_handleGetRequest : File not found");
-  return new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
+  if (request.getHeader("Cache-Control") == "no-cache") {
+    response->addHeader("Cache-Control", "no-cache");
+  }
+  return response;
 }
 
 HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
-  std::string uriPath = request.getURIComponents().path;
-	LocationConfig location = _server.getLocationConfig(uriPath);
-	if (location.upload == false) {
-		return new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
-	}
-	std::string path = _getPath(uriPath, location);
-	std::string contentType;
+  std::string    uriPath = request.getURIComponents().path;
+  LocationConfig location = _server.getLocationConfig(uriPath);
+  if (location.upload == false) {
+    return new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
+  }
+  std::string path = _getPath(uriPath, location);
+  std::string contentType;
   contentType = request.getHeader("Content-Type");
   if (contentType == "") {
     contentType = HTTPResponse::getContentType(path);
@@ -136,100 +135,102 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
       _log.error("HTTPMethods::_handlePostRequest : No content type found");
       return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
     }
-  }
-  else {
-    std::string extension ="";
+  } else {
+    std::string extension = "";
     std::string is_extension = HTTPResponse::getContentType(path);
     if (is_extension == "") {
       extension = HTTPResponse::getExtensionFromContentType(contentType);
       path += "." + extension;
     }
   }
-	std::ofstream file(path.c_str());
-	if (file) {
-		if (!file.write(request.getBody().c_str(), request.getBody().size())) {
+  std::ofstream file(path.c_str());
+  if (file) {
+    if (!file.write(request.getBody().c_str(), request.getBody().size())) {
       _log.error("HTTPMethods::_handlePostRequest : File write error: " + path);
-			return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
-		}
-		file.close();
-		HTTPResponse* response = new HTTPResponse(HTTPResponse::CREATED);
-		response->setHeaders(request.getHeaders());
+      return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
+    }
+    file.close();
+    HTTPResponse* response = new HTTPResponse(HTTPResponse::CREATED);
+    response->setHeaders(request.getHeaders());
     response->addHeader("Location", uriPath);
-		response->setFile(path);
-		return response;
-	}
-	_log.error("HTTPMethods::_handlePostRequest : File open error: " + path + " | error: " + strerror(errno));
-	return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
+    response->setFile(path);
+    return response;
+  }
+  _log.error("HTTPMethods::_handlePostRequest : File open error: " + path +
+             " | error: " + strerror(errno));
+  return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
 }
 
 HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
-	std::string uriPath = request.getURIComponents().path;
-	LocationConfig location = _server.getLocationConfig(uriPath);
-	if (location.delete_ == false) {
-		return new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
-	}
-	std::string path = _getPath(uriPath, location);
-	if (remove(path.c_str()) == 0) {
+  std::string    uriPath = request.getURIComponents().path;
+  LocationConfig location = _server.getLocationConfig(uriPath);
+  if (location.delete_ == false) {
+    return new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
+  }
+  std::string path = _getPath(uriPath, location);
+  if (remove(path.c_str()) == 0) {
     HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
     response->addHeader("Content-Type", "text/html");
     response->addHeader("Content-Length", Utils::to_string(path.size() + 66));
     response->setBody("<html><body>File deleted.</body></html>");
-		return response;
-	} else {
+    return response;
+  } else {
     if (errno == ENOENT) {
       _log.error("HTTPMethods::_handleDeleteRequest : File not found");
       return new HTTPResponse(HTTPResponse::NO_CONTENT, &location);
     }
     _log.error("HTTPMethods::_handleDeleteRequest : File delete error");
-		return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
-	}
-}
-
-HTTPResponse* HTTPMethods::_handleHeadRequest(HTTPRequest& request) {
-	HTTPResponse* response = _handleGetRequest(request);
-	response->setBody("");
-  response->setFile("");
-  response->deleteHeader("Content-Length");
-	return response;
+    return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
+  }
 }
 
 HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
-  std::string    protocol = request.getProtocol();
   std::string    method = request.getMethod();
   std::string    uriPath = request.getURIComponents().path;
   LocationConfig location = _server.getLocationConfig(uriPath);
   request.setConfig(&location);
 
-  if (protocol != "HTTP/1.1") {
+  if (request.getProtocol() != "HTTP/1.1") {
     _log.error("HTTPMethods::handleRequest : Protocol not supported");
     return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
   }
-  if (location.cgi && CGIHandler::isScript(request)) {
-    _log.info("Handling CGI request for URI path: " + uriPath);
+
+  HTTPResponse* response;
+  if (location.cgi && CGIHandler::isScript(request)) {  // CGI
     try {
-      return CGIHandler::processRequest(request);
-    } catch (const CGIHandler::CGIDisabled& e) {
-      return new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
-    } catch (const CGIHandler::TimeoutException& e) {
-      return new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT,
-                              &location);
+      response = CGIHandler::handleCGIRequest(request);
     } catch (const Exception& e) {
-      return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR,
-                              &location);
+      if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e))
+        response = new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
+      else if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
+        response = new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT, &location);
+      else if (dynamic_cast<const CGIHandler::ScriptNotFound*>(&e))
+        response = new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
+      else
+        response =
+            new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
+    }
+  } else {  // NO CGI
+    if (method == "GET" || method == "HEAD") {
+      response = _handleGetRequest(request);
+    }
+    if (method == "POST") {
+      response = _handlePostRequest(request);
+    }
+    if (method == "DELETE") {
+      response = _handleDeleteRequest(request);
     }
   }
-  if (method == "GET") {
-    return _handleGetRequest(request);
-  }
-  if (method == "POST") {
-    return _handlePostRequest(request);
-  }
-  if (method == "DELETE") {
-    return _handleDeleteRequest(request);
-  }
+
   if (method == "HEAD") {
-    return _handleHeadRequest(request);
+    response->setBody("");
+    response->setFile("");
+    response->deleteHeader("Content-Length");
   }
+
+  if (response)
+    return response;
+
   _log.error("HTTPMethods::handleRequest : Method not allowed");
   return new HTTPResponse(HTTPResponse::NOT_IMPLEMENTED, &location);
 }

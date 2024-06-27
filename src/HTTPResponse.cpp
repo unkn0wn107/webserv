@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 10:27:42 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/27 15:00:37 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -223,7 +223,8 @@ HTTPResponse::HTTPResponse(int statusCode)
       _protocol("HTTP/1.1"),
       _config(NULL) {
   if (statusCode != 200 && statusCode != 201) {
-    throw std::invalid_argument("Invalid status code : " + Utils::to_string(statusCode));
+    throw std::invalid_argument("Invalid status code : " +
+                                Utils::to_string(statusCode));
   }
 }
 
@@ -239,9 +240,12 @@ void HTTPResponse::_errorResponse() {
     }
   }
   addHeader("Content-Type", "text/html");
-  addHeader("Content-Length",
-            _file.empty() ? Utils::to_string(_body.length())
-                          : Utils::to_string(FileManager::getFileSize(_file)));
+  if (!_file.empty() || !_body.empty()) {
+    addHeader("Content-Length",
+              _file.empty()
+                  ? Utils::to_string(_body.length())
+                  : Utils::to_string(FileManager::getFileSize(_file)));
+  }
 }
 
 void HTTPResponse::buildResponse() {

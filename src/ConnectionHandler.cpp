@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 01:37:25 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/27 15:28:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,12 +105,6 @@ void ConnectionHandler::_receiveRequest() {
 }
 
 void ConnectionHandler::_sendResponse() {
-  std::string method = _request->getMethod();
-  std::string protocol = _request->getProtocol();
-  std::string uri = _request->getURI();
-  std::string status = Utils::to_string(_response->getStatusCode());
-  std::string contentLength =
-      _response->getHeaders().find("Content-Length")->second;
   if (_response->sendResponse(_clientSocket) == -1)
     throw WriteException("CONNECTION_HANDLER: Failed to send response");
   _connectionStatus = CLOSED;
@@ -253,11 +247,19 @@ void ConnectionHandler::processConnection() {
     std::string uri = _request->getURI();
     std::string protocol = _request->getProtocol();
     std::string status = Utils::to_string(_response->getStatusCode());
-    std::string contentLength =
-        _response->getHeaders().find("Content-Length")->second;
-    _log.info("Request : " + host + " - " + method + " " + uri + " " +
-              protocol);
-    _log.info("Response : " + status + " sent " + contentLength + " bytes");
+    std::map<std::string, std::string> headers = _response->getHeaders();
+    std::map<std::string, std::string>::const_iterator it =
+        headers.find("Content-Length");
+    if (it != headers.end()) {
+      std::string contentLength = it->second;
+      _log.info("Request : " + host + " - " + method + " " + uri + " " +
+                protocol);
+      _log.info("Response : " + status + " sent " + contentLength + " bytes");
+    } else {
+      _log.info("Request : " + host + " - " + method + " " + uri + " " +
+                protocol);
+      _log.info("Response : " + status + " sent with no Content-Length");
+    }
     epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
     close(_clientSocket);
     std::clock_t end = std::clock();

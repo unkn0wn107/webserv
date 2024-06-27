@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 18:08:07 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/27 14:30:39 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cctype>
 
+#include "CacheHandler.hpp"
 #include "Exception.hpp"
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
@@ -30,8 +31,6 @@
 
 class CGIHandler {
  public:
-  CGIHandler();
-
   /**
    * Check if url has an executable file extension.
    * @param request The HTTP request object.
@@ -40,11 +39,11 @@ class CGIHandler {
   static bool isScript(const HTTPRequest& request);
 
   /**
-   * Processes the CGI request and generates an HTTP response.
-   * @param request The HTTP request object containing the CGI request details.
+   * Handles the CGI request and generates an HTTP response.
+   * @param request The HTTP request object.
    * @return HTTPResponse object containing the response from the CGI script.
    */
-  static HTTPResponse* processRequest(const HTTPRequest& request);
+  static HTTPResponse* handleCGIRequest(HTTPRequest& request);
 
   class NoRuntimeError : public Exception {
    public:
@@ -102,7 +101,10 @@ class CGIHandler {
   };
 
  private:
-  static Logger& _log;
+  CGIHandler();
+
+  static Logger&       _log;
+  static CacheHandler& _cacheHandler;
 
   static const std::pair<std::string, std::string> _AVAILABLE_CGIS[];
   static const int                                 _NUM_AVAILABLE_CGIS;
@@ -121,6 +123,13 @@ class CGIHandler {
    */
   static void _checkIfProcessingPossible(const HTTPRequest& request,
                                          const std::string& runtime);
+
+  /**
+   * Processes the CGI request and generates an HTTP response.
+   * @param request The HTTP request object containing the CGI request details.
+   * @return HTTPResponse object containing the response from the CGI script.
+   */
+  static HTTPResponse* _processRequest(const HTTPRequest& request);
 
   /**
    * Creates a null-terminated array of CGI environment variables from an HTTP

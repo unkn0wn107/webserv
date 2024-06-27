@@ -6,13 +6,14 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 01:58:11 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/27 15:32:34 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "CGIHandler.hpp"
 
-Logger& CGIHandler::_log = Logger::getInstance();
+Logger&       CGIHandler::_log = Logger::getInstance();
+CacheHandler& CGIHandler::_cacheHandler = CacheHandler::getInstance();
 
 CGIHandler::CGIHandler() {}
 
@@ -58,7 +59,47 @@ void CGIHandler::_checkIfProcessingPossible(const HTTPRequest& request,
     throw ScriptNotExecutable("CGI: Script not executable: " + scriptPath);
 }
 
-HTTPResponse* CGIHandler::processRequest(const HTTPRequest& request) {
+HTTPResponse* CGIHandler::handleCGIRequest(HTTPRequest& request) {
+  std::string uriPath = request.getURIComponents().path;
+  _log.info("CGI: handling request for URI path: " + uriPath);
+
+  bool noCache = (request.getHeader("Cache-Control") == "no-cache");
+
+  if (!noCache) {
+    clock_t       cacheStart = clock();
+    HTTPResponse* cachedResponse = _cacheHandler.getResponse(request);
+    clock_t       cacheEnd = clock();
+
+    if (cachedResponse) {
+      double cacheTimeTaken =
+          double(cacheEnd - cacheStart) * 1000 / CLOCKS_PER_SEC;
+      _log.info("CGI: Cache HIT [" + Utils::to_string(cacheTimeTaken) + " ms]");
+      return cachedResponse;
+    }
+  } else {
+    _log.info("CGI: no-cache required by client");
+  }
+
+  clock_t       processStart = clock();
+  HTTPResponse* response = _processRequest(request);
+  clock_t       processEnd = clock();
+  double        processTimeTaken =
+      double(processEnd - processStart) * 1000 / CLOCKS_PER_SEC;
+  _log.info("CGI: Time to process request [" +
+            Utils::to_string(processTimeTaken) + " ms]");
+
+  if (noCache)
+    response->addHeader("Cache-Control", "no-cache");
+  else {
+    response->addHeader(
+        "Cache-Control",
+        "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
+    _cacheHandler.storeResponse(request, *response);
+  }
+  return response;
+}
+
+HTTPResponse* CGIHandler::_processRequest(const HTTPRequest& request) {
   std::string runtime = _identifyRuntime(request);
   _checkIfProcessingPossible(request, runtime);
 

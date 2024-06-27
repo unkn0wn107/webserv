@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/26 15:29:22 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/27 01:37:25 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,8 +31,7 @@ ConnectionHandler::ConnectionHandler(
       _readn(0),
       _vservPool(virtualServers),
       _request(NULL),
-      _response(NULL),
-      _cacheHandler(CacheHandler::getInstance()) {
+      _response(NULL) {
   memset(_buffer, 0, BUFFER_SIZE);
 }
 
@@ -178,20 +177,6 @@ void ConnectionHandler::_processRequest() {
   }
   _request = new HTTPRequest(_buffer);
 
-  bool noCache = (_request->getHeader("Cache-Control") == "no-cache");
-
-  if (!noCache) {
-    HTTPResponse* cachedResponse = _cacheHandler.getResponse(*_request);
-    if (cachedResponse) {
-      _log.info("CONNECTION_HANDLER: Cache hit");
-      _response = cachedResponse;
-      _response->setCookie("sessionid", _request->getSessionId());
-      _connectionStatus = SENDING;
-      return;
-    }
-  } else
-    _log.info("CONNECTION_HANDLER: no-cache required by client");
-
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
     _log.error("CONNECTION_HANDLER: No virtual server selected");
@@ -207,14 +192,6 @@ void ConnectionHandler::_processRequest() {
   }
 
   _response = vserv->handleRequest(*_request);
-  if (noCache)
-    _response->addHeader("Cache-Control", "no-cache");
-  else {
-    _response->addHeader(
-        "Cache-Control",
-        "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
-    _cacheHandler.storeResponse(*_request, *_response);
-  }
 
   _response->setCookie("sessionid", _request->getSessionId());
 
@@ -284,11 +261,13 @@ void ConnectionHandler::processConnection() {
     epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
     close(_clientSocket);
     std::clock_t end = std::clock();
-    double duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;
+    double       duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;
     if (duration > 0.005) {
-      _log.warning("CONNECTION_HANDLER: =================================Processing time: " + Utils::to_string(duration) + " seconds");
+      _log.warning(
+          "CONNECTION_HANDLER: =================================Processing "
+          "time: " +
+          Utils::to_string(duration) + " seconds");
     }
     delete this;
   }
-
 }

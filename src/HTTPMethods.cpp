@@ -6,14 +6,16 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/26 23:53:29 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/27 02:04:08 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTPMethods.hpp"
 
 HTTPMethods::HTTPMethods(VirtualServer& server)
-    : _server(server), _log(Logger::getInstance()) {}
+    : _server(server),
+      _log(Logger::getInstance()),
+      _cacheHandler(CacheHandler::getInstance()) {}
 
 HTTPMethods::~HTTPMethods() {}
 
@@ -188,6 +190,57 @@ HTTPResponse* HTTPMethods::_handleHeadRequest(HTTPRequest& request) {
   return response;
 }
 
+HTTPResponse* HTTPMethods::_handleCGIRequest(HTTPRequest& request) {
+  std::string    uriPath = request.getURIComponents().path;
+  LocationConfig location = _server.getLocationConfig(uriPath);
+  _log.info("CGI: handling request for URI path: " + uriPath);
+  try {
+    bool noCache = (request.getHeader("Cache-Control") == "no-cache");
+
+    if (!noCache) {
+      clock_t       cacheStart = clock();
+      HTTPResponse* cachedResponse = _cacheHandler.getResponse(request);
+      clock_t       cacheEnd = clock();  // End timing cache retrieval
+      double cacheTimeTaken = double(cacheEnd - cacheStart) / CLOCKS_PER_SEC;
+      _log.info("CGI: Time to retrieve from cache: " +
+                Utils::to_string(cacheTimeTaken) + " seconds");
+
+      if (cachedResponse) {
+        _log.info("CGI: Cache HIT");
+        return cachedResponse;
+      }
+    } else {
+      _log.info("CGI: no-cache required by client");
+    }
+
+    clock_t       processStart = clock();
+    HTTPResponse* response = CGIHandler::processRequest(request);
+    clock_t       processEnd = clock();
+    double        processTimeTaken =
+        double(processEnd - processStart) / CLOCKS_PER_SEC;
+    _log.info("CGI: Time to process request: " +
+              Utils::to_string(processTimeTaken) + " seconds");
+
+    if (noCache)
+      response->addHeader("Cache-Control", "no-cache");
+    else {
+      response->addHeader(
+          "Cache-Control",
+          "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
+      _cacheHandler.storeResponse(request, *response);
+    }
+    return response;
+  } catch (const CGIHandler::CGIDisabled& e) {
+    return new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
+  } catch (const CGIHandler::TimeoutException& e) {
+    return new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT, &location);
+  } catch (const CGIHandler::ScriptNotFound& e) {
+    return new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
+  } catch (const Exception& e) {
+    return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
+  }
+}
+
 HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
   std::string    protocol = request.getProtocol();
   std::string    method = request.getMethod();
@@ -200,16 +253,7 @@ HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
     return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
   }
   if (location.cgi && CGIHandler::isScript(request)) {
-    _log.info("Handling CGI request for URI path: " + uriPath);
-    try {
-      return CGIHandler::processRequest(request);
-    } catch (const CGIHandler::CGIDisabled& e) {
-      return new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
-    } catch (const CGIHandler::TimeoutException& e) {
-      return new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT, &location);
-    } catch (const Exception& e) {
-      return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
-    }
+    return _handleCGIRequest(request);
   }
   if (method == "GET") {
     return _handleGetRequest(request);

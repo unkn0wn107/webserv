@@ -243,9 +243,9 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
       locationConfig.autoindex = (_parseValue(lineStream.str()) == "on");
     } else if (key == "cgi") {
       locationConfig.cgi = (_parseValue(lineStream.str()) == "on");
-    } else if (key == "accept_upload") {
+    } else if (key == "upload") {
       locationConfig.upload = (_parseValue(lineStream.str()) == "on");
-    } else if (key == "accept_delete") {
+    } else if (key == "delete") {
       locationConfig.delete_ = (_parseValue(lineStream.str()) == "on");
     } else if (key == "client_max_body_size") {
       locationConfig.client_max_body_size =

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 01:01:34 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/27 10:27:42 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -222,8 +222,8 @@ HTTPResponse::HTTPResponse(int statusCode)
       _file(""),
       _protocol("HTTP/1.1"),
       _config(NULL) {
-  if (statusCode != 200) {
-    throw std::invalid_argument("Invalid status code");
+  if (statusCode != 200 && statusCode != 201) {
+    throw std::invalid_argument("Invalid status code : " + Utils::to_string(statusCode));
   }
 }
 

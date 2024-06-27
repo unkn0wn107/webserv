@@ -14,8 +14,8 @@
 #include <climits>
 #include "Common.hpp"
 #include "ConfigManager.hpp"
-#include "Utils.hpp"
 #include "EventQueue.hpp"
+#include "Utils.hpp"
 
 Server* Server::_instance = NULL;
 int     Server::_callCount = 1;
@@ -24,7 +24,6 @@ Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
       _activeWorkers(0),
-      _event_count(0),
       _events() {
   _log.info("====================SERVER: Setup server " +
             Utils::to_string(_callCount));
@@ -109,7 +108,8 @@ void Server::stop(int signum) {
 
 void Server::_setupWorkers() {
   for (int i = 0; i < _config.worker_processes; i++) {
-    _workers.push_back(new Worker(*this, _epollSocket, _listenSockets, _events));
+    _workers.push_back(
+        new Worker(*this, _epollSocket, _listenSockets, _events));
   }
 }
 

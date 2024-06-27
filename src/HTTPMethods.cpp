@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 11:59:07 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/27 02:04:08 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/27 02:13:07 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -201,12 +201,12 @@ HTTPResponse* HTTPMethods::_handleCGIRequest(HTTPRequest& request) {
       clock_t       cacheStart = clock();
       HTTPResponse* cachedResponse = _cacheHandler.getResponse(request);
       clock_t       cacheEnd = clock();  // End timing cache retrieval
-      double cacheTimeTaken = double(cacheEnd - cacheStart) / CLOCKS_PER_SEC;
-      _log.info("CGI: Time to retrieve from cache: " +
-                Utils::to_string(cacheTimeTaken) + " seconds");
 
       if (cachedResponse) {
-        _log.info("CGI: Cache HIT");
+        double cacheTimeTaken =
+            double(cacheEnd - cacheStart) * 1000 / CLOCKS_PER_SEC;
+        _log.info("CGI: Cache HIT [" + Utils::to_string(cacheTimeTaken) +
+                  " ms]");
         return cachedResponse;
       }
     } else {
@@ -217,9 +217,9 @@ HTTPResponse* HTTPMethods::_handleCGIRequest(HTTPRequest& request) {
     HTTPResponse* response = CGIHandler::processRequest(request);
     clock_t       processEnd = clock();
     double        processTimeTaken =
-        double(processEnd - processStart) / CLOCKS_PER_SEC;
-    _log.info("CGI: Time to process request: " +
-              Utils::to_string(processTimeTaken) + " seconds");
+        double(processEnd - processStart) * 1000 / CLOCKS_PER_SEC;
+    _log.info("CGI: Time to process request [" +
+              Utils::to_string(processTimeTaken) + " ms]");
 
     if (noCache)
       response->addHeader("Cache-Control", "no-cache");

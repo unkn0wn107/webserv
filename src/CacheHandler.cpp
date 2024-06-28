@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CacheHandler.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 15:12:08 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/28 17:18:21 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,14 +52,14 @@ int CacheHandler::getResponse(const HTTPRequest& request,
     if (it->second.second + _maxAge > time(NULL)) {  // Check cache freshness
       response = *(it->second.first);
       pthread_mutex_unlock(&_mutex);
-      return 0;
+      return 1;
     } else {
       delete it->second.first;  // Response
       _cache.erase(it->first);  // <Response, Time>
     }
   }
   pthread_mutex_unlock(&_mutex);
-  return 1;
+  return 0;
 }
 
 void CacheHandler::storeResponse(const HTTPRequest&  request,

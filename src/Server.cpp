@@ -22,6 +22,8 @@ int     Server::_callCount = 1;
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
+      _workers(),
+      _listenSockets(),
       _activeWorkers(0) {
   _log.info("====================SERVER: Setup server " +
             Utils::to_string(_callCount));
@@ -88,8 +90,8 @@ void Server::stop(int signum) {
     Server::_instance->_log.info("Server stopped from signal " +
                                  Utils::to_string(signum));
     for (size_t i = 0; i < _workers.size(); i++) {
-      _log.info("SERVER: stopping worker " + Utils::to_string(i) + " (" +
-                Utils::to_string(_workers[i]->_threadId) + ")");
+      // _log.info("SERVER: stopping worker " + Utils::to_string(i) + " (" +
+      //           Utils::to_string(_workers[i]->_threadId) + ")");
       _workers[i]->stop();
     }
     _log.info("SERVER: workers stopped");

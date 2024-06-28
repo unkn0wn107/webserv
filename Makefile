@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/27 15:34:58 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/06/28 15:46:41 by agaley           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,6 +14,7 @@ NAME = webserv
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
+# DEBUGFLAGS = -gdwarf-4
 DEBUGFLAGS = -g3 -fsanitize=address
 
 SRC_DIR = src

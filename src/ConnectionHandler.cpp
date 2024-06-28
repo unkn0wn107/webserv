@@ -211,8 +211,13 @@ void ConnectionHandler::_processRequest() {
       _cgiHandler == NULL) {  // CGI
     _log.info("CONNECTION_HANDLER: CGI detected");
     _response = new HTTPResponse(HTTPResponse::OK, location);
-    _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket, location);
-    _connectionStatus = EXECUTING;
+    try {
+      _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket, location);
+      _connectionStatus = EXECUTING;
+    } catch (Exception& e) {
+      _log.error("CONNECTION HANDLER: _processRequest: CGI threw at construct");
+      _connectionStatus = CLOSED;
+    }
   } else {  // NO CGI
     _log.info("CONNECTION_HANDLER: NO CGI detected");
     _response = vserv->handleRequest(*_request);
@@ -270,7 +275,7 @@ void ConnectionHandler::processConnection() {
     _log.info("CONNECTION_HANDLER: Modifying epoll events for READING");
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
+      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: [READING] ") +
                  strerror(errno));
       close(_clientSocket);
       return;
@@ -278,10 +283,10 @@ void ConnectionHandler::processConnection() {
   }
   else if (_connectionStatus == EXECUTING) {
     _log.info("CONNECTION_HANDLER: Modifying epoll events for EXECUTING");
-    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+    event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(),
                  &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
+      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: [EXECUTING] ") +
                  strerror(errno));
       close(_clientSocket);
       return;
@@ -290,10 +295,9 @@ void ConnectionHandler::processConnection() {
   else if (_connectionStatus == SENDING) {
     _log.info("CONNECTION_HANDLER: Modifying epoll events for SENDING : " +
               Utils::to_string(_clientSocket));
-    event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
+    event.events = EPOLLOUT | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
-                 strerror(errno));
+      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: [SENDING] fd (" + Utils::to_string(_clientSocket) + strerror(errno)));
       close(_clientSocket);
       return;
     }

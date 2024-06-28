@@ -199,7 +199,7 @@ HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
     _body = other._body;
     _file = other._file;
     _protocol = other._protocol;
-    _config = other._config;
+    // _config = other._config;
     _errorPages = other._errorPages;
   }
   return *this;

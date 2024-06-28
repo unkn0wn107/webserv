@@ -93,8 +93,14 @@ int CGIHandler::handleCGIRequest() {
   int status = -1;
   try {
     _checkIfProcessingPossible();
-  } catch (...) {
-    throw;
+  } catch (const Exception& e) {
+      if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e))
+        _response.setStatusCode(HTTPResponse::FORBIDDEN);
+      else if (dynamic_cast<const CGIHandler::ScriptNotFound*>(&e))
+        _response.setStatusCode(HTTPResponse::NOT_FOUND);
+      else
+        _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
+      return SENDING;
   }
   std::string uriPath = _request.getURIComponents().path;
   _log.info("CGI: handling request for URI path: " + uriPath);
@@ -102,35 +108,42 @@ int CGIHandler::handleCGIRequest() {
   bool noCache = (_request.getHeader("Cache-Control") == "no-cache");
 
   if (!noCache && _pid == -2) {
-
-    try {
-      _cacheHandler.getResponse(_request, _response);
+    if (_cacheHandler.getResponse(_request, _response) == 1) {
+      _response.addHeader(
+        "Cache-Control",
+        "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
       return SENDING;
-    } catch (...) {
-      throw;
     }
   } else {
     _log.info("CGI: no-cache required by client");
   }
+
   try {
     status = _processRequest();
-  } catch (...) {
-    throw;
+  } catch (const Exception& e) {
+    if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
+      _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
+    else
+      _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
+    status = SENDING;
   }
-  if (noCache)
-    _response.addHeader("Cache-Control", "no-cache");
-  else if (status == SENDING) {
+
+  if (status == SENDING) {
+    if (noCache)
+      _response.addHeader("Cache-Control", "no-cache");
+    else {
     _response.addHeader(
         "Cache-Control",
         "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
     _cacheHandler.storeResponse(_request, _response);
+    }
   }
+
   return status;
 }
 
 int CGIHandler::_processRequest() {
-  if (_pid == -2)
-  {
+  if (_pid == -2) {
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
     event.data.fd = _outpipefd[0];
@@ -186,8 +199,7 @@ int CGIHandler::_executeParentProcess() {
 
     int status;
     pid = waitpid(_pid, &status, WNOHANG);
-    if (pid == -1)
-    {
+    if (pid == -1) {
       close(_outpipefd[0]);
       throw RuntimeError("CGI: waitpid failed");
     }
@@ -197,6 +209,10 @@ int CGIHandler::_executeParentProcess() {
       return EXECUTING;
     }
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+      // pthread_mutex_lock(&_mutex);
+      // _processNb--;
+      // pthread_mutex_unlock(&_mutex);
+      // kill(_pid, SIGKILL);
       throw RuntimeError("CGI: script finished with errors, exit status: " + Utils::to_string(WEXITSTATUS(status)));
     }
     _log.info("CGI: script finished");
@@ -216,10 +232,13 @@ int CGIHandler::_executeParentProcess() {
       _processOutput.append(buffer, count);
     }
     close(_outpipefd[0]);
+    // kill(_pid, SIGKILL);
+    // pthread_mutex_lock(&_mutex);
+    // _processNb--;
+    // pthread_mutex_unlock(&_mutex);
     std::size_t headerEndPos = _processOutput.find("\r\n\r\n");
     if (headerEndPos == std::string::npos)
-      throw ExecutorError(
-          "CGI: Invalid response: no header-body separator found");
+      return 0;
     std::string headerPart = _processOutput.substr(0, headerEndPos);
     std::string bodyContent =
         _processOutput.substr(headerEndPos + 4);  // +4 to skip the "\r\n\r\n"

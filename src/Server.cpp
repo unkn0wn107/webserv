@@ -14,7 +14,6 @@
 #include <climits>
 #include "Common.hpp"
 #include "ConfigManager.hpp"
-#include "EventQueue.hpp"
 #include "Utils.hpp"
 
 Server* Server::_instance = NULL;
@@ -23,15 +22,13 @@ int     Server::_callCount = 1;
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
-      _activeWorkers(0),
-      _events() {
+      _activeWorkers(0) {
   _log.info("====================SERVER: Setup server " +
             Utils::to_string(_callCount));
   _setupEpoll();
   _setupServerSockets();
   _setupWorkers();
   pthread_mutex_init(&_mutex, NULL);
-  pthread_mutex_init(&_eventsMutex, NULL);
   _callCount++;
   _running = false;
   _instance = this;
@@ -43,7 +40,6 @@ Server::~Server() {
   }
   _workers.clear();
   pthread_mutex_destroy(&_mutex);
-  pthread_mutex_destroy(&_eventsMutex);
   CacheHandler::deleteInstance();
   ConfigManager::deleteInstance();
   Server::_instance = NULL;
@@ -79,21 +75,10 @@ void Server::start() {
   }
   _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) +
             ")");
-  struct epoll_event events[MAX_EVENTS];
   while (_running) {
-    int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
-    if (nfds == 0) {
-      _log.info("SERVER: epoll_wait: 0 events");
-      continue;
-    }
-    if (nfds < 0) {
-      usleep(1000);
-      continue;
-    }
-    for (int i = 0; i < nfds && _running; i++) {
-      _log.info("SERVER: event " + Utils::to_string(i) + ": " +
-                Utils::to_string(events[i].data.fd));
-      _events.push(events[i]);
+    if (_activeWorkers == 0) {
+      _log.info("SERVER: All workers finished");
+      break;
     }
   }
 }
@@ -115,7 +100,7 @@ void Server::stop(int signum) {
 void Server::_setupWorkers() {
   for (int i = 0; i < _config.worker_processes; i++) {
     _workers.push_back(
-        new Worker(*this, _epollSocket, _listenSockets, _events));
+        new Worker(*this, _epollSocket, _listenSockets));
   }
 }
 
@@ -131,9 +116,9 @@ void Server::_setupServerSockets() {
   const std::set<ListenConfig>& uniqueConfigs = _config.unique_listen_configs;
 
   _log.info("SERVER: Setup server sockets");
-  for (std::set<ListenConfig>::const_iterator it = uniqueConfigs.begin();
+  for (std::set<ListenConfig >::iterator it = uniqueConfigs.begin();
        it != uniqueConfigs.end(); ++it) {
-    const ListenConfig& listenConfig = *it;
+    ListenConfig listenConfig = *it;
     int                 sock = socket(AF_INET6, SOCK_STREAM, 0);
     if (sock < 0) {
       _log.error("(" + listenConfig.address + ":" +

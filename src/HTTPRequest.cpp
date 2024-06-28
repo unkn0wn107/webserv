@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 00:12:17 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 11:03:30 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@ const std::string HTTPRequest::supportedMethods[4] = {"GET", "HEAD", "DELETE",
 
 HTTPRequest::HTTPRequest(std::string rawRequest /*, size_t readn*/)
     : _rawRequest(rawRequest),
-      /*_readn(readn),*/ _method(""),
+      _method(""),
       _uri(""),
       _body("") {
   parseRequest();
@@ -90,9 +90,9 @@ std::string HTTPRequest::getSessionId() const {
   return _sessionId;
 }
 
-void HTTPRequest::setConfig(LocationConfig* config) {
-  _config = config;
-}
+// void HTTPRequest::setConfig(LocationConfig& config) {
+//   _config = config;
+// }
 
 void HTTPRequest::setMethod(const std::string& method) {
   _method = method;
@@ -134,9 +134,9 @@ std::string HTTPRequest::getRawRequest() const {
   return _rawRequest;
 }
 
-LocationConfig* HTTPRequest::getConfig() const {
-  return _config;
-}
+// LocationConfig& HTTPRequest::getConfig() const {
+//   return _config;
+// }
 
 std::string HTTPRequest::getMethod() const {
   return _method;

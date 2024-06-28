@@ -176,12 +176,12 @@ std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
     std::make_pair(505, std::string(ERR_PAGE_505))};
 
 
-HTTPResponse::HTTPResponse()
-    : _log(Logger::getInstance()),
-      _statusCode(HTTPResponse::OK),
-      _config(NULL) {
-  _protocol = "HTTP/1.1";
-}
+// HTTPResponse::HTTPResponse()
+//     : _log(Logger::getInstance()),
+//       _statusCode(HTTPResponse::OK),
+//       _config(NULL) {
+//   _protocol = "HTTP/1.1";
+// }
 
 HTTPResponse::~HTTPResponse() {
   _headers.clear();
@@ -200,22 +200,12 @@ HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
     _file = other._file;
     _protocol = other._protocol;
     _config = other._config;
+    _errorPages = other._errorPages;
   }
   return *this;
 }
 
-HTTPResponse::HTTPResponse(const std::string& protocol)
-    : _log(Logger::getInstance()),
-      _statusCode(HTTPResponse::OK),
-      _protocol(protocol),
-      _config(NULL),
-      _responseBufferSize(0),
-      _responseBufferPos(0),
-      _responseFilePos(0),
-      _fileSize(0)
-{}
-
-HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
+HTTPResponse::HTTPResponse(int statusCode, LocationConfig& config)
     : _log(Logger::getInstance()),
       _statusCode(statusCode),
       _statusMessage(getStatusMessage(statusCode)),
@@ -224,6 +214,7 @@ HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
       _file(""),
       _protocol("HTTP/1.1"),
       _config(config),
+      _errorPages(config.error_pages),
       _responseBufferSize(0),
       _responseBufferPos(0),
       _responseFilePos(0),
@@ -232,40 +223,18 @@ HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
     throw std::invalid_argument("Invalid status code");
   }
   if (statusCode >= 300 && statusCode < 400)
-    addHeader("Location", _config->returnUrl);
-  _errorResponse();
-}
-
-HTTPResponse::HTTPResponse(int statusCode)
-    : _log(Logger::getInstance()),
-      _statusCode(statusCode),
-      _statusMessage(getStatusMessage(statusCode)),
-      _headers(std::map<std::string, std::string>()),
-      _body(""),
-      _file(""),
-      _protocol("HTTP/1.1"),
-      _config(NULL),
-      _responseBufferSize(0),
-      _responseBufferPos(0),
-      _responseFilePos(0),
-      _fileSize(0) {
-  if (statusCode != 200 && statusCode != 201) {
-    throw std::invalid_argument("Invalid status code : " +
-                                Utils::to_string(statusCode));
-  }
+    addHeader("Location", config.returnUrl);
 }
 
 void HTTPResponse::_errorResponse() {
-  if (_config) {
-    std::map<int, std::string>::const_iterator it = _config->error_pages.find(_statusCode);
-    if (_statusCode >= 300) {
-    if (it != _config->error_pages.end()) {
-      _file = _config->root + it->second;
-      _log.info("Error page: " + _file);
-    } else {
-      _log.info("Default error page");
-      _body = HTTPResponse::defaultErrorPage(_statusCode);
-    }
+  std::map<int, std::string>::const_iterator it = _errorPages.find(_statusCode);
+
+  if (it != _errorPages.end()) {
+    _file = _config.root + it->second;
+    _log.info("Error page: " + _file);
+  } else {
+    _log.info("Default error page");
+    _body = HTTPResponse::defaultErrorPage(_statusCode);
   }
   addHeader("Content-Type", "text/html");
   if (!_file.empty() || !_body.empty()) {
@@ -273,12 +242,13 @@ void HTTPResponse::_errorResponse() {
               _file.empty()
                   ? Utils::to_string(_body.length())
                   : Utils::to_string(FileManager::getFileSize(_file)));
-    }
   }
 }
 
 void HTTPResponse::buildResponse() {
   _log.info("HTTPResponse: buildResponse status: " + Utils::to_string(_statusCode));
+  if (_statusCode >= 300)
+    _errorResponse();
   _log.info("HTTPResponse: _file: [" + _file + "]");
   // _log.info("HTTPResponse: _body: " + _body);
   _errorResponse();

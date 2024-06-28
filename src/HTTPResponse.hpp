@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 01:25:16 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 11:32:13 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,7 +69,8 @@ class HTTPResponse {
   std::string                        _body;
   std::string                        _file;
   std::string                        _protocol;
-  LocationConfig*                    _config;
+  LocationConfig&                    _config;
+  std::map<int, std::string>         _errorPages;
   std::string                        _responseBuffer;
   size_t                             _responseBufferSize;
   size_t                             _responseBufferPos;
@@ -83,10 +84,7 @@ class HTTPResponse {
   void    _sendfile(int socket, FILE* file, size_t sndbuf);
 
  public:
-  HTTPResponse();
-  HTTPResponse(int statusCode);
-  HTTPResponse(const std::string& protocol);
-  HTTPResponse(int statusCode, LocationConfig* config);
+  HTTPResponse(int statusCode, LocationConfig& config);
   ~HTTPResponse();
   HTTPResponse& operator=(const HTTPResponse& other);
   static std::string getContentType(const std::string& path);

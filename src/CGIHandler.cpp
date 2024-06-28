@@ -15,22 +15,20 @@
 Logger&       CGIHandler::_log = Logger::getInstance();
 CacheHandler& CGIHandler::_cacheHandler = CacheHandler::getInstance();
 
-CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSocket): 
+CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSocket, LocationConfig& location):
   _epollSocket(epollSocket),
   _request(request),
   _response(response),
+  _location(location),
   _processOutput(""),
-  _processOutputSize(0),
-  _processOutputPos(0),
-  _runtime(_identifyRuntime(_request)),
-  _argv(CGIHandler::_getArgv(_request)),
-  _envp(CGIHandler::_getEnvp(_request)),
+  _runtime(_identifyRuntime(_request, _location)),
+  _argv(CGIHandler::_getArgv(_request, _location)),
+  _envp(CGIHandler::_getEnvp(_request, _location)),
   _pid(-2)
 {
-  _location = _request.getConfig();
-  _root = _location->root;
-  _index = _location->index;
-  _cgi = _location->cgi;
+  _root = _location.root;
+  _index = _location.index;
+  _cgi = _location.cgi;
   if (pipe(_inpipefd) == -1)
     throw PipeFailure("CGI: Failed to create pipe");
   if (pipe(_outpipefd) == -1)
@@ -62,8 +60,8 @@ const int CGIHandler::_NUM_AVAILABLE_CGIS =
     sizeof(CGIHandler::_AVAILABLE_CGIS) /
     sizeof(std::pair<std::string, std::string>);
 
-bool CGIHandler::isScript(const HTTPRequest& request) {
-  if (_identifyRuntime(request).empty())
+bool CGIHandler::isScript(const HTTPRequest& request, LocationConfig& location) {
+  if (_identifyRuntime(request, location).empty())
     return false;
   return true;
 }
@@ -78,13 +76,13 @@ void CGIHandler::_checkIfProcessingPossible() {
     throw CGINotFound("CGI not found: " + _runtime);
   if (!FileManager::isFileExecutable(_runtime))
     throw CGINotExecutable("CGI not executable: " + _runtime);
-  
+
   std::string scriptPath =
       _root + _request.getURIComponents().path;
   if (FileManager::isDirectory(scriptPath)) {
     if (scriptPath[scriptPath.length() - 1] != '/')
       scriptPath += "/";
-    scriptPath += _location->index;
+    scriptPath += _location.index;
   }
 
   if (!FileManager::doesFileExists(scriptPath))
@@ -168,12 +166,11 @@ int CGIHandler::_processRequest() {
   throw ExecutorError("CGI script fatal : out of pid branches !!");  // -Werror
 }
 
-const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request) {
+const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request, LocationConfig& location) {
   std::string     extension = request.getURIComponents().extension;
-  LocationConfig* location = request.getConfig();
-  if (FileManager::isDirectory(location->root +
+  if (FileManager::isDirectory(location.root +
                                request.getURIComponents().path))
-    extension = location->index.substr(location->index.find_last_of('.') + 1);
+    extension = location.index.substr(location.index.find_last_of('.') + 1);
 
   for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
     if (CGIHandler::_AVAILABLE_CGIS[i].first == extension) {
@@ -193,7 +190,7 @@ int CGIHandler::_executeParentProcess() {
     ssize_t     count;
     pid_t       pid;
     int         trys = 0;
-    
+
     int status;
     pid = waitpid(_pid, &status, WNOHANG);
     if (pid == -1)
@@ -305,46 +302,46 @@ void CGIHandler::_runScript() {
   throw ExecutorError("CGI: execve failed: unable to execute CGI script");
 }
 
-std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request) {
+std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request, LocationConfig& location) {
   std::vector<char*> argv;
 
   std::string scriptPath =
-      request.getConfig()->root + request.getURIComponents().path;
+      location.root + request.getURIComponents().path;
   if (FileManager::isDirectory(scriptPath)) {
     if (scriptPath[scriptPath.length() - 1] != '/')
       scriptPath += "/";
-    scriptPath += request.getConfig()->index;
+    scriptPath += location.index;
   }
 
   argv.reserve(3);
-  argv.push_back(Utils::cstr(_identifyRuntime(request)));
+  argv.push_back(Utils::cstr(_identifyRuntime(request, location)));
   argv.push_back(Utils::cstr(scriptPath));
   argv.push_back(NULL);
 
   return argv;
 }
 
-std::vector<char*> CGIHandler::_getEnvp(const HTTPRequest& request) {
+std::vector<char*> CGIHandler::_getEnvp(const HTTPRequest& request, LocationConfig& location) {
   std::vector<char*> envp;
 
   const std::map<std::string, std::string> headers = request.getHeaders();
   const URI::Components uriComponents = request.getURIComponents();
 
   std::string scriptName = uriComponents.scriptName;
-  std::string scriptPath = request.getConfig()->root + uriComponents.path;
+  std::string scriptPath = location.root + uriComponents.path;
   if (FileManager::isDirectory(scriptPath)) {
     if (scriptPath[scriptPath.length() - 1] != '/')
       scriptPath += "/";
-    scriptPath += request.getConfig()->index;
+    scriptPath += location.index;
     if (scriptName[scriptName.length() - 1] != '/')
       scriptName += "/";
-    scriptName += request.getConfig()->index;
+    scriptName += location.index;
   }
 
   envp.reserve(headers.size() + 10 + 1);  // 10 env variables + NULL
 
   envp.push_back(Utils::cstr("REDIRECT_STATUS=200"));  // For php-cgi at least
-  envp.push_back(Utils::cstr("DOCUMENT_ROOT=" + request.getConfig()->root));
+  envp.push_back(Utils::cstr("DOCUMENT_ROOT=" + location.root));
   envp.push_back(Utils::cstr("REQUEST_URI=" + request.getURI()));
   envp.push_back(Utils::cstr("SCRIPT_FILENAME=" + scriptPath));
   envp.push_back(Utils::cstr("SCRIPT_NAME=" + scriptName));

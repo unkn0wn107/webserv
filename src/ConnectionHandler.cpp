@@ -63,6 +63,8 @@ ConnectionHandler::~ConnectionHandler() {
     delete _cgiHandler;
     _cgiHandler = NULL;
   }
+  _requestString.clear();
+  _readn = 0;
 }
 
 void ConnectionHandler::_receiveRequest() {
@@ -203,14 +205,10 @@ void ConnectionHandler::_processRequest() {
   }
   std::string    uriPath = _request->getURIComponents().path;
   LocationConfig location = vserv->getLocationConfig(uriPath);
-  _request->setConfig(&location);
-  LocationConfig *location2 = _request->getConfig();
-  _log.info("CONNECTION_HANDLER: Location2: " + location2->location);
-  _log.info("CONNECTION_HANDLER: root2: " + location2->root);
-  if (location.cgi && CGIHandler::isScript(*_request) &&
+  if (location.cgi && CGIHandler::isScript(*_request, location) &&
       _cgiHandler == NULL) {  // CGI
-    _response = new HTTPResponse(HTTPResponse::OK);
-    _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket);
+    _response = new HTTPResponse(HTTPResponse::OK, location);
+    _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket, location);
     _connectionStatus = EXECUTING;
   } else {  // NO CGI
     _response = vserv->handleRequest(*_request);
@@ -234,8 +232,12 @@ void ConnectionHandler::_processData() {
   if (_connectionStatus == EXECUTING) {
     _log.info("CONNECTION_HANDLER: Processing data in EXECUTING state");
     _connectionStatus = _cgiHandler->handleCGIRequest();
-    _log.info("CONNECTION_HANDLER: Connection status after EXECUTING: " +
-              Utils::to_string(_connectionStatus));
+    // if (_connectionStatus == SENDING) {
+      // epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _cgiHandler->getCgifd(), NULL);
+    //   close(_cgiHandler->getCgifd());
+    //   delete _cgiHandler;
+    //   _cgiHandler = NULL;
+    // }
   }
   if (_connectionStatus == SENDING) {
     _log.info("CONNECTION_HANDLER: Processing data in SENDING state");
@@ -255,7 +257,6 @@ void ConnectionHandler::processConnection() {
 
   struct epoll_event event;
   event.data.ptr = this;
-  // event.data.fd = _clientSocket;
   _processData();
   _log.info("CONNECTION_HANDLER: _rcvbuf: " + Utils::to_string(_rcvbuf));
   _log.info("CONNECTION_HANDLER: _sndbuf: " + Utils::to_string(_sndbuf));
@@ -324,5 +325,4 @@ void ConnectionHandler::processConnection() {
     }
     delete this;
   }
-  // _log.info("CONNECTION_HANDLER: Connection Processed");
 }

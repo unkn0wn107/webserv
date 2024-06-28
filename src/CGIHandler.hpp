@@ -25,12 +25,17 @@
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "Common.hpp"
 #include "Logger.hpp"
 
 #define CGI_TIMEOUT_SEC 10
+// enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
+
 
 class CGIHandler {
- public:
+  public:
+    CGIHandler(HTTPRequest& request, HTTPResponse& response);
+    ~CGIHandler();
   /**
    * Check if url has an executable file extension.
    * @param request The HTTP request object.
@@ -40,10 +45,9 @@ class CGIHandler {
 
   /**
    * Handles the CGI request and generates an HTTP response.
-   * @param request The HTTP request object.
    * @return HTTPResponse object containing the response from the CGI script.
    */
-  static HTTPResponse* handleCGIRequest(HTTPRequest& request);
+  int handleCGIRequest();
 
   class NoRuntimeError : public Exception {
    public:
@@ -100,11 +104,28 @@ class CGIHandler {
     TimeoutException(const std::string& message) : Exception(message) {}
   };
 
- private:
-  CGIHandler();
 
+ private:
   static Logger&       _log;
   static CacheHandler& _cacheHandler;
+
+  HTTPRequest&  _request;
+  HTTPResponse& _response;
+  LocationConfig* _location;
+  std::string   _processOutput;
+  size_t        _processOutputSize;
+  size_t        _processOutputPos;
+  std::string   _runtime;
+  std::string   _root;
+  std::string   _index;
+  bool          _cgi;
+
+  std::vector<char*> _argv;
+  std::vector<char*> _envp;
+
+  int   _inpipefd[2];
+  int   _outpipefd[2];
+  pid_t _pid;
 
   static const std::pair<std::string, std::string> _AVAILABLE_CGIS[];
   static const int                                 _NUM_AVAILABLE_CGIS;
@@ -114,22 +135,14 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return String representing the runtime to be used.
    */
-  static const std::string _identifyRuntime(const HTTPRequest& request);
+  static const   std::string _identifyRuntime(const HTTPRequest& request);
 
   /**
    * Checks if the processing of the request is possible.
    * @param request The HTTP request object.
    * @param runtime The runtime to be used.
    */
-  static void _checkIfProcessingPossible(const HTTPRequest& request,
-                                         const std::string& runtime);
-
-  /**
-   * Processes the CGI request and generates an HTTP response.
-   * @param request The HTTP request object containing the CGI request details.
-   * @return HTTPResponse object containing the response from the CGI script.
-   */
-  static HTTPResponse* _processRequest(const HTTPRequest& request);
+  void _checkIfProcessingPossible();
 
   /**
    * Creates a null-terminated array of CGI environment variables from an HTTP
@@ -158,22 +171,9 @@ class CGIHandler {
    * for the CGI script.
    * @return HTTPResponse object containing the response from the CGI script.
    */
-  static HTTPResponse* _executeParentProcess(int pipefd[2], pid_t pid);
-
-  /**
-   * Executes the child process logic for CGI script execution.
-   * @param request The HTTP request object.
-   * @param pipefd Array holding file descriptors for the pipe.
-   * @param argv A vector of strings, each representing an argument for the CGI
-   * script.
-   * @param envp A vector of strings, each representing an environment variable
-   * for the CGI script.
-   * @return String containing the output from the CGI script.
-   */
-  static void _executeChildProcess(const HTTPRequest& request,
-                                   int                pipefd[2],
-                                   std::vector<char*> argv,
-                                   std::vector<char*> envp);
+  int   _executeParentProcess();
+  int   _processRequest();
+  void  _runScript();
 };
 
 #endif

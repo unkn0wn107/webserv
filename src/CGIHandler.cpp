@@ -15,7 +15,31 @@
 Logger&       CGIHandler::_log = Logger::getInstance();
 CacheHandler& CGIHandler::_cacheHandler = CacheHandler::getInstance();
 
-CGIHandler::CGIHandler() {}
+CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response): 
+  _request(request),
+  _response(response),
+  _processOutput(""),
+  _processOutputSize(0),
+  _processOutputPos(0),
+  _runtime(_identifyRuntime(_request)),
+  _argv(CGIHandler::_getArgv(_request)),
+  _envp(CGIHandler::_getEnvp(_request)),
+  _pid(-2)
+{
+  _location = _request.getConfig();
+  _root = _location->root;
+  _index = _location->index;
+  _cgi = _location->cgi;
+  if (pipe(_inpipefd) == -1)
+    throw PipeFailure("CGI: Failed to create pipe");
+  if (pipe(_outpipefd) == -1)
+    throw PipeFailure("CGI: Failed to create pipe");
+}
+
+CGIHandler::~CGIHandler() {
+  Utils::freeCharVector(_argv);
+  Utils::freeCharVector(_envp);
+}
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
     std::make_pair("php", "/usr/bin/php-cgi"),
@@ -33,24 +57,41 @@ bool CGIHandler::isScript(const HTTPRequest& request) {
   return true;
 }
 
-void CGIHandler::_checkIfProcessingPossible(const HTTPRequest& request,
-                                            const std::string& runtime) {
-  if (!request.getConfig()->cgi)
-    throw CGIDisabled("Execution forbidden by config: " + request.getURI());
-  if (runtime.empty())
-    throw NoRuntimeError("No suitable runtime found for script: " +
-                         request.getURI());
-  if (!FileManager::doesFileExists(runtime))
-    throw CGINotFound("CGI not found: " + runtime);
-  if (!FileManager::isFileExecutable(runtime))
-    throw CGINotExecutable("CGI not executable: " + runtime);
+void CGIHandler::_checkIfProcessingPossible() {
 
+    //  } catch (const Exception& e) {
+    //   if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e))
+    //     response = new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
+    //   else if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
+    //     response = new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT, &location);
+    //   else if (dynamic_cast<const CGIHandler::ScriptNotFound*>(&e))
+    //     response = new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
+    //   else
+    //     response =
+    //         new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
+    // }
+  _log.info("CGI: checking if processing is possible for request: " + _request.getURI());
+  _log.info("CGI: runtime: " + _runtime);
+  _log.info("CGI: root: " + _root);
+  _log.info("CGI: path: " + _request.getURIComponents().path);
+  _log.info("CGI: index: " + _location->index);
+  // _log.info("CGI: cgi: " + _location->cgi ? "true" : "false");
+  if (!_cgi)
+    throw CGIDisabled("Execution forbidden by config: " + _request.getURI());
+  if (_runtime.empty())
+    throw NoRuntimeError("No suitable runtime found for script: " +
+                        _request.getURI());
+  if (!FileManager::doesFileExists(_runtime))
+    throw CGINotFound("CGI not found: " + _runtime);
+  if (!FileManager::isFileExecutable(_runtime))
+    throw CGINotExecutable("CGI not executable: " + _runtime);
+  
   std::string scriptPath =
-      request.getConfig()->root + request.getURIComponents().path;
+      _root + _request.getURIComponents().path;
   if (FileManager::isDirectory(scriptPath)) {
     if (scriptPath[scriptPath.length() - 1] != '/')
       scriptPath += "/";
-    scriptPath += request.getConfig()->index;
+    scriptPath += _location->index;
   }
 
   if (!FileManager::doesFileExists(scriptPath))
@@ -59,83 +100,68 @@ void CGIHandler::_checkIfProcessingPossible(const HTTPRequest& request,
     throw ScriptNotExecutable("CGI: Script not executable: " + scriptPath);
 }
 
-HTTPResponse* CGIHandler::handleCGIRequest(HTTPRequest& request) {
-  std::string uriPath = request.getURIComponents().path;
+int CGIHandler::handleCGIRequest() {
+  int status = -1;
+  try {
+    _checkIfProcessingPossible();
+  } catch (...) {
+    throw;
+  }
+  std::string uriPath = _request.getURIComponents().path;
   _log.info("CGI: handling request for URI path: " + uriPath);
 
-  bool noCache = (request.getHeader("Cache-Control") == "no-cache");
+  bool noCache = (_request.getHeader("Cache-Control") == "no-cache");
 
   if (!noCache) {
     clock_t       cacheStart = clock();
-    HTTPResponse* cachedResponse = _cacheHandler.getResponse(request);
+    HTTPResponse* cachedResponse = _cacheHandler.getResponse(_request);
     clock_t       cacheEnd = clock();
 
     if (cachedResponse) {
       double cacheTimeTaken =
           double(cacheEnd - cacheStart) * 1000 / CLOCKS_PER_SEC;
       _log.info("CGI: Cache HIT [" + Utils::to_string(cacheTimeTaken) + " ms]");
-      return cachedResponse;
+      _response = *cachedResponse;
+      delete cachedResponse;
+      return SENDING;
     }
   } else {
     _log.info("CGI: no-cache required by client");
   }
-
-  clock_t       processStart = clock();
-  HTTPResponse* response = _processRequest(request);
-  clock_t       processEnd = clock();
-  double        processTimeTaken =
-      double(processEnd - processStart) * 1000 / CLOCKS_PER_SEC;
-  _log.info("CGI: Time to process request [" +
-            Utils::to_string(processTimeTaken) + " ms]");
-
+  try {
+    status = _processRequest();
+  } catch (...) {
+    throw;
+  }
   if (noCache)
-    response->addHeader("Cache-Control", "no-cache");
+    _response.addHeader("Cache-Control", "no-cache");
   else {
-    response->addHeader(
+    _response.addHeader(
         "Cache-Control",
         "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
-    _cacheHandler.storeResponse(request, *response);
+    _cacheHandler.storeResponse(_request, _response);
   }
-  return response;
+  return status;
 }
 
-HTTPResponse* CGIHandler::_processRequest(const HTTPRequest& request) {
-  std::string runtime = _identifyRuntime(request);
-  _checkIfProcessingPossible(request, runtime);
-
-  int pipefd[2];
-  if (pipe(pipefd) == -1)
-    throw PipeFailure("Failed to create pipe");
-
-  _log.info("CGI: executing: " + request.getURIComponents().scriptName +
-            " with runtime: " + runtime);
-
-  std::vector<char*> argv = _getArgv(request);
-  std::vector<char*> envp = _getEnvp(request);
-  pid_t              pid = fork();
-  if (pid == -1) {
-    Utils::freeCharVector(argv);
-    Utils::freeCharVector(envp);
+int CGIHandler::_processRequest() {
+  if (_pid == -2)
+  {
+    _log.info("CGI: Forking process");
+    _pid = fork();
+  }
+  if (_pid == -1) {
     throw ForkFailure("CGI: Failed to fork process");
-  } else if (pid == 0) {
+  } else if (_pid == 0) {
     try {
-      _executeChildProcess(request, pipefd, argv, envp);
-      Utils::freeCharVector(argv);
-      Utils::freeCharVector(envp);
+      _runScript();
     } catch (...) {
-      Utils::freeCharVector(argv);
-      Utils::freeCharVector(envp);
       throw;
     }
   } else {
     try {
-      HTTPResponse* response = _executeParentProcess(pipefd, pid);
-      Utils::freeCharVector(argv);
-      Utils::freeCharVector(envp);
-      return response;
+      return _executeParentProcess();
     } catch (...) {
-      Utils::freeCharVector(argv);
-      Utils::freeCharVector(envp);
       throw;
     }
   }
@@ -143,9 +169,9 @@ HTTPResponse* CGIHandler::_processRequest(const HTTPRequest& request) {
 }
 
 const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request) {
-  LocationConfig* location = request.getConfig();
   std::string     extension = request.getURIComponents().extension;
-  if (FileManager::isDirectory(request.getConfig()->root +
+  LocationConfig* location = request.getConfig();
+  if (FileManager::isDirectory(location->root +
                                request.getURIComponents().path))
     extension = location->index.substr(location->index.find_last_of('.') + 1);
 
@@ -157,44 +183,55 @@ const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request) {
   return "";
 }
 
-HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
-  close(pipefd[1]);  // Close the write end of the pipe
-  fd_set read_fds;
-  FD_ZERO(&read_fds);
-  FD_SET(pipefd[0], &read_fds);
-  struct timeval timeout;
-  timeout.tv_sec = CGI_TIMEOUT_SEC;
-  timeout.tv_usec = 0;
-
-  int retval = select(pipefd[0] + 1, &read_fds, NULL, NULL, &timeout);
-  if (retval == -1) {
-    throw ExecutorError("CGI: Select error");
-  } else if (retval == 0) {
-    kill(pid, SIGKILL);
-    throw TimeoutException("CGI: script execution timed out");
-  } else {
-    std::string output;
+int CGIHandler::_executeParentProcess() {
+    close(_outpipefd[1]);
     char        buffer[1024];
     ssize_t     count;
-    while ((count = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
-      output.append(buffer, count);
-    }
-    close(pipefd[0]);
-
+    pid_t       pid;
+    int         trys = 0;
+    
     int status;
-    waitpid(pid, &status, 0);
-
-    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-      throw RuntimeError("CGI: script failed");
+    pid = waitpid(_pid, &status, WNOHANG);
+    if (pid == -1)
+    {
+      close(_outpipefd[0]);
+      throw RuntimeError("CGI: waitpid failed");
     }
-    // Parse output to create HTTPResponse
-    std::size_t headerEndPos = output.find("\r\n\r\n");
+    // if (WIFSIGNALED(status)) {
+    //   close(_outpipefd[0]);
+    //   throw RuntimeError("CGI: script killed by signal: " + Utils::to_string(WTERMSIG(status)));
+    // }
+    if (pid == 0) {
+      _log.info("CGI: script is still running");
+      return EXECUTING;
+    }
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+      throw RuntimeError("CGI: script finished with errors, exit status: " + Utils::to_string(WEXITSTATUS(status)));
+    }
+    _log.info("CGI: script finished");
+    while ((count = read(_outpipefd[0], buffer, sizeof(buffer))) > 0) {
+      if (count == -1)
+      {
+          if (trys > 5) {
+            close(_outpipefd[0]);
+            throw ExecutorError("CGI: write failed: unable to write POST data to pipe after "
+                                "multiple "
+                                "retries");
+          }
+          trys++;
+          usleep(1000 << trys);
+          continue;
+        }
+      _processOutput.append(buffer, count);
+    }
+    close(_outpipefd[0]);
+    std::size_t headerEndPos = _processOutput.find("\r\n\r\n");
     if (headerEndPos == std::string::npos)
       throw ExecutorError(
           "CGI: Invalid response: no header-body separator found");
-    std::string headerPart = output.substr(0, headerEndPos);
+    std::string headerPart = _processOutput.substr(0, headerEndPos);
     std::string bodyContent =
-        output.substr(headerEndPos + 4);  // +4 to skip the "\r\n\r\n"
+        _processOutput.substr(headerEndPos + 4);  // +4 to skip the "\r\n\r\n"
 
     std::map<std::string, std::string> headers;
     std::istringstream                 headerStream(headerPart);
@@ -212,65 +249,52 @@ HTTPResponse* CGIHandler::_executeParentProcess(int pipefd[2], pid_t pid) {
       headers[key] = value;
     }
     headers["Content-Length"] = Utils::to_string(bodyContent.size());
-    HTTPResponse* response = new HTTPResponse(HTTPResponse::OK);
-    response->setHeaders(headers);
-    response->setBody(bodyContent);
-    return response;
-  }
-  throw ExecutorError("CGI: script failed : out of timeout loop");
+    _response.setHeaders(headers);
+    _response.setBody(bodyContent);
+    return SENDING;
 }
 
-void CGIHandler::_executeChildProcess(const HTTPRequest& request,
-                                      int                pipefd[2],
-                                      std::vector<char*> argv,
-                                      std::vector<char*> envp) {
-  close(pipefd[0]);  // Close the read end of the pipe
-  // Redirect stdout to pipe
-  if (dup2(pipefd[1], STDOUT_FILENO) == -1)
+void CGIHandler::_runScript() {
+  _log.info("CGI: executing: " + _request.getURIComponents().scriptName +
+            " with runtime: " + _runtime);
+  close(_outpipefd[0]);
+  if (dup2(_outpipefd[1], STDOUT_FILENO) == -1)
     throw ExecutorError("CGI: dup2 failed: unable to redirect stdout to pipe");
-  close(pipefd[1]);
-
-  // Handling POST data by redirecting stdin to a pipe
-  int postPipe[2];
-  if (pipe(postPipe) == -1)
-    throw PipeFailure("CGI: pipe failed: unable to create pipe for POST data");
-  if (dup2(postPipe[0], STDIN_FILENO) == -1)
+  close(_outpipefd[1]);
+  if (dup2(_inpipefd[0], STDIN_FILENO) == -1)
     throw ExecutorError("CGI: dup2 failed: unable to redirect stdin to pipe");
-  close(postPipe[0]);  // Close the read end of the pipe
-
-  // Write POST data to postPipe[1] so it can be read from postPipe[0]
-  std::string postData = request.getBody();
+  close(_inpipefd[0]);
+  std::string postData = _request.getBody();
   std::size_t totalWritten = 0;
   int         trys = 0;  // Ajout d'un compteur de tentatives
 
   while (totalWritten < postData.size()) {
-    ssize_t written = write(postPipe[1], postData.c_str() + totalWritten,
+    ssize_t written = write(_inpipefd[1], postData.c_str() + totalWritten,
                             postData.size() - totalWritten);
     if (written == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        if (trys > 3) {
-          close(postPipe[1]);
+        if (trys > 5) {
+          close(_inpipefd[1]);
           throw ExecutorError(
               "CGI: write failed: unable to write POST data to pipe after "
               "multiple "
               "retries");
         }
         trys++;
-        usleep(1000);  // Attendre un peu avant de réessayer
+        usleep(1000 << trys);  // Attendre un peu avant de réessayer
         continue;
       } else {
-        close(postPipe[1]);
+        close(_inpipefd[1]);
         throw ExecutorError(
             "CGI: write failed: unable to write POST data to pipe, error: " +
             std::string(strerror(errno)));
       }
     }
-    trys = 0;  // Réinitialiser le compteur de tentatives après une écriture
-               // réussie
+    trys = 0;
     totalWritten += written;
   }
-  close(postPipe[1]);
-  execve(argv[0], &argv[0], &envp[0]);
+  close(_inpipefd[1]);
+  execve(_argv[0], &_argv[0], &_envp[0]);
   throw ExecutorError("CGI: execve failed: unable to execute CGI script");
 }
 

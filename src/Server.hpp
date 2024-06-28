@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 18:07:06 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/28 01:48:42 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,7 +35,7 @@ class Server {
  private:
   static int                                  _callCount;
   static Server*                              _instance;
-  Config&                                     _config;
+  Config                                     _config;
   Logger&                                     _log;
   std::vector<Worker*>                        _workers;
   std::map<int, ListenConfig>                 _listenSockets;

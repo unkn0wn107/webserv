@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 10:27:46 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 01:25:16 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,11 +71,16 @@ class HTTPResponse {
   std::string                        _protocol;
   LocationConfig*                    _config;
   std::string                        _responseBuffer;
+  size_t                             _responseBufferSize;
+  size_t                             _responseBufferPos;
+  off_t                              _responseFilePos;
+  size_t                             _fileSize;
+  FILE*                              _toSend;
   static std::pair<int, std::string> _defaultErrorPages[];
 
   void    _errorResponse();
-  ssize_t _sendAll(int socket, const char* buffer, size_t length);
-  ssize_t _sendAllFile(int socket, FILE* file);
+  ssize_t _send(int socket, size_t sndbuf);
+  void    _sendfile(int socket, FILE* file, size_t sndbuf);
 
  public:
   HTTPResponse();
@@ -83,13 +88,12 @@ class HTTPResponse {
   HTTPResponse(const std::string& protocol);
   HTTPResponse(int statusCode, LocationConfig* config);
   ~HTTPResponse();
-
+  HTTPResponse& operator=(const HTTPResponse& other);
   static std::string getContentType(const std::string& path);
-  static std::string getExtensionFromContentType(
-      const std::string& contentType);
+  static std::string getExtensionFromContentType(const std::string& contentType);
 
   void               buildResponse();
-  int                sendResponse(int clientSocket);
+  int                sendResponse(int clientSocket, size_t sndbuf);
   static int         sendResponse(int statusCode, int clientSocket);
   static std::string defaultErrorPage(int status);
   // Setters

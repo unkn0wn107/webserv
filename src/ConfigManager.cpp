@@ -37,8 +37,8 @@ void ConfigManager::deleteInstance() {
   }
 }
 
-Config& ConfigManager::getConfig() const {
-  return _instance->_config;
+Config ConfigManager::getConfig() const {
+  return _config;
 }
 
 const std::string ConfigManager::getFilePath() const {

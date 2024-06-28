@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/27 00:12:10 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/28 01:57:44 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #include <sstream>
 #include "Utils.hpp"
 
-VirtualServer::VirtualServer(ServerConfig& serverConfig)
+VirtualServer::VirtualServer(ServerConfig serverConfig)
     : _serverConfig(serverConfig),
       _log(Logger::getInstance()),
       _httpMethods(new HTTPMethods(*this)) {
@@ -143,7 +143,12 @@ std::map<int, std::string> VirtualServer::_getErrorPages(
 }
 
 HTTPResponse* VirtualServer::handleRequest(HTTPRequest& request) {
-  return _httpMethods->handleRequest(request);
+  std::clock_t start = std::clock();
+  HTTPResponse* response = _httpMethods->handleRequest(request);
+  std::clock_t end = std::clock();
+  double duration = static_cast<double>(end - start) * 1000 / CLOCKS_PER_SEC;
+  _log.info("VirtualServer: handleRequest duration [" + Utils::to_string(duration) + " ms]");
+  return response;
 }
 
 std::string VirtualServer::getServerName() const {

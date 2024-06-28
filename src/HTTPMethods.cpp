@@ -93,12 +93,6 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
   _log.info("HTTPMethods::_handleGetRequest : URI path: " + uriPath);
   std::string path = _getPath(uriPath, location);
   _log.info("HTTPMethods::_handleGetRequest : path: " + path);
-  struct stat statbuf;
-  if (stat(path.c_str(), &statbuf) == -1) {
-    _log.error("HTTPMethods::_handleGetRequest : Path not found: " + path);
-    return new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
-  }
-
   HTTPResponse* response;
   if (FileManager::isDirectory(path)) {
     response = _autoindex(path, location);
@@ -186,42 +180,22 @@ HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
 
 HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
   std::string    method = request.getMethod();
-  std::string    uriPath = request.getURIComponents().path;
-  LocationConfig location = _server.getLocationConfig(uriPath);
-  request.setConfig(&location);
-
+  LocationConfig location = _server.getLocationConfig(request.getURIComponents().path);
   if (request.getProtocol() != "HTTP/1.1") {
     _log.error("HTTPMethods::handleRequest : Protocol not supported");
     return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
   }
 
   HTTPResponse* response;
-  if (location.cgi && CGIHandler::isScript(request)) {  // CGI
-    try {
-      response = CGIHandler::handleCGIRequest(request);
-    } catch (const Exception& e) {
-      if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e))
-        response = new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
-      else if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
-        response = new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT, &location);
-      else if (dynamic_cast<const CGIHandler::ScriptNotFound*>(&e))
-        response = new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
-      else
-        response =
-            new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
-    }
-  } else {  // NO CGI
-    if (method == "GET" || method == "HEAD") {
-      response = _handleGetRequest(request);
-    }
-    if (method == "POST") {
-      response = _handlePostRequest(request);
-    }
-    if (method == "DELETE") {
-      response = _handleDeleteRequest(request);
-    }
+  if (method == "GET" || method == "HEAD") {
+    response = _handleGetRequest(request);
   }
-
+  if (method == "POST") {
+    response = _handlePostRequest(request);
+  }
+  if (method == "DELETE") {
+    response = _handleDeleteRequest(request);
+  }
   if (method == "HEAD") {
     response->setBody("");
     response->setFile("");

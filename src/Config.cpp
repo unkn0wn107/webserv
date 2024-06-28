@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Config.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 18:58:00 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/24 19:21:02 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/28 00:13:39 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,9 +27,9 @@ LocationConfig::~LocationConfig() {
 ListenConfig::ListenConfig() {
   port = 80;
   default_server = false;
-  backlog = 2048;
-  rcvbuf = 2048;
-  sndbuf = 2048;
+  backlog = 10000;
+  rcvbuf = 10000;
+  sndbuf = 10000;
   ipv6only = false;
 }
 

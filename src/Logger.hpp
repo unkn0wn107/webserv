@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Logger.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:21:59 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/24 22:44:12 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/28 02:05:28 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@
 class Logger {
  public:
   static Logger& getInstance();
-  void           setConfig(const Config& config);
+  void           setConfig(const Config config);
 
   void info(const std::string& message) const;
   void warning(const std::string& message) const;

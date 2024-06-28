@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/25 18:16:20 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 01:53:20 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,8 +99,8 @@ void Logger::_setFileName() {
     _progLogFileName = _config.log_file + "_" + _getCurrentTime() + ".log";
 }
 
-void Logger::setConfig(const Config& config) {
+void Logger::setConfig(const Config config) {
   getInstance()._config = config;
   _setFileName();
-  _openLogFile();
+  // _openLogFile();
 }

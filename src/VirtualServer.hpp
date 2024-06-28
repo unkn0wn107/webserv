@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 10:22:15 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/14 14:25:10 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/28 01:58:03 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,7 @@ class HTTPMethods;
 
 class VirtualServer {
  private:
-  ServerConfig&            _serverConfig;
+  ServerConfig            _serverConfig;
   Logger&                  _log;
   bool                     _defaultServer;
   std::vector<std::string>    _hostNames;
@@ -37,7 +37,7 @@ class VirtualServer {
 
 
  public:
-  VirtualServer(ServerConfig& serverConfig);
+  VirtualServer(ServerConfig serverConfig);
   ~VirtualServer();
   bool        isDefaultServer();
   bool        isHostMatching(const std::string& host) const;

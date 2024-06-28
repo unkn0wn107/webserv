@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 01:38:14 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/28 01:52:32 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,26 +20,31 @@
 #include <vector>
 
 #include "Config.hpp"
+#include "Common.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
+#include "CGIHandler.hpp"
 
 #define BUFFER_SIZE 16384
 
-enum ConnectionStatus { READING, SENDING, CLOSED };
+
+
+class VirtualServer;
+class CGIHandler;
 
 class ConnectionHandler {
  public:
+ static const int    MAX_TRIES;
+ static const time_t TIMEOUT;
+
   ConnectionHandler(int clientSocket,
                     int epollSocket,
-                    // ListenConfig&                listenConfig,
-                    std::vector<VirtualServer*>& virtualServers);
+                    std::vector<VirtualServer*>& virtualServers,
+                    ListenConfig listenConfig);
   ~ConnectionHandler();
-
-  // HTTPProtocol* selectHTTPProtocolVersion(const std::string& requestString);
   void processConnection();
-  int  getConnectionStatus();
 
   class ConnectionException : public Exception {
    public:
@@ -64,16 +69,20 @@ class ConnectionHandler {
 
  private:
   Logger& _log;
-  // ListenConfig&               _listenConfig;
   int                         _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
   char*                       _buffer;
-  int                         _readn;
+  size_t                         _rcvbuf;
+  size_t                         _sndbuf;
+  std::string                 _requestString;
+  size_t                         _readn;
   std::vector<VirtualServer*> _vservPool;
   HTTPRequest*                _request;
   HTTPResponse*               _response;
-  // pthread_mutex_t             _mutex;
+  int                         _count;
+  time_t                      _startTime;
+  CGIHandler*                 _cgiHandler;
 
   void           _receiveRequest();
   void           _processRequest();

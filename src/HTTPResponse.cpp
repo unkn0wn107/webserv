@@ -175,6 +175,7 @@ std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
     std::make_pair(504, std::string(ERR_PAGE_504)),
     std::make_pair(505, std::string(ERR_PAGE_505))};
 
+
 HTTPResponse::HTTPResponse()
     : _log(Logger::getInstance()),
       _statusCode(HTTPResponse::OK),
@@ -189,12 +190,30 @@ HTTPResponse::~HTTPResponse() {
   _responseBuffer.clear();
 }
 
+HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
+  if (this != &other) {
+    _log = other._log;
+    _statusCode = other._statusCode;
+    _statusMessage = other._statusMessage;
+    _headers = other._headers;
+    _body = other._body;
+    _file = other._file;
+    _protocol = other._protocol;
+    _config = other._config;
+  }
+  return *this;
+}
+
 HTTPResponse::HTTPResponse(const std::string& protocol)
     : _log(Logger::getInstance()),
       _statusCode(HTTPResponse::OK),
-      _config(NULL) {
-  _protocol = protocol;
-}
+      _protocol(protocol),
+      _config(NULL),
+      _responseBufferSize(0),
+      _responseBufferPos(0),
+      _responseFilePos(0),
+      _fileSize(0)
+{}
 
 HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
     : _log(Logger::getInstance()),
@@ -204,11 +223,14 @@ HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
       _body(""),
       _file(""),
       _protocol("HTTP/1.1"),
-      _config(config) {
+      _config(config),
+      _responseBufferSize(0),
+      _responseBufferPos(0),
+      _responseFilePos(0),
+      _fileSize(0) {
   if (statusCode < 100 || statusCode > 599) {
     throw std::invalid_argument("Invalid status code");
   }
-  _errorResponse();
   if (statusCode >= 300 && statusCode < 400)
     addHeader("Location", _config->returnUrl);
 }
@@ -221,7 +243,11 @@ HTTPResponse::HTTPResponse(int statusCode)
       _body(""),
       _file(""),
       _protocol("HTTP/1.1"),
-      _config(NULL) {
+      _config(NULL),
+      _responseBufferSize(0),
+      _responseBufferPos(0),
+      _responseFilePos(0),
+      _fileSize(0) {
   if (statusCode != 200 && statusCode != 201) {
     throw std::invalid_argument("Invalid status code : " +
                                 Utils::to_string(statusCode));
@@ -229,10 +255,11 @@ HTTPResponse::HTTPResponse(int statusCode)
 }
 
 void HTTPResponse::_errorResponse() {
-  if (_statusCode >= 300) {
-    if (_config &&
-        _config->error_pages.find(_statusCode) != _config->error_pages.end()) {
-      _file = _config->root + _config->error_pages[_statusCode];
+  if (_config) {
+    std::map<int, std::string>::const_iterator it = _config->error_pages.find(_statusCode);
+    if (_statusCode >= 300) {
+    if (it != _config->error_pages.end()) {
+      _file = _config->root + it->second;
       _log.info("Error page: " + _file);
     } else {
       _log.info("Default error page");
@@ -245,17 +272,26 @@ void HTTPResponse::_errorResponse() {
               _file.empty()
                   ? Utils::to_string(_body.length())
                   : Utils::to_string(FileManager::getFileSize(_file)));
+    }
   }
 }
 
 void HTTPResponse::buildResponse() {
-  _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
-                    _statusMessage + "\r\n";
-  for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
-       it != _headers.end(); ++it) {
-    _responseBuffer += it->first + ": " + it->second + "\r\n";
+  _log.info("HTTPResponse: buildResponse status: " + Utils::to_string(_statusCode));
+  _errorResponse();
+  if (_responseBuffer.empty()) {
+    _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
+                      _statusMessage + "\r\n";
+    for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
+         it != _headers.end(); ++it) {
+      _responseBuffer += it->first + ": " + it->second + "\r\n";
+    }
+    _responseBuffer += "\r\n" + _body;
+    _responseBufferSize = _responseBuffer.size();
   }
-  _responseBuffer += "\r\n" + _body;
+  if (_file.empty())
+    return;
+  _fileSize = FileManager::getFileSize(_file);
 }
 
 std::string HTTPResponse::defaultErrorPage(int status) {
@@ -268,71 +304,51 @@ std::string HTTPResponse::defaultErrorPage(int status) {
   return std::string("");
 }
 
-ssize_t HTTPResponse::_sendAll(int socket, const char* buffer, size_t length) {
-  size_t  totalSent = 0;  // combien de bytes nous avons envoyé
+ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   ssize_t bytesSent;
-  int     trys = 0;
+  size_t remaining = _responseBuffer.size() - _responseBufferPos;
 
-  while (totalSent < length) {
-    bytesSent = send(socket, buffer + totalSent, length - totalSent, 0);
-    if (bytesSent == -1) {
-      if (trys > 3) {
-        throw Exception("(send) Error sending response" +
-                        std::string(strerror(errno)));
-      }
-      trys++;
-      usleep(1000);
-      continue;
-    }
-    trys = 0;
-    totalSent += bytesSent;
+  if (sndbuf > remaining) {
+    sndbuf = remaining;
   }
 
-  return totalSent;  // Retourne le nombre total de bytes envoyés
-}
-
-ssize_t HTTPResponse::_sendAllFile(int clientSocket, FILE* file) {
-  int file_length = FileManager::getFileSize(_file);
-  _log.info("File length: " + Utils::to_string(file_length));
-  off_t   offset = 0;
-  ssize_t bytesSent;
-  int     totalSent = 0;
-  int     trys = 0;
-  while (offset < file_length) {
-    bytesSent =
-        sendfile(clientSocket, fileno(file), &offset, file_length - offset);
-    if (bytesSent == -1) {
-      if (trys > 10) {
-        throw Exception("(sendfile) Error sending response" +
-                        std::string(strerror(errno)));
-      }
-      trys++;
-      usleep(1000 * (1 << trys));
-      continue;
-    }
-    trys = 0;
-    totalSent += bytesSent;
+  bytesSent = send(socket, _responseBuffer.c_str() + _responseBufferPos, sndbuf, 0);
+  if (bytesSent == -1) {
+    usleep(1000);
+    return -1;
   }
-  return totalSent;
+  _log.info("HTTPResponse: _send bytesSent: " + Utils::to_string(bytesSent) +
+            " remaining: " + Utils::to_string(remaining) +
+            " _responseBufferPos: " + Utils::to_string(_responseBufferPos) +
+            " _responseBufferSize: " + Utils::to_string(_responseBufferSize));
+  _responseBufferPos += bytesSent;
+  return _responseBufferPos;
 }
 
-int HTTPResponse::sendResponse(int clientSocket) {
+void HTTPResponse::_sendfile(int clientSocket, FILE* file, size_t sndbuf) {
+  ssize_t bytesSent;
+  bytesSent = sendfile(clientSocket, fileno(file), &_responseFilePos, sndbuf);
+  if (bytesSent == -1)
+    usleep(1000);
+  _log.info("HTTPResponse: _sendfile bytesSent: " + Utils::to_string(bytesSent) +
+            " _responseFilePos: " + Utils::to_string(_responseFilePos));
+}
+
+int HTTPResponse::sendResponse(int clientSocket, size_t sndbuf) {
   buildResponse();
-
-  _sendAll(clientSocket, _responseBuffer.c_str(), _responseBuffer.size());
-  if (_file.empty())
-    return 0;
-  if (!FileManager::doesFileExists(_file))
-    return sendResponse(404, clientSocket);
-  FILE* file = fopen(_file.c_str(), "r");
-  if (file) {
-    _log.info("Sending file: " + _file);
-    _sendAllFile(clientSocket, file);
-    fclose(file);
-  } else {
-    sendResponse(404, clientSocket);
-    throw Exception("(fopen) Error sending response");
+  if (_send(clientSocket, sndbuf) == -1)
+    return -1;
+  if (_responseBufferPos == _responseBufferSize && _file.empty())
+    return 1;
+  _toSend = fopen(_file.c_str(), "r");
+  if (!_toSend){
+    sendResponse(500, clientSocket);
+    throw Exception("(fopen) Error opening file" + std::string(strerror(errno)));
   }
+  _sendfile(clientSocket, _toSend, sndbuf);
+  fclose(_toSend);
+  if (static_cast<size_t>(_responseFilePos) == _fileSize)
+    return 1;
   return 0;
 }
 

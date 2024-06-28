@@ -77,9 +77,9 @@ void Worker::_runEventLoop() {
       usleep(1000);
       continue;
     }
+    _log.info("WORKER (" + Utils::to_string(_threadId) + "): new event: " + Utils::to_string(event.data.fd));
     std::clock_t _start = std::clock();
-    if (_listenSockets.find(event.data.fd) != _listenSockets.end() &&
-        event.events & EPOLLIN)
+    if (_listenSockets.find(event.data.fd) != _listenSockets.end())
       _acceptNewConnection(event.data.fd);
     else
       _handleIncomingConnection(event);
@@ -98,6 +98,8 @@ void Worker::_acceptNewConnection(int fd) {
   int                     new_socket;
   struct epoll_event      event;
 
+  _log.info("WORKER (" + Utils::to_string(_thread) +
+            "): Accepting new connection");
   while (!_shouldStop) {
     new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
     if (new_socket <= 0) {
@@ -113,7 +115,7 @@ void Worker::_acceptNewConnection(int fd) {
     std::vector<VirtualServer*> virtualServers =
         _setupAssociateVirtualServer(listenConfig);
     ConnectionHandler* handler =
-        new ConnectionHandler(new_socket, _epollSocket, virtualServers);
+        new ConnectionHandler(new_socket, _epollSocket, virtualServers, listenConfig);
     event.data.ptr = handler;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
       _log.error("WORKER (" + Utils::to_string(_thread) +
@@ -125,8 +127,12 @@ void Worker::_acceptNewConnection(int fd) {
 
 void Worker::_handleIncomingConnection(struct epoll_event event) {
   ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
+  _log.info("WORKER (" + Utils::to_string(_thread) +
+            "): Handling incoming connection");
   handler->processConnection();
-  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);
+  _log.info("WORKER (" + Utils::to_string(_thread) +
+            "): Connection processed");
+  // epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);
 }
 
 void* Worker::_workerRoutine(void* ref) {

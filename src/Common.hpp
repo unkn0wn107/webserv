@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 11:09:02 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/21 11:56:02 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 00:25:05 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,6 @@ int         set_non_blocking(int sockfd);
 void        signalHandler(int signum);
 std::string generateSessionId(void);
 
-
+enum ConnectionStatus { READING, EXECUTING, SENDING, CLOSED };
 
 #endif

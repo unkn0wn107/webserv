@@ -19,19 +19,28 @@
 #include "ConnectionHandler.hpp"
 #include "Utils.hpp"
 
+const int ConnectionHandler::MAX_TRIES = 10;
+const time_t ConnectionHandler::TIMEOUT = 10;
+
 ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
-    std::vector<VirtualServer*>& virtualServers)
+    std::vector<VirtualServer*>& virtualServers,
+    ListenConfig               listenConfig)
     : _log(Logger::getInstance()),
       _connectionStatus(READING),
       _clientSocket(clientSocket),
       _epollSocket(epollSocket),
       _buffer(new char[BUFFER_SIZE]),
+      _rcvbuf(listenConfig.rcvbuf),
+      _sndbuf(listenConfig.sndbuf),
+      _requestString(""),
       _readn(0),
       _vservPool(virtualServers),
       _request(NULL),
-      _response(NULL) {
+      _response(NULL),
+      _count(0),
+      _startTime(time(NULL)) {
   memset(_buffer, 0, BUFFER_SIZE);
 }
 
@@ -58,40 +67,31 @@ void ConnectionHandler::_receiveRequest() {
   size_t      contentLength = 0;
   bool        contentLengthFound = false;
   size_t      headersEndPos = 0;
-  int         trys = 0;
 
-  while (!headersEnd && (bytes = recv(_clientSocket, _buffer + _readn,
-                                      BUFFER_SIZE - _readn, 0)) > 0) {
-    if (bytes <= 0) {
-      if (trys > 3) {
-        _log.error(std::string("CONNECTION_HANDLER: recv: ") + strerror(errno));
-        _connectionStatus = CLOSED;
-        return;
-      }
-      trys++;
-      usleep(1000);
-      continue;
-    }
-    trys = 0;
+  if (_count > MAX_TRIES || (time(NULL) - _startTime) > TIMEOUT) {
+    _connectionStatus = CLOSED;
+    return;
+  }
 
-    _readn += bytes;
-    headers.append(_buffer, _readn);
-    headersEndPos = headers.find("\r\n\r\n");
-    if (headersEndPos != std::string::npos) {
-      headersEnd = true;
-      size_t clPos = headers.find("Content-Length:");
-      if (clPos != std::string::npos) {
-        size_t      clEnd = headers.find("\r\n", clPos);
-        std::string clValue = headers.substr(clPos + 15, clEnd - (clPos + 15));
-        contentLength = Utils::stoi<size_t>(clValue);
-        contentLengthFound = true;
-      }
-    }
-
-    if (_readn >= BUFFER_SIZE) {
-      _log.error("CONNECTION_HANDLER: Buffer overflow");
-      _connectionStatus = CLOSED;
-      return;
+  char buffer[1024];
+  bytes = recv(_clientSocket, buffer, _rcvbuf, 0);
+  if (bytes < 0) {
+    _log.warning("CONNECTION_HANDLER: recv failed");
+    return;
+  }
+  _readn += bytes;
+  _requestString.append(buffer, bytes);
+  headersEndPos = _requestString.find("\r\n\r\n");
+  if (headersEndPos != std::string::npos) {
+    headersEnd = true;
+    _log.info("CONNECTION_HANDLER: Headers end found at position: " +
+              Utils::to_string(headersEndPos));
+    size_t clPos = _requestString.find("Content-Length:");
+    if (clPos != std::string::npos) {
+      size_t      clEnd = _requestString.find("\r\n", clPos);
+      std::string clValue = _requestString.substr(clPos + 15, clEnd - (clPos + 15));
+      contentLength = Utils::stoi<size_t>(clValue);
+      contentLengthFound = true;
     }
   }
 
@@ -100,14 +100,27 @@ void ConnectionHandler::_receiveRequest() {
     _connectionStatus = CLOSED;
     return;
   }
-  _processRequest();
-  _readn = 0;
+  if (headersEnd) {
+    _log.info("CONNECTION_HANDLER: Request valid: no more to read but headers ended");
+    _processRequest();
+  } else if (bytes == 0)
+    _log.error("CONNECTION_HANDLER: Request invalid: no more to read but headers not ended");
 }
 
 void ConnectionHandler::_sendResponse() {
-  if (_response->sendResponse(_clientSocket) == -1)
+  try {
+    if (_count > MAX_TRIES || (time(NULL) - _startTime) > TIMEOUT) {
+      _connectionStatus = CLOSED;
+      return;
+    }
+    if (_response->sendResponse(_clientSocket, _sndbuf) == 1)
+      _connectionStatus = CLOSED;
+  } catch (const Exception& e) {
+    _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +
+               e.what());
     throw WriteException("CONNECTION_HANDLER: Failed to send response");
-  _connectionStatus = CLOSED;
+    _connectionStatus = CLOSED;
+  }
 }
 
 VirtualServer* ConnectionHandler::_selectVirtualServer(std::string host) {
@@ -169,8 +182,7 @@ void ConnectionHandler::_processRequest() {
     delete _request;
     _request = NULL;
   }
-  _request = new HTTPRequest(_buffer);
-
+  _request = new HTTPRequest(_requestString);
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
     _log.error("CONNECTION_HANDLER: No virtual server selected");
@@ -184,20 +196,29 @@ void ConnectionHandler::_processRequest() {
     _connectionStatus = SENDING;
     return;
   }
-
-  _response = vserv->handleRequest(*_request);
-
-  _response->setCookie("sessionid", _request->getSessionId());
-
-  _connectionStatus = SENDING;
-}
-
-int ConnectionHandler::getConnectionStatus() {
-  return _connectionStatus;
+  std::string    uriPath = _request->getURIComponents().path;
+  LocationConfig location = vserv->getLocationConfig(uriPath);
+  _log.info("CONNECTION_HANDLER: Location: " + location.location);
+  _log.info("CONNECTION_HANDLER: root: " + location.root);
+  _request->setConfig(&location);
+  LocationConfig *location2 = _request->getConfig();
+  _log.info("CONNECTION_HANDLER: Location2: " + location2->location);
+  _log.info("CONNECTION_HANDLER: root2: " + location2->root);
+  if (location.cgi && CGIHandler::isScript(*_request) &&
+      _cgiHandler == NULL) {  // CGI
+    _response = new HTTPResponse(HTTPResponse::OK);
+    _cgiHandler = new CGIHandler(*_request, *_response);
+    _connectionStatus = EXECUTING;
+  } else {  // NO CGI
+    _response = vserv->handleRequest(*_request);
+    _response->setCookie("sessionid", _request->getSessionId());
+    _connectionStatus = SENDING;
+  }
 }
 
 void ConnectionHandler::_processData() {
   if (_connectionStatus == READING) {
+    _log.info("CONNECTION_HANDLER: Processing data in READING state");
     try {
       _receiveRequest();
     } catch (const Exception& e) {
@@ -206,7 +227,14 @@ void ConnectionHandler::_processData() {
       return;
     }
   }
+  if (_connectionStatus == EXECUTING) {
+    _log.info("CONNECTION_HANDLER: Processing data in EXECUTING state");
+    _connectionStatus = _cgiHandler->handleCGIRequest();
+    _log.info("CONNECTION_HANDLER: Connection status after EXECUTING: " +
+              Utils::to_string(_connectionStatus));
+  }
   if (_connectionStatus == SENDING) {
+    _log.info("CONNECTION_HANDLER: Processing data in SENDING state");
     try {
       _sendResponse();
     } catch (const Exception& e) {
@@ -224,20 +252,28 @@ void ConnectionHandler::processConnection() {
   struct epoll_event event;
   event.data.ptr = this;
   _processData();
-  if (_connectionStatus == READING) {
+  _log.info("CONNECTION_HANDLER: _rcvbuf: " + Utils::to_string(_rcvbuf));
+  _log.info("CONNECTION_HANDLER: _sndbuf: " + Utils::to_string(_sndbuf));
+  _log.info("CONNECTION_HANDLER: Connection status: " +
+            Utils::to_string(_connectionStatus));
+  _log.info("CONNECTION_HANDLER: crrent read request: [" + _requestString +
+            "]\nReadn: " + Utils::to_string(_readn));
+  if (_connectionStatus == READING || _connectionStatus == EXECUTING) {
+    _log.info("CONNECTION_HANDLER: Modifying epoll events for READING");
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
                  strerror(errno));
-      close(_clientSocket);  // Fermer le fd en cas d'erreur
+      close(_clientSocket);
       return;
     }
   } else if (_connectionStatus == SENDING) {
+    _log.info("CONNECTION_HANDLER: Modifying epoll events for SENDING");
     event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
                  strerror(errno));
-      close(_clientSocket);  // Fermer le fd en cas d'erreur
+      close(_clientSocket);
       return;
     }
   }
@@ -272,4 +308,5 @@ void ConnectionHandler::processConnection() {
     }
     delete this;
   }
+  // _log.info("CONNECTION_HANDLER: Connection Processed");
 }

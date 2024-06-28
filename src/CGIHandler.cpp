@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 15:32:34 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/28 13:43:38 by agaley           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,8 +20,6 @@ CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSo
   _request(request),
   _response(response),
   _processOutput(""),
-  _processOutputSize(0),
-  _processOutputPos(0),
   _runtime(_identifyRuntime(_request)),
   _argv(CGIHandler::_getArgv(_request)),
   _envp(CGIHandler::_getEnvp(_request)),

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 14:30:39 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/06/28 13:43:23 by agaley           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -117,8 +117,6 @@ class CGIHandler {
   HTTPResponse& _response;
   LocationConfig* _location;
   std::string   _processOutput;
-  size_t        _processOutputSize;
-  size_t        _processOutputPos;
   std::string   _runtime;
   std::string   _root;
   std::string   _index;

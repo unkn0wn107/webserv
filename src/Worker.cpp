@@ -54,9 +54,9 @@ std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(
   std::vector<VirtualServer*> virtualServers;
 
   for (std::vector<ServerConfig>::iterator it = _config.servers.begin();
-       it != _config.servers.end(); ++it) {
+      it != _config.servers.end(); ++it) {
     for (std::vector<ListenConfig>::iterator lit = it->listen.begin();
-         lit != it->listen.end(); ++lit) {
+        lit != it->listen.end(); ++lit) {
       if (*lit == listenConfig) {
         virtualServers.push_back(new VirtualServer(*it));
         break;

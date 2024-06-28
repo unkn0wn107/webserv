@@ -30,7 +30,7 @@ Config ConfigParser::parseConfigFile(const std::string& filepath) {
     throw Exception("Failed to open config file: " + filepath);
   }
 
-       config;
+  Config      config;
   std::string line;
   while (getline(configFile, line)) {
     std::istringstream iss(line);

@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 01:50:04 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 08:51:47 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,10 @@ class ConfigManager {
    * Retrieve all config.
    * @return The configuration object.
    */
-  Config getConfig() const;
+  Config&         getConfig();
+  ServerConfig&    getServerConfig();
+  LocationConfig& getLocationConfig();
+  ListenConfig&   getListenConfig();
   static void     printConfig();
 
   static void loadConfig(const std::string& filepath);

@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/28 01:50:34 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 08:53:33 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,7 @@ class Worker {
   Server&                                     _server;
   EventQueue&                                 _events;
   pthread_t                                   _thread;
-  Config                                     _config;
+  Config&                                     _config;
   Logger&                                     _log;
   std::map<int, ConnectionHandler*>           _handlers;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;

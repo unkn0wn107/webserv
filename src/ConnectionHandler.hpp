@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 02:56:27 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 08:57:56 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,10 +42,9 @@ class ConnectionHandler {
   ConnectionHandler(int clientSocket,
                     int epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
-                    ListenConfig listenConfig);
+                    ListenConfig& listenConfig);
   ~ConnectionHandler();
   void processConnection();
-  int   getCgifd();
 
   class ConnectionException : public Exception {
    public:

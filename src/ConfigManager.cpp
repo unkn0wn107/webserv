@@ -37,7 +37,7 @@ void ConfigManager::deleteInstance() {
   }
 }
 
-Config ConfigManager::getConfig() const {
+Config& ConfigManager::getConfig() {
   return _config;
 }
 

@@ -26,7 +26,7 @@ ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
     std::vector<VirtualServer*>& virtualServers,
-    ListenConfig              listenConfig)
+    ListenConfig&              listenConfig)
     : _log(Logger::getInstance()),
       _connectionStatus(READING),
       _clientSocket(clientSocket),

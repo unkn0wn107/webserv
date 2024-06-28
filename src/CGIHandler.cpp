@@ -146,6 +146,14 @@ int CGIHandler::handleCGIRequest() {
 int CGIHandler::_processRequest() {
   if (_pid == -2)
   {
+    struct epoll_event event;
+    memset(&event, 0, sizeof(event));
+    event.data.fd = _outpipefd[0];
+    event.events = EPOLLIN | EPOLLET;
+    if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
+      close(_outpipefd[0]);
+      return CLOSED;
+    }
     _log.info("CGI: Forking process");
     _pid = fork();
   }
@@ -216,7 +224,7 @@ int CGIHandler::_executeParentProcess() {
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _outpipefd[0], &event) == -1) {
         _log.error("CGI: epoll_ctl failed: " + std::string(strerror(errno)));
-        return EXECUTING;
+        return CLOSED;
       }
       _log.info("CGI: script is still running");
       return EXECUTING;

@@ -16,8 +16,10 @@
 
 Worker::Worker(Server&                      server,
                int                          epollSocket,
-               std::map<int, ListenConfig>& listenSockets)
+               std::map<int, ListenConfig>& listenSockets,
+               EventQueue& events)
     : _server(server),
+      _events(events),
       _thread(0),
       _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
@@ -69,20 +71,22 @@ int Worker::getLoad() {
 }
 
 void Worker::_runEventLoop() {
-  struct epoll_event events[MAX_EVENTS];
   while (!_shouldStop) {
-    int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
-    if (nfds <= 0) {
+    struct epoll_event event;
+    if (!_events.try_pop(event)) {
       usleep(1000);
       continue;
     }
-    for (int i = 0; i < nfds && !_shouldStop; i++) {
-      _log.info("WORKER (" + Utils::to_string(_threadId) +
-                "): Event loop: " + Utils::to_string(events[i].data.fd));
-      if (_listenSockets.find(events[i].data.fd) != _listenSockets.end())
-        _acceptNewConnection(events[i].data.fd);
-      else
-        _handleIncomingConnection(events[i]);
+    _log.info("WORKER (" + Utils::to_string(_threadId) + "): new event: " + Utils::to_string(event.data.fd));
+    std::clock_t _start = std::clock();
+    if (_listenSockets.find(event.data.fd) != _listenSockets.end())
+      _acceptNewConnection(event.data.fd);
+    else
+      _handleIncomingConnection(event);
+    std::clock_t end = std::clock();
+    double duration = static_cast<double>(end - _start) / CLOCKS_PER_SEC;
+    if (duration > 0.005) {
+      _log.warning("WORKER (" + Utils::to_string(_threadId) + "): Event loop time: " + Utils::to_string(duration) + " seconds");
     }
   }
   _log.info("WORKER (" + Utils::to_string(_threadId) + "): End of event loop");
@@ -94,6 +98,10 @@ void Worker::_acceptNewConnection(int fd) {
   int                     new_socket;
   struct epoll_event      event;
 
+  // _log.info("WORKER (" + Utils::to_string(_thread) +
+  //           "): Accepting new connection");
+  memset(&address, 0, sizeof(address));
+  memset(&event, 0, sizeof(event));
   while (!_shouldStop) {
     new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
     if (new_socket <= 0) {
@@ -106,7 +114,7 @@ void Worker::_acceptNewConnection(int fd) {
     }
     _log.info("WORKER (" + Utils::to_string(_thread) +
               "): Accepted new connection: " + Utils::to_string(new_socket));
-    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+    event.events = EPOLLIN | EPOLLET;
     ListenConfig                listenConfig = _listenSockets[fd];
     std::vector<VirtualServer*> virtualServers =
         _setupAssociateVirtualServer(listenConfig);
@@ -124,10 +132,14 @@ void Worker::_acceptNewConnection(int fd) {
 void Worker::_handleIncomingConnection(struct epoll_event event) {
   ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
   _log.info("WORKER (" + Utils::to_string(_thread) +
-            "): Handling incoming connection from fd: " + Utils::to_string(event.data.fd));
+          "): Handling incoming connection at address " + Utils::to_string(reinterpret_cast<uintptr_t>(event.data.ptr)));
   handler->processConnection();
   _log.info("WORKER (" + Utils::to_string(_thread) +
             "): Connection processed");
+  if (handler->getConnectionStatus() == CLOSED) {
+    epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);
+    delete handler;
+  }
 }
 
 void* Worker::_workerRoutine(void* ref) {
@@ -138,7 +150,6 @@ void* Worker::_workerRoutine(void* ref) {
   worker->_runEventLoop();
   worker->_log.info("WORKER (" + Utils::to_string(worker->_threadId) +
                     "): Finished");
-  worker->_shouldStop = true;
   worker->_server.workerFinished();
   return NULL;
 }

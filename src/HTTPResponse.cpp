@@ -259,7 +259,6 @@ void HTTPResponse::buildResponse() {
     _responseBuffer += "\r\n" + _body;
     _responseBufferSize = _responseBuffer.size();
   }
-  _log.info("HTTPResponse: _responseBuffer: " + _responseBuffer);
   if (_file.empty())
     return;
   _fileSize = FileManager::getFileSize(_file);

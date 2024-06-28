@@ -15,13 +15,16 @@
 Logger&       CGIHandler::_log = Logger::getInstance();
 CacheHandler& CGIHandler::_cacheHandler = CacheHandler::getInstance();
 
-CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSocket, LocationConfig& location):
+CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSocket, LocationConfig& location, ConnectionHandler* connectionHandler):
   _epollSocket(epollSocket),
+  _connectionHandler(connectionHandler),
   _request(request),
   _response(response),
   _location(location),
   _processOutput(""),
+  _processOutputSize(0),
   _runtime(_identifyRuntime(_request, _location)),
+  _done(false),
   _argv(CGIHandler::_getArgv(_request, _location)),
   _envp(CGIHandler::_getEnvp(_request, _location)),
   _pid(-2)
@@ -99,16 +102,20 @@ int CGIHandler::handleCGIRequest() {
   std::string uriPath = _request.getURIComponents().path;
   _log.info("CGI: handling request for URI path: " + uriPath);
 
-  bool noCache = (_request.getHeader("Cache-Control") == "no-cache");
-
-  if (!noCache && _pid == -2) {
-
+  std::string cacheControl = _request.getHeader("Cache-Control");
+  _log.info("CGI: cacheControl: " + cacheControl);
+  bool noCache = (cacheControl.empty() || cacheControl == "no-cache");
+  if (_pid != -2 && !noCache) {
+    _log.info("CGI: Checking cache");
+    int cacheStatus = -1;
     try {
-      _cacheHandler.getResponse(_request, _response);
-      return SENDING;
+      cacheStatus = _cacheHandler.getResponse(_request, _response);
+      _log.info("CGI: cacheStatus: " + Utils::to_string(cacheStatus));
     } catch (...) {
       throw;
     }
+    if (cacheStatus == 0)
+      return SENDING;
   } else {
     _log.info("CGI: no-cache required by client");
   }
@@ -133,12 +140,13 @@ int CGIHandler::_processRequest() {
   {
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
-    event.data.fd = _outpipefd[0];
+    event.data.ptr = _connectionHandler;
     event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
       close(_outpipefd[0]);
       return CLOSED;
     }
+    _log.info("CGI: add fd to epoll: " + Utils::to_string(_outpipefd[0]));
     _pid = fork();
   }
   if (_pid == -1) {
@@ -178,44 +186,44 @@ int CGIHandler::getCgifd() {
 }
 
 int CGIHandler::_executeParentProcess() {
-    close(_outpipefd[1]);
-    char        buffer[1024];
-    ssize_t     count;
-    pid_t       pid;
-    int         trys = 0;
+  close(_outpipefd[1]);
+  char        buffer[248];
+  ssize_t     count;
+  pid_t       pid = 0;
 
-    int status;
-    pid = waitpid(_pid, &status, WNOHANG);
-    if (pid == -1)
-    {
-      close(_outpipefd[0]);
-      throw RuntimeError("CGI: waitpid failed");
-    }
-    if (pid == 0) {
-      _log.info("CGI: script is still running");
-      usleep(1000);
-      return EXECUTING;
-    }
-    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-      throw RuntimeError("CGI: script finished with errors, exit status: " + Utils::to_string(WEXITSTATUS(status)));
-    }
-    _log.info("CGI: script finished");
-    while ((count = read(_outpipefd[0], buffer, sizeof(buffer))) > 0) {
-      if (count == -1)
-      {
-          if (trys > 5) {
-            close(_outpipefd[0]);
-            throw ExecutorError("CGI: write failed: unable to write POST data to pipe after "
-                                "multiple "
-                                "retries");
-          }
-          trys++;
-          usleep(1000 << trys);
-          continue;
-        }
-      _processOutput.append(buffer, count);
-    }
-    close(_outpipefd[0]);
+  int status;
+  if (!_done && (pid = waitpid(_pid, &status, WNOHANG)) == -1)
+  {
+    _log.info("CGI: waitpid failed: " + std::string(strerror(errno)));
+  }
+  if (!_done && pid == 0) {
+    _log.info("CGI: script is still running");
+  }
+  if (pid > 0)
+  {
+    _done = true;
+  }
+  if (_done && WIFSIGNALED(status))
+  {
+    _log.info("CGI: script finished with signal: " + Utils::to_string(WTERMSIG(status)));
+    _done = true;
+    if (WEXITSTATUS(status) != 0)
+      _log.info("CGI: script finished with errors, exit status: " + Utils::to_string(WEXITSTATUS(status)));
+  }
+  count = read(_outpipefd[0], buffer, sizeof(buffer));
+  if (count == -1)
+  {
+    _log.info("CGI: read failed: " + std::string(strerror(errno)));
+    return EXECUTING;
+  }
+  _processOutputSize += count;
+  _processOutput.append(buffer, count);
+  _log.info("CGI: read " + Utils::to_string(count) + " bytes");
+  _log.info("CGI: processOutputSize: " + Utils::to_string(_processOutputSize));
+  if (_done && count == 0)
+  {
+    _log.info("CGI: processOutput: " + _processOutput);
+    _log.info("CGI: process done");
     std::size_t headerEndPos = _processOutput.find("\r\n\r\n");
     if (headerEndPos == std::string::npos)
       throw ExecutorError(
@@ -243,6 +251,8 @@ int CGIHandler::_executeParentProcess() {
     _response.setHeaders(headers);
     _response.setBody(bodyContent);
     return SENDING;
+  }
+  return EXECUTING;
 }
 
 void CGIHandler::_runScript() {

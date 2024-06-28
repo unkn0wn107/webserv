@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 10:46:45 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/28 17:36:38 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@
 #include "Common.hpp"
 #include "Config.hpp"
 #include "Logger.hpp"
+#include "EventQueue.hpp"
 #include "Worker.hpp"
 
 #define SHUTDOWN_DELAY 200000
@@ -42,6 +43,7 @@ class Server {
   pthread_mutex_t                             _mutex;
   int                                         _epollSocket;
   int                                         _activeWorkers;
+  EventQueue                                  _events;
   bool                                        _running;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
 

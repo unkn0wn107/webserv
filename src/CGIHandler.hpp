@@ -25,6 +25,7 @@
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "ConnectionHandler.hpp"
 #include "Common.hpp"
 #include "Logger.hpp"
 #include <sys/epoll.h>
@@ -32,10 +33,12 @@
 // enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
 
 
+class ConnectionHandler;
+
 class CGIHandler {
   public:
     CGIHandler(HTTPRequest& request,
-    HTTPResponse& response, int epollSocket, LocationConfig& location);
+    HTTPResponse& response, int epollSocket, LocationConfig& location, ConnectionHandler* connectionHandler);
     ~CGIHandler();
 
   int   getCgifd();
@@ -114,14 +117,17 @@ class CGIHandler {
   static CacheHandler& _cacheHandler;
 
   int _epollSocket;
+  ConnectionHandler* _connectionHandler;
   HTTPRequest&  _request;
   HTTPResponse& _response;
   LocationConfig& _location;
   std::string   _processOutput;
+  size_t        _processOutputSize;
   std::string   _runtime;
   std::string   _root;
   std::string   _index;
   bool          _cgi;
+  bool          _done;
 
   std::vector<char*> _argv;
   std::vector<char*> _envp;

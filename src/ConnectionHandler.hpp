@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 08:57:56 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 19:26:39 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,8 +36,9 @@ class CGIHandler;
 
 class ConnectionHandler {
  public:
- static const int    MAX_TRIES;
- static const time_t TIMEOUT;
+  int getConnectionStatus();
+  static const int    MAX_TRIES;
+  static const time_t TIMEOUT;
 
   ConnectionHandler(int clientSocket,
                     int epollSocket,
@@ -72,7 +73,6 @@ class ConnectionHandler {
   int                         _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
-  char*                       _buffer;
   size_t                         _rcvbuf;
   size_t                         _sndbuf;
   std::string                 _requestString;

@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 15:12:08 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/06/28 15:57:20 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,11 +55,11 @@ int CacheHandler::getResponse(const HTTPRequest& request,
       return 0;
     } else {
       delete it->second.first;  // Response
-      _cache.erase(it->first);  // <Response, Time>
+      _cache.erase(it->first);
     }
   }
   pthread_mutex_unlock(&_mutex);
-  return 1;
+  return -1;
 }
 
 void CacheHandler::storeResponse(const HTTPRequest&  request,

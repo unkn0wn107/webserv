@@ -279,7 +279,9 @@ void HTTPResponse::_errorResponse() {
 
 void HTTPResponse::buildResponse() {
   _log.info("HTTPResponse: buildResponse status: " + Utils::to_string(_statusCode));
-  // _errorResponse();
+  _log.info("HTTPResponse: _file: [" + _file + "]");
+  // _log.info("HTTPResponse: _body: " + _body);
+  _errorResponse();
   if (_responseBuffer.empty()) {
     _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
                       _statusMessage + "\r\n";
@@ -290,6 +292,7 @@ void HTTPResponse::buildResponse() {
     _responseBuffer += "\r\n" + _body;
     _responseBufferSize = _responseBuffer.size();
   }
+  // _log.info("HTTPResponse: _responseBuffer: " + _responseBuffer);
   if (_file.empty())
     return;
   _fileSize = FileManager::getFileSize(_file);
@@ -318,11 +321,11 @@ ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
     usleep(1000);
     return -1;
   }
+  _responseBufferPos += bytesSent;
   _log.info("HTTPResponse: _send bytesSent: " + Utils::to_string(bytesSent) +
             " remaining: " + Utils::to_string(remaining) +
             " _responseBufferPos: " + Utils::to_string(_responseBufferPos) +
             " _responseBufferSize: " + Utils::to_string(_responseBufferSize));
-  _responseBufferPos += bytesSent;
   return _responseBufferPos;
 }
 
@@ -341,10 +344,12 @@ int HTTPResponse::sendResponse(int clientSocket, size_t sndbuf) {
     return -1;
   if (_responseBufferPos == _responseBufferSize && _file.empty())
     return 1;
+  if (_file.empty())
+    return 0;
   _toSend = fopen(_file.c_str(), "r");
   if (!_toSend){
     sendResponse(500, clientSocket);
-    throw Exception("(fopen) Error opening file" + std::string(strerror(errno)));
+    throw Exception("(fopen) Error opening file : " + _file + " : " + std::string(strerror(errno)));
   }
   _sendfile(clientSocket, _toSend, sndbuf);
   fclose(_toSend);

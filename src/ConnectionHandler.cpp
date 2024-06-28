@@ -26,7 +26,7 @@ ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
     std::vector<VirtualServer*>& virtualServers,
-    ListenConfig               listenConfig)
+    ListenConfig              listenConfig)
     : _log(Logger::getInstance()),
       _connectionStatus(READING),
       _clientSocket(clientSocket),
@@ -203,9 +203,6 @@ void ConnectionHandler::_processRequest() {
   }
   std::string    uriPath = _request->getURIComponents().path;
   LocationConfig location = vserv->getLocationConfig(uriPath);
-  _log.info("CONNECTION_HANDLER: Location: " + location.location);
-  _log.info("CONNECTION_HANDLER: root: " + location.root);
-  _log.info("CONNECTION_HANDLER: cgi: " + location.cgi ? "true" : "false");
   _request->setConfig(&location);
   LocationConfig *location2 = _request->getConfig();
   _log.info("CONNECTION_HANDLER: Location2: " + location2->location);

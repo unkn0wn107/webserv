@@ -69,12 +69,6 @@ bool CGIHandler::isScript(const HTTPRequest& request) {
 }
 
 void CGIHandler::_checkIfProcessingPossible() {
-  _log.info("CGI: checking if processing is possible for request: " + _request.getURI());
-  _log.info("CGI: runtime: " + _runtime);
-  _log.info("CGI: root: " + _root);
-  _log.info("CGI: path: " + _request.getURIComponents().path);
-  _log.info("CGI: index: " + _index);
-  // _log.info("CGI: cgi: " + _location->cgi ? "true" : "false");
   if (!_cgi)
     throw CGIDisabled("Execution forbidden by config: " + _request.getURI());
   if (_runtime.empty())
@@ -111,7 +105,7 @@ int CGIHandler::handleCGIRequest() {
 
   bool noCache = (_request.getHeader("Cache-Control") == "no-cache");
 
-  if (!noCache) {
+  if (!noCache && _pid == -2) {
     clock_t       cacheStart = clock();
     HTTPResponse* cachedResponse = _cacheHandler.getResponse(_request);
     clock_t       cacheEnd = clock();
@@ -134,7 +128,7 @@ int CGIHandler::handleCGIRequest() {
   }
   if (noCache)
     _response.addHeader("Cache-Control", "no-cache");
-  else {
+  else if (status == SENDING) {
     _response.addHeader(
         "Cache-Control",
         "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
@@ -154,15 +148,8 @@ int CGIHandler::_processRequest() {
       close(_outpipefd[0]);
       return CLOSED;
     }
-    _log.info("CGI: Forking process");
     _pid = fork();
   }
-  _log.info("CGI: _pid: " + Utils::to_string(_pid));
-  _log.info("CGI: _inpipefd[0]: " + Utils::to_string(_inpipefd[0]));
-  _log.info("CGI: _inpipefd[1]: " + Utils::to_string(_inpipefd[1]));
-  _log.info("CGI: _outpipefd[0]: " + Utils::to_string(_outpipefd[0]));
-  _log.info("CGI: _outpipefd[1]: " + Utils::to_string(_outpipefd[1]));
-  _log.info("CGI: _epollSocket: " + Utils::to_string(_epollSocket));
   if (_pid == -1) {
     throw ForkFailure("CGI: Failed to fork process");
   } else if (_pid == 0) {
@@ -214,10 +201,6 @@ int CGIHandler::_executeParentProcess() {
       close(_outpipefd[0]);
       throw RuntimeError("CGI: waitpid failed");
     }
-    // if (WIFSIGNALED(status)) {
-    //   close(_outpipefd[0]);
-    //   throw RuntimeError("CGI: script killed by signal: " + Utils::to_string(WTERMSIG(status)));
-    // }
     if (pid == 0) {
       struct epoll_event event;
       event.data.fd = _outpipefd[0];
@@ -248,7 +231,6 @@ int CGIHandler::_executeParentProcess() {
         }
       _processOutput.append(buffer, count);
     }
-    _log.info("CGI: _processOutput: " + _processOutput);
     close(_outpipefd[0]);
     std::size_t headerEndPos = _processOutput.find("\r\n\r\n");
     if (headerEndPos == std::string::npos)

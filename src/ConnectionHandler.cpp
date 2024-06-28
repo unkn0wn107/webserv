@@ -46,6 +46,7 @@ ConnectionHandler::ConnectionHandler(
 }
 
 ConnectionHandler::~ConnectionHandler() {
+  _log.info("CONNECTION_HANDLER: Destroying connection handler");
   for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
        it != _vservPool.end(); ++it) {
     delete *it;
@@ -63,8 +64,8 @@ ConnectionHandler::~ConnectionHandler() {
     delete _cgiHandler;
     _cgiHandler = NULL;
   }
-  _requestString.clear();
-  _readn = 0;
+  // _requestString.clear();
+  // _readn = 0;
 }
 
 void ConnectionHandler::_receiveRequest() {
@@ -185,6 +186,7 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
 }
 
 void ConnectionHandler::_processRequest() {
+  _log.info("CONNECTION_HANDLER: Processing request");
   if (_request) {
     delete _request;
     _request = NULL;
@@ -207,10 +209,12 @@ void ConnectionHandler::_processRequest() {
   LocationConfig location = vserv->getLocationConfig(uriPath);
   if (location.cgi && CGIHandler::isScript(*_request, location) &&
       _cgiHandler == NULL) {  // CGI
+    _log.info("CONNECTION_HANDLER: CGI detected");
     _response = new HTTPResponse(HTTPResponse::OK, location);
     _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket, location);
     _connectionStatus = EXECUTING;
   } else {  // NO CGI
+    _log.info("CONNECTION_HANDLER: NO CGI detected");
     _response = vserv->handleRequest(*_request);
     _response->setCookie("sessionid", _request->getSessionId());
     _connectionStatus = SENDING;
@@ -233,10 +237,8 @@ void ConnectionHandler::_processData() {
     _log.info("CONNECTION_HANDLER: Processing data in EXECUTING state");
     _connectionStatus = _cgiHandler->handleCGIRequest();
     // if (_connectionStatus == SENDING) {
-      // epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _cgiHandler->getCgifd(), NULL);
-    //   close(_cgiHandler->getCgifd());
-    //   delete _cgiHandler;
-    //   _cgiHandler = NULL;
+    //   _log.info("CONNECTION_HANDLER: cgifd: " +
+    //             Utils::to_string(_cgiHandler->getCgifd()));
     // }
   }
   if (_connectionStatus == SENDING) {
@@ -273,7 +275,8 @@ void ConnectionHandler::processConnection() {
       close(_clientSocket);
       return;
     }
-  } else if (_connectionStatus == EXECUTING) {
+  }
+  else if (_connectionStatus == EXECUTING) {
     _log.info("CONNECTION_HANDLER: Modifying epoll events for EXECUTING");
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(),
@@ -283,8 +286,10 @@ void ConnectionHandler::processConnection() {
       close(_clientSocket);
       return;
     }
-  } else if (_connectionStatus == SENDING) {
-    _log.info("CONNECTION_HANDLER: Modifying epoll events for SENDING");
+  }
+  else if (_connectionStatus == SENDING) {
+    _log.info("CONNECTION_HANDLER: Modifying epoll events for SENDING : " +
+              Utils::to_string(_clientSocket));
     event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
       _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +

@@ -249,9 +249,6 @@ void HTTPResponse::buildResponse() {
   _log.info("HTTPResponse: buildResponse status: " + Utils::to_string(_statusCode));
   if (_statusCode >= 300)
     _errorResponse();
-  _log.info("HTTPResponse: _file: [" + _file + "]");
-  // _log.info("HTTPResponse: _body: " + _body);
-  _errorResponse();
   if (_responseBuffer.empty()) {
     _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
                       _statusMessage + "\r\n";
@@ -262,7 +259,7 @@ void HTTPResponse::buildResponse() {
     _responseBuffer += "\r\n" + _body;
     _responseBufferSize = _responseBuffer.size();
   }
-  // _log.info("HTTPResponse: _responseBuffer: " + _responseBuffer);
+  _log.info("HTTPResponse: _responseBuffer: " + _responseBuffer);
   if (_file.empty())
     return;
   _fileSize = FileManager::getFileSize(_file);

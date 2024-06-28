@@ -128,7 +128,6 @@ void Worker::_handleIncomingConnection(struct epoll_event event) {
   handler->processConnection();
   _log.info("WORKER (" + Utils::to_string(_thread) +
             "): Connection processed");
-  // epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);
 }
 
 void* Worker::_workerRoutine(void* ref) {

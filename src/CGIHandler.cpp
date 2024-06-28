@@ -44,10 +44,8 @@ CGIHandler::~CGIHandler() {
     close(_outpipefd[0]);
   if (_outpipefd[1] != -1)
     close(_outpipefd[1]);
-  if (!_argv.empty())
-    Utils::freeCharVector(_argv);
-  if (!_envp.empty())
-    Utils::freeCharVector(_envp);
+  Utils::freeCharVector(_argv);
+  Utils::freeCharVector(_envp);
 }
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
@@ -104,17 +102,12 @@ int CGIHandler::handleCGIRequest() {
   bool noCache = (_request.getHeader("Cache-Control") == "no-cache");
 
   if (!noCache && _pid == -2) {
-    clock_t       cacheStart = clock();
-    HTTPResponse* cachedResponse = _cacheHandler.getResponse(_request);
-    clock_t       cacheEnd = clock();
 
-    if (cachedResponse) {
-      double cacheTimeTaken =
-          double(cacheEnd - cacheStart) * 1000 / CLOCKS_PER_SEC;
-      _log.info("CGI: Cache HIT [" + Utils::to_string(cacheTimeTaken) + " ms]");
-      _response = *cachedResponse;
-      delete cachedResponse;
+    try {
+      _cacheHandler.getResponse(_request, _response);
       return SENDING;
+    } catch (...) {
+      throw;
     }
   } else {
     _log.info("CGI: no-cache required by client");
@@ -199,14 +192,8 @@ int CGIHandler::_executeParentProcess() {
       throw RuntimeError("CGI: waitpid failed");
     }
     if (pid == 0) {
-      struct epoll_event event;
-      event.data.fd = _outpipefd[0];
-      event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-      if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _outpipefd[0], &event) == -1) {
-        _log.error("CGI: epoll_ctl failed: " + std::string(strerror(errno)));
-        return CLOSED;
-      }
       _log.info("CGI: script is still running");
+      usleep(1000);
       return EXECUTING;
     }
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {

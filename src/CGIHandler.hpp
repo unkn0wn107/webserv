@@ -27,15 +27,18 @@
 #include "HTTPResponse.hpp"
 #include "Common.hpp"
 #include "Logger.hpp"
-
+#include <sys/epoll.h>
 #define CGI_TIMEOUT_SEC 10
 // enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
 
 
 class CGIHandler {
   public:
-    CGIHandler(HTTPRequest& request, HTTPResponse& response);
+    CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSocket);
     ~CGIHandler();
+
+  int   getCgifd();
+
   /**
    * Check if url has an executable file extension.
    * @param request The HTTP request object.
@@ -109,6 +112,7 @@ class CGIHandler {
   static Logger&       _log;
   static CacheHandler& _cacheHandler;
 
+  int _epollSocket;
   HTTPRequest&  _request;
   HTTPResponse& _response;
   LocationConfig* _location;

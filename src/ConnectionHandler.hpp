@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 01:52:32 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 02:56:27 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,6 +45,7 @@ class ConnectionHandler {
                     ListenConfig listenConfig);
   ~ConnectionHandler();
   void processConnection();
+  int   getCgifd();
 
   class ConnectionException : public Exception {
    public:

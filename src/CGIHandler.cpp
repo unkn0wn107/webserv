@@ -15,7 +15,8 @@
 Logger&       CGIHandler::_log = Logger::getInstance();
 CacheHandler& CGIHandler::_cacheHandler = CacheHandler::getInstance();
 
-CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response): 
+CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSocket): 
+  _epollSocket(epollSocket),
   _request(request),
   _response(response),
   _processOutput(""),
@@ -37,8 +38,18 @@ CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response):
 }
 
 CGIHandler::~CGIHandler() {
-  Utils::freeCharVector(_argv);
-  Utils::freeCharVector(_envp);
+  if (_inpipefd[0] != -1)
+    close(_inpipefd[0]);
+  if (_inpipefd[1] != -1)
+    close(_inpipefd[1]);
+  if (_outpipefd[0] != -1)
+    close(_outpipefd[0]);
+  if (_outpipefd[1] != -1)
+    close(_outpipefd[1]);
+  if (!_argv.empty())
+    Utils::freeCharVector(_argv);
+  if (!_envp.empty())
+    Utils::freeCharVector(_envp);
 }
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
@@ -58,23 +69,11 @@ bool CGIHandler::isScript(const HTTPRequest& request) {
 }
 
 void CGIHandler::_checkIfProcessingPossible() {
-
-    //  } catch (const Exception& e) {
-    //   if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e))
-    //     response = new HTTPResponse(HTTPResponse::FORBIDDEN, &location);
-    //   else if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
-    //     response = new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT, &location);
-    //   else if (dynamic_cast<const CGIHandler::ScriptNotFound*>(&e))
-    //     response = new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
-    //   else
-    //     response =
-    //         new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, &location);
-    // }
   _log.info("CGI: checking if processing is possible for request: " + _request.getURI());
   _log.info("CGI: runtime: " + _runtime);
   _log.info("CGI: root: " + _root);
   _log.info("CGI: path: " + _request.getURIComponents().path);
-  _log.info("CGI: index: " + _location->index);
+  _log.info("CGI: index: " + _index);
   // _log.info("CGI: cgi: " + _location->cgi ? "true" : "false");
   if (!_cgi)
     throw CGIDisabled("Execution forbidden by config: " + _request.getURI());
@@ -150,6 +149,12 @@ int CGIHandler::_processRequest() {
     _log.info("CGI: Forking process");
     _pid = fork();
   }
+  _log.info("CGI: _pid: " + Utils::to_string(_pid));
+  _log.info("CGI: _inpipefd[0]: " + Utils::to_string(_inpipefd[0]));
+  _log.info("CGI: _inpipefd[1]: " + Utils::to_string(_inpipefd[1]));
+  _log.info("CGI: _outpipefd[0]: " + Utils::to_string(_outpipefd[0]));
+  _log.info("CGI: _outpipefd[1]: " + Utils::to_string(_outpipefd[1]));
+  _log.info("CGI: _epollSocket: " + Utils::to_string(_epollSocket));
   if (_pid == -1) {
     throw ForkFailure("CGI: Failed to fork process");
   } else if (_pid == 0) {
@@ -183,6 +188,10 @@ const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request) {
   return "";
 }
 
+int CGIHandler::getCgifd() {
+  return _outpipefd[0];
+}
+
 int CGIHandler::_executeParentProcess() {
     close(_outpipefd[1]);
     char        buffer[1024];
@@ -202,6 +211,13 @@ int CGIHandler::_executeParentProcess() {
     //   throw RuntimeError("CGI: script killed by signal: " + Utils::to_string(WTERMSIG(status)));
     // }
     if (pid == 0) {
+      struct epoll_event event;
+      event.data.fd = _outpipefd[0];
+      event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+      if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _outpipefd[0], &event) == -1) {
+        _log.error("CGI: epoll_ctl failed: " + std::string(strerror(errno)));
+        return EXECUTING;
+      }
       _log.info("CGI: script is still running");
       return EXECUTING;
     }
@@ -224,6 +240,7 @@ int CGIHandler::_executeParentProcess() {
         }
       _processOutput.append(buffer, count);
     }
+    _log.info("CGI: _processOutput: " + _processOutput);
     close(_outpipefd[0]);
     std::size_t headerEndPos = _processOutput.find("\r\n\r\n");
     if (headerEndPos == std::string::npos)

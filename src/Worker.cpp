@@ -98,8 +98,8 @@ void Worker::_acceptNewConnection(int fd) {
   int                     new_socket;
   struct epoll_event      event;
 
-  _log.info("WORKER (" + Utils::to_string(_thread) +
-            "): Accepting new connection");
+  // _log.info("WORKER (" + Utils::to_string(_thread) +
+  //           "): Accepting new connection");
   while (!_shouldStop) {
     new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
     if (new_socket <= 0) {
@@ -110,6 +110,8 @@ void Worker::_acceptNewConnection(int fd) {
                  "): Failed \"set_non_blocking\"");
       continue;
     }
+    _log.info("WORKER (" + Utils::to_string(_thread) +
+              "): Accepted new connection: " + Utils::to_string(new_socket));
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     ListenConfig                listenConfig = _listenSockets[fd];
     std::vector<VirtualServer*> virtualServers =

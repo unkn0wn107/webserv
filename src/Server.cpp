@@ -82,11 +82,17 @@ void Server::start() {
   struct epoll_event events[MAX_EVENTS];
   while (_running) {
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
+    if (nfds == 0) {
+      _log.info("SERVER: epoll_wait: 0 events");
+      continue;
+    }
     if (nfds < 0) {
       usleep(1000);
       continue;
     }
     for (int i = 0; i < nfds && _running; i++) {
+      _log.info("SERVER: event " + Utils::to_string(i) + ": " +
+                Utils::to_string(events[i].data.fd));
       _events.push(events[i]);
     }
   }

@@ -233,6 +233,7 @@ HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
   }
   if (statusCode >= 300 && statusCode < 400)
     addHeader("Location", _config->returnUrl);
+  _errorResponse();
 }
 
 HTTPResponse::HTTPResponse(int statusCode)
@@ -278,7 +279,7 @@ void HTTPResponse::_errorResponse() {
 
 void HTTPResponse::buildResponse() {
   _log.info("HTTPResponse: buildResponse status: " + Utils::to_string(_statusCode));
-  _errorResponse();
+  // _errorResponse();
   if (_responseBuffer.empty()) {
     _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
                       _statusMessage + "\r\n";

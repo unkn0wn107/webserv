@@ -10,4 +10,4 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Run Tests
-        run: make test
+        run: timeout 3m make test

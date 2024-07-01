@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/28 01:57:44 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 11:28:42 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #include <sstream>
 #include "Utils.hpp"
 
-VirtualServer::VirtualServer(ServerConfig serverConfig)
+VirtualServer::VirtualServer(ServerConfig& serverConfig)
     : _serverConfig(serverConfig),
       _log(Logger::getInstance()),
       _httpMethods(new HTTPMethods(*this)) {
@@ -85,47 +85,47 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
     location = getLocationConfig(uri);
   } catch (const std::exception& e) {
     _log.error("Location not found for URI: " + uri);
-    return new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
+    return new HTTPResponse(HTTPResponse::NOT_FOUND, location);
   }
 
   if (protocol != "HTTP/1.1") {
     _log.error("Unsupported protocol: " + protocol);
-    return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
+    return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
   }
 
   if (std::find(location.allowed_methods.begin(),
                 location.allowed_methods.end(),
                 method) == location.allowed_methods.end()) {
     _log.error("Method not allowed for this location");
-    return new HTTPResponse(HTTPResponse::METHOD_NOT_ALLOWED, &location);
+    return new HTTPResponse(HTTPResponse::METHOD_NOT_ALLOWED, location);
   }
 
   if (method != "GET" && method != "HEAD") {
     if (!body.empty() && contentLength == -1) {
       _log.error("Content length not provided");
-      return new HTTPResponse(HTTPResponse::LENGTH_REQUIRED, &location);
+      return new HTTPResponse(HTTPResponse::LENGTH_REQUIRED, location);
     }
 
     if (contentLength < 0) {
       _log.error("Negative content length");
-      return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
+      return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
     }
 
     if (contentLength != -1) {
       if (static_cast<size_t>(contentLength) > location.client_max_body_size) {
         _log.error("Content length too big");
         return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE,
-                                &location);
+                                location);
       }
       if (static_cast<size_t>(contentLength) != body.length()) {
         _log.error("Content length mismatch");
-        return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
+        return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
       }
     }
   }
 
   if (location.returnCode >= 300 && location.returnCode < 400) {
-    return new HTTPResponse(location.returnCode, &location);
+    return new HTTPResponse(location.returnCode, location);
   }
 
   return NULL;

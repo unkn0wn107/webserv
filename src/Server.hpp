@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 01:48:42 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/06/28 17:36:38 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,11 +20,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <set>
+#include <memory>
 
 #include "Common.hpp"
 #include "Config.hpp"
-#include "EventQueue.hpp"
 #include "Logger.hpp"
+#include "EventQueue.hpp"
 #include "Worker.hpp"
 
 #define SHUTDOWN_DELAY 200000
@@ -35,16 +36,15 @@ class Server {
  private:
   static int                                  _callCount;
   static Server*                              _instance;
-  Config                                     _config;
+  Config&                                     _config;
   Logger&                                     _log;
   std::vector<Worker*>                        _workers;
   std::map<int, ListenConfig>                 _listenSockets;
   pthread_mutex_t                             _mutex;
   int                                         _epollSocket;
   int                                         _activeWorkers;
-  pthread_mutex_t                             _eventsMutex;
-  bool                                        _running;
   EventQueue                                  _events;
+  bool                                        _running;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
 
   void _setupServerSockets();

@@ -25,6 +25,7 @@
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "ConnectionHandler.hpp"
 #include "Common.hpp"
 #include "Logger.hpp"
 #include <sys/epoll.h>
@@ -32,9 +33,12 @@
 // enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
 
 
+class ConnectionHandler;
+
 class CGIHandler {
   public:
-    CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSocket);
+    CGIHandler(HTTPRequest& request,
+    HTTPResponse& response, int epollSocket, LocationConfig& location, ConnectionHandler* connectionHandler);
     ~CGIHandler();
 
   int   getCgifd();
@@ -44,7 +48,7 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return true if the URL ends with a registered CGI script extension.
    */
-  static bool isScript(const HTTPRequest& request);
+  static bool isScript(const HTTPRequest& request, LocationConfig& location);
 
   /**
    * Handles the CGI request and generates an HTTP response.
@@ -113,14 +117,17 @@ class CGIHandler {
   static CacheHandler& _cacheHandler;
 
   int _epollSocket;
+  ConnectionHandler* _connectionHandler;
   HTTPRequest&  _request;
   HTTPResponse& _response;
-  LocationConfig* _location;
+  LocationConfig& _location;
   std::string   _processOutput;
+  size_t        _processOutputSize;
   std::string   _runtime;
   std::string   _root;
   std::string   _index;
   bool          _cgi;
+  bool          _done;
 
   std::vector<char*> _argv;
   std::vector<char*> _envp;
@@ -137,7 +144,7 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return String representing the runtime to be used.
    */
-  static const   std::string _identifyRuntime(const HTTPRequest& request);
+  static const   std::string _identifyRuntime(const HTTPRequest& request, LocationConfig& location);
 
   /**
    * Checks if the processing of the request is possible.
@@ -153,7 +160,7 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return Array of environment variable strings.
    */
-  static std::vector<char*> _getEnvp(const HTTPRequest& request);
+  static std::vector<char*> _getEnvp(const HTTPRequest& request, LocationConfig& location);
 
   /**
    * Generates a list of arguments for the CGI script based on the HTTP request.
@@ -161,7 +168,7 @@ class CGIHandler {
    * @return A vector of strings, each representing an argument for the CGI
    * script.
    */
-  static std::vector<char*> _getArgv(const HTTPRequest& request);
+  static std::vector<char*> _getArgv(const HTTPRequest& request, LocationConfig& location);
 
   /**
    * Executes the parent process logic for CGI script execution.

@@ -31,7 +31,6 @@ Server::Server()
   _setupServerSockets();
   _setupWorkers();
   pthread_mutex_init(&_mutex, NULL);
-  pthread_mutex_init(&_eventsMutex, NULL);
   _callCount++;
   _running = false;
   _instance = this;
@@ -43,7 +42,6 @@ Server::~Server() {
   }
   _workers.clear();
   pthread_mutex_destroy(&_mutex);
-  pthread_mutex_destroy(&_eventsMutex);
   CacheHandler::deleteInstance();
   ConfigManager::deleteInstance();
   Server::_instance = NULL;

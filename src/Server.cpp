@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/07 09:16:32 by agaley           ###   ########.fr   */
+/*   Updated: 2024/07/03 01:18:58 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,7 +97,7 @@ void Server::start() {
 }
 
 void Server::stop(int signum) {
-  if (signum == SIGINT || signum == SIGTERM || signum == SIGKILL) {
+  if (signum == SIGINT || signum == SIGTERM) {
     Server::_instance->_log.info("Server stopped from signal " +
                                  Utils::to_string(signum));
     for (size_t i = 0; i < _workers.size(); i++) {

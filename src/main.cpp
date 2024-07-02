@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/26 16:34:03 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/03 01:17:45 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,6 @@ int main(int argc, char* argv[]) {
 
   sigaction(SIGINT, &sigHandler, NULL);
   sigaction(SIGTERM, &sigHandler, NULL);
-  sigaction(SIGKILL, &sigHandler, NULL);
 
   srand(static_cast<unsigned int>(time(NULL)));
 

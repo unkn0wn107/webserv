@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 01:17:45 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/03 01:20:53 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,9 +18,11 @@
 #include "Server.hpp"
 
 int main(int argc, char* argv[]) {
-  if (argc != 2 || argv[1] == NULL)
+  if (argc > 2) {
     Logger::getInstance().error(
         "Bad arguments. usage : ./webserv [config_path]");
+    return EXIT_FAILURE;
+  }
   struct sigaction sigHandler;
   sigHandler.sa_handler = signalHandler;
   sigemptyset(&sigHandler.sa_mask);

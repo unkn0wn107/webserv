@@ -40,7 +40,12 @@ ConnectionHandler::ConnectionHandler(
       _response(NULL),
       _count(0),
       _startTime(time(NULL)),
-      _cgiHandler(NULL) {
+      _cgiHandler(NULL),
+      _step(0) {
+  if (pthread_mutex_init(&_mutex, NULL) != 0)
+    _log.error("CONNECTION_HANDLER: Failed to create mutex");
+  if (pthread_mutex_init(&_statusMutex, NULL) != 0)
+    _log.error("CONNECTION_HANDLER: Failed to create mutex");
 }
 
 ConnectionHandler::~ConnectionHandler() {
@@ -61,8 +66,25 @@ ConnectionHandler::~ConnectionHandler() {
     delete _cgiHandler;
     _cgiHandler = NULL;
   }
+  pthread_mutex_unlock(&_mutex);
+  pthread_mutex_destroy(&_mutex);
+  pthread_mutex_unlock(&_statusMutex);
+  pthread_mutex_destroy(&_statusMutex);
   // _requestString.clear();
   // _readn = 0;
+}
+
+int ConnectionHandler::_checkConnectionStatus() {
+  pthread_mutex_lock(&_statusMutex);
+  int status = _connectionStatus;
+  pthread_mutex_unlock(&_statusMutex);
+  return status;
+}
+
+void ConnectionHandler::_setConnectionStatus(int status) {
+  pthread_mutex_lock(&_statusMutex);
+  _connectionStatus = status;
+  pthread_mutex_unlock(&_statusMutex);
 }
 
 void ConnectionHandler::_receiveRequest() {
@@ -74,7 +96,7 @@ void ConnectionHandler::_receiveRequest() {
   size_t      headersEndPos = 0;
 
   if (_count > MAX_TRIES || (time(NULL) - _startTime) > TIMEOUT) {
-    _connectionStatus = CLOSED;
+    _setConnectionStatus(CLOSED);
     return;
   }
 
@@ -102,7 +124,7 @@ void ConnectionHandler::_receiveRequest() {
   }
 
   if (contentLengthFound && _readn - headersEndPos - 4 != contentLength) {
-    _connectionStatus = CLOSED;
+    _setConnectionStatus(CLOSED);
     _log.error("CONNECTION_HANDLER: Content-Length mismatch");
     return;
   }
@@ -116,13 +138,13 @@ void ConnectionHandler::_receiveRequest() {
 void ConnectionHandler::_sendResponse() {
   try {
     if (_count > MAX_TRIES || (time(NULL) - _startTime) > TIMEOUT) {
-      _connectionStatus = CLOSED;
+      _setConnectionStatus(CLOSED);
       return;
     }
     if (_response->sendResponse(_clientSocket, _sndbuf) == 1)
-      _connectionStatus = CLOSED;
+      _setConnectionStatus(CLOSED);
   } catch (const Exception& e) {
-    _connectionStatus = CLOSED;
+    _setConnectionStatus(CLOSED);
     _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +
                e.what());
     throw WriteException("CONNECTION_HANDLER: Failed to send response");
@@ -163,10 +185,6 @@ VirtualServer* ConnectionHandler::_findDefaultServer() {
   return firstVserv;
 }
 
-int ConnectionHandler::getConnectionStatus() {
-  return _connectionStatus;
-}
-
 std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
   std::istringstream stream(requestHeader);
   std::string        line;
@@ -196,7 +214,7 @@ void ConnectionHandler::_processRequest() {
   _request = new HTTPRequest(_requestString);
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
-    _connectionStatus = CLOSED;
+    _setConnectionStatus(CLOSED);
     _log.error("CONNECTION_HANDLER: No virtual server selected");
     HTTPResponse::sendResponse(500, _clientSocket);
     return;
@@ -204,7 +222,7 @@ void ConnectionHandler::_processRequest() {
 
   if ((_response = vserv->checkRequest(*_request)) != NULL) {
     _log.error("CONNECTION_HANDLER: Request failed");
-    _connectionStatus = SENDING;
+    _setConnectionStatus(SENDING);
     return;
   }
   std::string    uriPath = _request->getURIComponents().path;
@@ -214,95 +232,116 @@ void ConnectionHandler::_processRequest() {
     _log.info("CONNECTION_HANDLER: CGI detected");
     _response = new HTTPResponse(HTTPResponse::OK, location);
     _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket, location, this);
-    _connectionStatus = EXECUTING;
+    _setConnectionStatus(EXECUTING);
   } else {  // NO CGI
     _log.info("CONNECTION_HANDLER: NO CGI detected");
     _response = vserv->handleRequest(*_request);
-    _response->setCookie("sessionid", _request->getSessionId());
-    _connectionStatus = SENDING;
+    _response->setCookie("sessionid", _request->getSessionId()); //TODO SET COOKIE
+    _setConnectionStatus(SENDING);
   }
 }
 
 void ConnectionHandler::_processData() {
-  if (_connectionStatus == READING) {
-    _log.info("CONNECTION_HANDLER: Processing data in READING state");
+  int status = _checkConnectionStatus();
+  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Status: " + Utils::to_string(status));
+  if (status == READING) {
+    pthread_mutex_lock(&_mutex);
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Processing data in READING state");
     try {
       _receiveRequest();
+      status = _checkConnectionStatus();
     } catch (const Exception& e) {
-      _connectionStatus = CLOSED;
-      _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +
+      _setConnectionStatus(CLOSED);
+      _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Exception caught: ") +
                  e.what());
+      pthread_mutex_unlock(&_mutex);
       return;
     }
+    pthread_mutex_unlock(&_mutex);
   }
-  if (_connectionStatus == EXECUTING) {
-    _log.info("CONNECTION_HANDLER: Processing data in EXECUTING state");
-    _connectionStatus = _cgiHandler->handleCGIRequest();
-    if (_connectionStatus == SENDING) {
+  if (status == EXECUTING) {
+    pthread_mutex_lock(&_mutex);
+    if (_cgiHandler == NULL) {
+      _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): CGIHandler is NULL");
+      _setConnectionStatus(SENDING);
+      status = _checkConnectionStatus();
+      return;
+    }
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Processing data in EXECUTING state");
+    _setConnectionStatus(_cgiHandler->handleCGIRequest());
+    status = _checkConnectionStatus();
+    if (status == SENDING) {
+      _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Sending after CGI");
       epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _cgiHandler->getCgifd(), NULL);
       close(_cgiHandler->getCgifd());
+      delete _cgiHandler;
+      _cgiHandler = NULL;
+      pthread_mutex_unlock(&_mutex);
+      return;
     }
+    pthread_mutex_unlock(&_mutex);
   }
-  if (_connectionStatus == SENDING) {
-    _log.info("CONNECTION_HANDLER: Processing data in SENDING state");
+  if (status == SENDING) {
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Processing data in SENDING state");
     try {
       _sendResponse();
+      status = _checkConnectionStatus();
     } catch (const Exception& e) {
-      _connectionStatus = CLOSED;
-      _log.error(std::string("CONNECTION_HANDLER: Exception caught: ") +
+      _setConnectionStatus(CLOSED);
+      _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Exception caught: ") +
                  e.what());
       return;
     }
   }
 }
 
-void ConnectionHandler::processConnection() {
+int ConnectionHandler::processConnection() {
   std::clock_t start = std::clock();  // Timestamp de début
 
   struct epoll_event event;
   event.data.ptr = this;
-  _processData();
-  _log.info("CONNECTION_HANDLER: _rcvbuf: " + Utils::to_string(_rcvbuf));
-  _log.info("CONNECTION_HANDLER: _sndbuf: " + Utils::to_string(_sndbuf));
-  _log.info("CONNECTION_HANDLER: Connection status: " +
-            Utils::to_string(_connectionStatus));
-  _log.info("CONNECTION_HANDLER: crrent read request: [" + _requestString +
+  _step++;
+  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): _rcvbuf: " + Utils::to_string(_rcvbuf));
+  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): _sndbuf: " + Utils::to_string(_sndbuf));
+  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Connection status: " +
+            Utils::to_string(_checkConnectionStatus()));
+  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): crrent read request: [" + _requestString +
             "]\nReadn: " + Utils::to_string(_readn));
-
-  if (_connectionStatus == READING) {
-    _log.info("CONNECTION_HANDLER: Modifying epoll events for READING");
-    event.events = EPOLLIN | EPOLLET;
+  _processData();
+  if (_checkConnectionStatus() == READING) {
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Modifying epoll events for READING");
+    event.events = EPOLLIN | EPOLLET  ;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
+      _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): epoll_ctl: ") +
                  strerror(errno));
       close(_clientSocket);
-      return;
+      return 1;
     }
   }
-  if (_connectionStatus == EXECUTING) {
-    _log.info("CONNECTION_HANDLER: Modifying epoll events for EXECUTING");
-    event.events = EPOLLIN | EPOLLET;
+  else if (_checkConnectionStatus() == EXECUTING) {
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Modifying epoll events for EXECUTING");
+    event.events = EPOLLIN | EPOLLET  ;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(),
                  &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
+      _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): epoll_ctl: ") +
                  strerror(errno));
       close(_clientSocket);
-      return;
+      return 1;
     }
   }
-  else if (_connectionStatus == SENDING) {
-    _log.info("CONNECTION_HANDLER: Modifying epoll events for SENDING : " +
+  else if (_checkConnectionStatus() == SENDING) {
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Modifying epoll events for SENDING : " +
               Utils::to_string(_clientSocket));
-    event.events = EPOLLOUT | EPOLLET;
+    event.events = EPOLLOUT | EPOLLET  ;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
+      _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): epoll_ctl: ") +
                  strerror(errno));
       close(_clientSocket);
-      return;
+      return 1;
     }
-    _log.info("CONNECTION_HANDLER: epoll_ctl: EPOLLOUT | EPOLLET | EPOLLONESHOT");
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): epoll_ctl: EPOLLOUT | EPOLLET  ");
   }
-  else if (_connectionStatus == CLOSED) {
+  else if (_checkConnectionStatus() == CLOSED) {
     std::string host = _request->getHost();
     std::string method = _request->getMethod();
     std::string uri = _request->getURI();
@@ -321,8 +360,6 @@ void ConnectionHandler::processConnection() {
                 protocol);
       _log.info("Response : " + status + " sent with no Content-Length");
     }
-    epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
-    close(_clientSocket);
     std::clock_t end = std::clock();
     double       duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;
     if (duration > 0.005) {
@@ -331,8 +368,11 @@ void ConnectionHandler::processConnection() {
           "time: " +
           Utils::to_string(duration) + " seconds");
     }
-    _log.info("CONNECTION_HANDLER: Deleting connection handler at address: " + Utils::to_string(reinterpret_cast<uintptr_t>(this)));
-
-    // delete this;
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Deleting connection handler at address: " + Utils::to_string(reinterpret_cast<uintptr_t>(this)));
+    epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
+    close(_clientSocket);
+    delete this;
+    return 0;
   }
+  return 1;
 }

@@ -36,9 +36,13 @@ CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSo
     throw PipeFailure("CGI: Failed to create pipe");
   if (pipe(_outpipefd) == -1)
     throw PipeFailure("CGI: Failed to create pipe");
+  if (pthread_mutex_init(&_mutex, NULL) != 0)
+    throw MutexFailure("CGI: Failed to create mutex");
+
 }
 
 CGIHandler::~CGIHandler() {
+  _log.info("CGI: Destroying handler");
   if (_inpipefd[0] != -1)
     close(_inpipefd[0]);
   if (_inpipefd[1] != -1)
@@ -49,6 +53,9 @@ CGIHandler::~CGIHandler() {
     close(_outpipefd[1]);
   Utils::freeCharVector(_argv);
   Utils::freeCharVector(_envp);
+  pthread_mutex_destroy(&_mutex);
+  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
+  close(_outpipefd[0]);
 }
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
@@ -94,10 +101,13 @@ void CGIHandler::_checkIfProcessingPossible() {
 
 int CGIHandler::handleCGIRequest() {
   int status = -1;
-  try {
-    _checkIfProcessingPossible();
-  } catch (...) {
-    throw;
+  if (_pid == -2)
+  {
+    try {
+        _checkIfProcessingPossible();
+    } catch (...) {
+      throw;
+    }
   }
   std::string uriPath = _request.getURIComponents().path;
   _log.info("CGI: handling request for URI path: " + uriPath);
@@ -105,7 +115,7 @@ int CGIHandler::handleCGIRequest() {
   std::string cacheControl = _request.getHeader("Cache-Control");
   _log.info("CGI: cacheControl: " + cacheControl);
   bool noCache = (cacheControl == "no-cache");
-  if (_pid != -2 && !noCache) {
+  if (_pid == -2 && !noCache) {
     _log.info("CGI: Checking cache");
     int cacheStatus = -1;
     try {
@@ -114,7 +124,7 @@ int CGIHandler::handleCGIRequest() {
     } catch (...) {
       throw;
     }
-    if (cacheStatus == 0)
+    if (cacheStatus == 1)
       return SENDING;
   } else {
     _log.info("CGI: no-cache required by client");
@@ -140,14 +150,13 @@ int CGIHandler::_processRequest() {
   {
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
-    event.data.fd = _outpipefd[0];
     event.data.ptr = _connectionHandler;
     event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
       close(_outpipefd[0]);
       return CLOSED;
     }
-    _log.info("CGI: add fd to epoll: " + Utils::to_string(_outpipefd[0]));
+    _log.info("CGI: add fd to epoll: " + Utils::to_string(event.data.fd));
     _pid = fork();
   }
   if (_pid == -1) {
@@ -191,20 +200,26 @@ int CGIHandler::_executeParentProcess() {
   char        buffer[248];
   ssize_t     count;
   pid_t       pid = 0;
+  bool        done = false;
 
   int status;
-  if (!_done && (pid = waitpid(_pid, &status, WNOHANG)) == -1)
+  pthread_mutex_lock(&_mutex);
+  done = _done;
+  pthread_mutex_unlock(&_mutex);
+  if (!done && (pid = waitpid(_pid, &status, WNOHANG)) == -1)
   {
     _log.info("CGI: waitpid failed: " + std::string(strerror(errno)));
   }
-  if (!_done && pid == 0) {
+  if (!done && pid == 0) {
     _log.info("CGI: script is still running");
   }
   if (pid > 0)
   {
+    pthread_mutex_lock(&_mutex);
     _done = true;
+    pthread_mutex_unlock(&_mutex);
   }
-  if (_done && WIFSIGNALED(status))
+  if (done && WIFSIGNALED(status))
   {
     _log.info("CGI: script finished with signal: " + Utils::to_string(WTERMSIG(status)));
     _done = true;
@@ -212,16 +227,19 @@ int CGIHandler::_executeParentProcess() {
       _log.info("CGI: script finished with errors, exit status: " + Utils::to_string(WEXITSTATUS(status)));
   }
   count = read(_outpipefd[0], buffer, sizeof(buffer));
-  if (count == -1)
+  if (!done && count == -1)
   {
     _log.info("CGI: read failed: " + std::string(strerror(errno)));
     return EXECUTING;
   }
-  _processOutputSize += count;
-  _processOutput.append(buffer, count);
-  _log.info("CGI: read " + Utils::to_string(count) + " bytes");
-  _log.info("CGI: processOutputSize: " + Utils::to_string(_processOutputSize));
-  if (_done && count == 0)
+  if (count != -1)
+  {
+    _processOutputSize += count;
+    _processOutput.append(buffer, count);
+    _log.info("CGI: read " + Utils::to_string(count) + " bytes");
+    _log.info("CGI: processOutputSize: " + Utils::to_string(_processOutputSize));
+  }
+  if (done)
   {
     _log.info("CGI: processOutput: " + _processOutput);
     _log.info("CGI: process done");

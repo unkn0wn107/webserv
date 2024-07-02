@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/28 17:37:54 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/07/01 20:10:15 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,6 +52,7 @@ class Worker {
   std::map<int, ListenConfig>                 _listenSockets;
   int                                         _load;
   bool                                        _shouldStop;
+  pthread_mutex_t                              _mutex;
 
   static void* _workerRoutine(void* ref);
 

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 19:26:39 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/07/02 12:26:27 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ class ConnectionHandler {
                     std::vector<VirtualServer*>& virtualServers,
                     ListenConfig& listenConfig);
   ~ConnectionHandler();
-  void processConnection();
+  int processConnection();
 
   class ConnectionException : public Exception {
    public:
@@ -83,6 +83,9 @@ class ConnectionHandler {
   int                         _count;
   time_t                      _startTime;
   CGIHandler*                 _cgiHandler;
+  pthread_mutex_t              _mutex;
+  pthread_mutex_t              _statusMutex;
+  int                         _step;
 
   void           _receiveRequest();
   void           _processRequest();
@@ -91,6 +94,8 @@ class ConnectionHandler {
   std::string    _extractHost(const std::string& requestHeader);
   void           _sendResponse();
   void           _processData();
+  int            _checkConnectionStatus();
+  void           _setConnectionStatus(int status);
 };
 
 #endif

@@ -101,6 +101,11 @@ class CGIHandler {
     PipeFailure(const std::string& message) : Exception(message) {}
   };
 
+  class MutexFailure : public Exception {
+    public:
+      MutexFailure(const std::string& message) : Exception(message) {}
+  };
+
   class ForkFailure : public Exception {
    public:
     ForkFailure(const std::string& message) : Exception(message) {}
@@ -128,6 +133,7 @@ class CGIHandler {
   std::string   _index;
   bool          _cgi;
   bool          _done;
+  pthread_mutex_t _mutex;
 
   std::vector<char*> _argv;
   std::vector<char*> _envp;

@@ -29,9 +29,13 @@ Worker::Worker(Server&                      server,
       _shouldStop(false)
 {
   _log.info("Worker constructor called");
+  if (pthread_mutex_init(&_mutex, NULL) != 0)
+    _log.error("WORKER : Failed to create mutex");
 }
 
-Worker::~Worker() {}
+Worker::~Worker() {
+  pthread_mutex_destroy(&_mutex);
+}
 
 void Worker::start() {
   pthread_attr_t attr;
@@ -79,9 +83,9 @@ void Worker::_runEventLoop() {
     }
     _log.info("WORKER (" + Utils::to_string(_threadId) + "): new event: " + Utils::to_string(event.data.fd));
     std::clock_t _start = std::clock();
-    if (_listenSockets.find(event.data.fd) != _listenSockets.end())
+    if (_listenSockets.find(event.data.fd) != _listenSockets.end() && event.events & EPOLLIN) //curl recu
       _acceptNewConnection(event.data.fd);
-    else
+    else if (event.events)
       _handleIncomingConnection(event);
     std::clock_t end = std::clock();
     double duration = static_cast<double>(end - _start) / CLOCKS_PER_SEC;
@@ -103,7 +107,7 @@ void Worker::_acceptNewConnection(int fd) {
   memset(&address, 0, sizeof(address));
   memset(&event, 0, sizeof(event));
   while (!_shouldStop) {
-    new_socket = accept(fd, (struct sockaddr*)&address, &addrlen);
+    new_socket = accept(fd, (struct sockaddr*)&address, &addrlen); //creer un nouveau sockect d'echange d'event
     if (new_socket <= 0) {
       break;
     }
@@ -131,15 +135,17 @@ void Worker::_acceptNewConnection(int fd) {
 
 void Worker::_handleIncomingConnection(struct epoll_event event) {
   ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
+  if (handler == NULL) {
+    _log.error("WORKER (" + Utils::to_string(_thread) +
+               "): Handler is NULL");
+    return;
+  }
   _log.info("WORKER (" + Utils::to_string(_thread) +
           "): Handling incoming connection at address " + Utils::to_string(reinterpret_cast<uintptr_t>(event.data.ptr)));
-  handler->processConnection();
-  _log.info("WORKER (" + Utils::to_string(_thread) +
-            "): Connection processed");
-  if (handler->getConnectionStatus() == CLOSED) {
-    epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);
-    delete handler;
-  }
+  if (handler->processConnection() == 1)
+    return;
+  event.data.ptr = NULL;
+  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);
 }
 
 void* Worker::_workerRoutine(void* ref) {

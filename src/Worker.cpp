@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 14:24:50 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/10 02:53:21 by agaley           ###   ########.lyon.fr */
+/*   Updated: 2024/07/02 18:16:29 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,9 +58,9 @@ std::vector<VirtualServer*> Worker::_setupAssociateVirtualServer(
   std::vector<VirtualServer*> virtualServers;
 
   for (std::vector<ServerConfig>::iterator it = _config.servers.begin();
-      it != _config.servers.end(); ++it) {
+       it != _config.servers.end(); ++it) {
     for (std::vector<ListenConfig>::iterator lit = it->listen.begin();
-        lit != it->listen.end(); ++lit) {
+         lit != it->listen.end(); ++lit) {
       if (*lit == listenConfig) {
         virtualServers.push_back(new VirtualServer(*it));
         break;
@@ -81,16 +81,19 @@ void Worker::_runEventLoop() {
       usleep(1000);
       continue;
     }
-    _log.info("WORKER (" + Utils::to_string(_threadId) + "): new event: " + Utils::to_string(event.data.fd));
+    _log.info("WORKER (" + Utils::to_string(_threadId) +
+              "): new event: " + Utils::to_string(event.data.fd));
     std::clock_t _start = std::clock();
     if (_listenSockets.find(event.data.fd) != _listenSockets.end() && event.events & EPOLLIN) //curl recu
       _acceptNewConnection(event.data.fd);
     else if (event.events)
       _handleIncomingConnection(event);
     std::clock_t end = std::clock();
-    double duration = static_cast<double>(end - _start) / CLOCKS_PER_SEC;
+    double       duration = static_cast<double>(end - _start) / CLOCKS_PER_SEC;
     if (duration > 0.005) {
-      _log.warning("WORKER (" + Utils::to_string(_threadId) + "): Event loop time: " + Utils::to_string(duration) + " seconds");
+      _log.warning("WORKER (" + Utils::to_string(_threadId) +
+                   "): Event loop time: " + Utils::to_string(duration) +
+                   " seconds");
     }
   }
   _log.info("WORKER (" + Utils::to_string(_threadId) + "): End of event loop");
@@ -122,12 +125,13 @@ void Worker::_acceptNewConnection(int fd) {
     ListenConfig                listenConfig = _listenSockets[fd];
     std::vector<VirtualServer*> virtualServers =
         _setupAssociateVirtualServer(listenConfig);
-    ConnectionHandler* handler =
-        new ConnectionHandler(new_socket, _epollSocket, virtualServers, listenConfig);
+    ConnectionHandler* handler = new ConnectionHandler(
+        new_socket, _epollSocket, virtualServers, listenConfig);
     event.data.ptr = handler;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
       _log.error("WORKER (" + Utils::to_string(_thread) +
                  "): Failed \"epoll_ctl\"");
+      close(new_socket);
       continue;
     }
   }
@@ -144,6 +148,7 @@ void Worker::_handleIncomingConnection(struct epoll_event event) {
           "): Handling incoming connection at address " + Utils::to_string(reinterpret_cast<uintptr_t>(event.data.ptr)));
   if (handler->processConnection() == 1)
     return;
+  delete handler;
   event.data.ptr = NULL;
   epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);
 }

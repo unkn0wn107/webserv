@@ -265,6 +265,7 @@ void ConnectionHandler::_processData() {
       _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): CGIHandler is NULL");
       _setConnectionStatus(SENDING);
       status = _checkConnectionStatus();
+      pthread_mutex_unlock(&_mutex);
       return;
     }
     _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Processing data in EXECUTING state");
@@ -371,8 +372,8 @@ int ConnectionHandler::processConnection() {
     _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Deleting connection handler at address: " + Utils::to_string(reinterpret_cast<uintptr_t>(this)));
     epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
     close(_clientSocket);
-    delete this;
     return 0;
   }
   return 1;
 }
+

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/01 20:10:15 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/03 18:32:56 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,57 +20,82 @@
 #include <unistd.h>
 #include <algorithm>
 #include <cstdlib>
+#include <ctime>
 #include <iostream>
 #include <queue>
-#include <ctime>
+#include <map>
 
-#include "ConnectionHandler.hpp"
-#include "Logger.hpp"
-#include "Utils.hpp"
 #include "Common.hpp"
-#include "VirtualServer.hpp"
-#include "Server.hpp"
+#include "ConnectionHandler.hpp"
 #include "EventQueue.hpp"
+#include "Logger.hpp"
+#include "Server.hpp"
+#include "Utils.hpp"
+#include "VirtualServer.hpp"
 
-
-#define MAX_EVENTS 10
-#define WORKER_TIME_TO_STOP 2
-
-class ConnectionHandler;
 class Server;
 
+#define MAX_EVENTS 1024
+#define WORKER_TIME_TO_STOP 2
+
 class Worker {
- private:
-  Server&                                     _server;
-  EventQueue&                                 _events;
-  pthread_t                                   _thread;
-  Config&                                     _config;
-  Logger&                                     _log;
-  std::map<int, ConnectionHandler*>           _handlers;
-  std::map<int, std::vector<VirtualServer*> > _virtualServers;
-  int                                         _epollSocket;
-  std::map<int, ListenConfig>                 _listenSockets;
-  int                                         _load;
-  bool                                        _shouldStop;
-  pthread_mutex_t                              _mutex;
-
-  static void* _workerRoutine(void* ref);
-
-  std::vector<VirtualServer*> _setupAssociateVirtualServer(
-      const ListenConfig& listenConfig);
-  void _acceptNewConnection(int fd);
-  void _runEventLoop();
-  void _handleIncomingConnection(struct epoll_event event);
-
  public:
-  int                                         _threadId;
-  Worker(Server& server, int epollSocket,
+  Worker(Server&                      server,
+         int                          epollSocket,
          std::map<int, ListenConfig>& listenSockets,
          EventQueue& events);
   ~Worker();
-  void stop();
+
   void start();
-  int getLoad();
+  void stop();
+  pid_t getThreadId() const;
+  int  getLoad() const;
+
+ private:
+  class Thread {
+   public:
+    Thread();
+    ~Thread();
+    bool create(void* (*start_routine)(void*), void* arg);
+
+   private:
+    pthread_t _thread;
+  };
+
+  // class Mutex {
+  //  public:
+  //   Mutex();
+  //   ~Mutex();
+
+  //   void lock();
+  //   void unlock();
+
+  //  private:
+  //   pthread_mutex_t _mutex;
+  // };
+
+  static void* _workerRoutine(void* arg);
+  void         _runEventLoop();
+  void         _acceptNewConnection(int fd);
+  void         _handleIncomingConnection(epoll_event& event);
+  std::vector<VirtualServer*> _setupAssociatedVirtualServers(
+      const ListenConfig& listenConfig);
+
+  Server&                      _server;
+  EventQueue& _events;
+  Thread                       _thread;
+  std::map<int, ConnectionHandler*> _handlers;
+  const Config&                _config;
+  Logger&                      _log;
+  int                          _epollSocket;
+  std::map<int, ListenConfig>& _listenSockets;
+  int                          _load;
+  bool                         _shouldStop;
+  // Mutex                        _mutex;
+  pid_t                        _threadId;
+
+  Worker(const Worker&);
+  Worker& operator=(const Worker&);
 };
 
 #endif

@@ -18,7 +18,7 @@ HTTPMethods::HTTPMethods(VirtualServer& server)
 HTTPMethods::~HTTPMethods() {}
 
 std::string HTTPMethods::_getPath(const std::string& uriPath,
-                                  LocationConfig&    location) {
+                                  const LocationConfig& location) {
   if (location.root.empty()) {
     return _server.getRoot() + uriPath;
   }
@@ -64,7 +64,7 @@ std::string HTTPMethods::_generateDirectoryListing(const std::string& path) {
 }
 
 HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
-                                      LocationConfig&    location) {
+                                      const LocationConfig& location) {
   std::string indexPath = path + location.index;
   if (FileManager::doesFileExists(indexPath)) {
     HTTPResponse* response = new HTTPResponse(HTTPResponse::OK, location);
@@ -89,7 +89,7 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string& path,
 
 HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
   std::string    uriPath = request.getURIComponents().path;
-  LocationConfig location = _server.getLocationConfig(uriPath);
+  const LocationConfig& location = _server.getLocationConfig(uriPath);
   _log.info("HTTPMethods::_handleGetRequest : URI path: " + uriPath);
   std::string path = _getPath(uriPath, location);
   _log.info("HTTPMethods::_handleGetRequest : path: " + path);
@@ -116,7 +116,7 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
 
 HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
   std::string    uriPath = request.getURIComponents().path;
-  LocationConfig location = _server.getLocationConfig(uriPath);
+  const LocationConfig& location = _server.getLocationConfig(uriPath);
   if (location.upload == false) {
     return new HTTPResponse(HTTPResponse::FORBIDDEN, location);
   }
@@ -152,12 +152,12 @@ HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
   }
   _log.error("HTTPMethods::_handlePostRequest : File open error: " + path +
              " | error: " + strerror(errno));
-    return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, location);
+  return new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, location);
 }
 
 HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
   std::string    uriPath = request.getURIComponents().path;
-  LocationConfig location = _server.getLocationConfig(uriPath);
+  const LocationConfig& location = _server.getLocationConfig(uriPath);
   if (location.delete_ == false) {
     return new HTTPResponse(HTTPResponse::FORBIDDEN, location);
   }
@@ -180,7 +180,8 @@ HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
 
 HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
   std::string    method = request.getMethod();
-  LocationConfig location = _server.getLocationConfig(request.getURIComponents().path);
+  LocationConfig location =
+      _server.getLocationConfig(request.getURIComponents().path);
   if (request.getProtocol() != "HTTP/1.1") {
     _log.error("HTTPMethods::handleRequest : Protocol not supported");
     return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);

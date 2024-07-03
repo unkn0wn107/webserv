@@ -39,7 +39,7 @@ class FileManager {
    * @throws std::runtime_error If the file cannot be opened or read.
    */
   static std::string readFile(const std::string& filePath);
-  static int getFileSize(const std::string& filePath);
+  static int         getFileSize(const std::string& filePath);
   /**
    * Writes data to a file.
    * @param filePath The path to the file where data will be written.

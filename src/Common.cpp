@@ -34,7 +34,8 @@ int set_non_blocking(int sockfd) {
 }
 
 void signalHandler(int signum) {
-  Logger::getInstance().info("Signal received: " + Utils::to_string(signum) + "getting server instance");
+  Logger::getInstance().info("Signal received: " + Utils::to_string(signum) +
+                             "getting server instance");
   Server::getInstance().stop(signum);
 }
 
@@ -47,4 +48,3 @@ std::string generateSessionId(void) {
   }
   return sessionId;
 }
-

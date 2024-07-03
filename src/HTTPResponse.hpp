@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 11:32:13 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/07/03 00:14:03 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,7 +69,7 @@ class HTTPResponse {
   std::string                        _body;
   std::string                        _file;
   std::string                        _protocol;
-  LocationConfig&                    _config;
+  const LocationConfig&              _config;
   std::map<int, std::string>         _errorPages;
   std::string                        _responseBuffer;
   size_t                             _responseBufferSize;
@@ -84,11 +84,14 @@ class HTTPResponse {
   void    _sendfile(int socket, FILE* file, size_t sndbuf);
 
  public:
-  HTTPResponse(int statusCode, LocationConfig& config);
+  HTTPResponse(int statusCode, const LocationConfig& config);
+  HTTPResponse(const HTTPResponse& other);
   ~HTTPResponse();
+  // TODO : Check if doesn't carry const config is an issue
   HTTPResponse& operator=(const HTTPResponse& other);
   static std::string getContentType(const std::string& path);
-  static std::string getExtensionFromContentType(const std::string& contentType);
+  static std::string getExtensionFromContentType(
+      const std::string& contentType);
 
   void               buildResponse();
   int                sendResponse(int clientSocket, size_t sndbuf);

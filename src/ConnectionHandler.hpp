@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/02 12:26:27 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/03 18:36:39 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,33 +19,33 @@
 #include <ctime>
 #include <vector>
 
-#include "Config.hpp"
+#include "CGIHandler.hpp"
 #include "Common.hpp"
+#include "Config.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
-#include "CGIHandler.hpp"
 
 #define BUFFER_SIZE 16384
-
-
 
 class VirtualServer;
 class CGIHandler;
 
 class ConnectionHandler {
  public:
-  int getConnectionStatus();
+  int                 getConnectionStatus();
+  int                 getSocket() const;
   static const int    MAX_TRIES;
   static const time_t TIMEOUT;
 
-  ConnectionHandler(int clientSocket,
-                    int epollSocket,
+  ConnectionHandler(int                          clientSocket,
+                    int                          epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
-                    ListenConfig& listenConfig);
+                    ListenConfig&                listenConfig);
   ~ConnectionHandler();
-  int processConnection();
+  int  processConnection();
+  bool isMarkedForDeletion();
 
   class ConnectionException : public Exception {
    public:
@@ -69,23 +69,24 @@ class ConnectionHandler {
   };
 
  private:
-  Logger& _log;
+  Logger&                     _log;
   int                         _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
-  size_t                         _rcvbuf;
-  size_t                         _sndbuf;
+  size_t                      _rcvbuf;
+  size_t                      _sndbuf;
   std::string                 _requestString;
-  size_t                         _readn;
+  size_t                      _readn;
   std::vector<VirtualServer*> _vservPool;
   HTTPRequest*                _request;
   HTTPResponse*               _response;
   int                         _count;
   time_t                      _startTime;
   CGIHandler*                 _cgiHandler;
-  pthread_mutex_t              _mutex;
-  pthread_mutex_t              _statusMutex;
+  pthread_mutex_t             _mutex;
+  pthread_mutex_t             _statusMutex;
   int                         _step;
+  bool                        _markedForDeletion;
 
   void           _receiveRequest();
   void           _processRequest();
@@ -96,6 +97,7 @@ class ConnectionHandler {
   void           _processData();
   int            _checkConnectionStatus();
   void           _setConnectionStatus(int status);
+  void           _markForDeletion();
 };
 
 #endif

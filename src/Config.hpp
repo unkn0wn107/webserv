@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 
-
 #define BUFFER_SIZE 16384
 
 typedef struct LocationConfig {

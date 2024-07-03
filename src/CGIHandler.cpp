@@ -15,20 +15,23 @@
 Logger&       CGIHandler::_log = Logger::getInstance();
 CacheHandler& CGIHandler::_cacheHandler = CacheHandler::getInstance();
 
-CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSocket, LocationConfig& location, ConnectionHandler* connectionHandler):
-  _epollSocket(epollSocket),
-  _connectionHandler(connectionHandler),
-  _request(request),
-  _response(response),
-  _location(location),
-  _processOutput(""),
-  _processOutputSize(0),
-  _runtime(_identifyRuntime(_request, _location)),
-  _done(false),
-  _argv(CGIHandler::_getArgv(_request, _location)),
-  _envp(CGIHandler::_getEnvp(_request, _location)),
-  _pid(-2)
-{
+CGIHandler::CGIHandler(HTTPRequest&       request,
+                       HTTPResponse&      response,
+                       int                epollSocket,
+                       const LocationConfig&    location,
+                       ConnectionHandler* connectionHandler)
+    : _epollSocket(epollSocket),
+      _connectionHandler(connectionHandler),
+      _request(request),
+      _response(response),
+      _location(location),
+      _processOutput(""),
+      _processOutputSize(0),
+      _runtime(_identifyRuntime(_request, _location)),
+      _done(false),
+      _argv(CGIHandler::_buildScriptArguments(_request, _location)),
+      _envp(CGIHandler::_buildScriptEnvironment(_request, _location)),
+      _pid(-2) {
   _root = _location.root;
   _index = _location.index;
   _cgi = _location.cgi;
@@ -38,7 +41,6 @@ CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response, int epollSo
     throw PipeFailure("CGI: Failed to create pipe");
   if (pthread_mutex_init(&_mutex, NULL) != 0)
     throw MutexFailure("CGI: Failed to create mutex");
-
 }
 
 CGIHandler::~CGIHandler() {
@@ -68,7 +70,8 @@ const int CGIHandler::_NUM_AVAILABLE_CGIS =
     sizeof(CGIHandler::_AVAILABLE_CGIS) /
     sizeof(std::pair<std::string, std::string>);
 
-bool CGIHandler::isScript(const HTTPRequest& request, LocationConfig& location) {
+bool CGIHandler::isScript(const HTTPRequest& request,
+                          const LocationConfig& location) {
   if (_identifyRuntime(request, location).empty())
     return false;
   return true;
@@ -79,14 +82,13 @@ void CGIHandler::_checkIfProcessingPossible() {
     throw CGIDisabled("Execution forbidden by config: " + _request.getURI());
   if (_runtime.empty())
     throw NoRuntimeError("No suitable runtime found for script: " +
-                        _request.getURI());
+                         _request.getURI());
   if (!FileManager::doesFileExists(_runtime))
     throw CGINotFound("CGI not found: " + _runtime);
   if (!FileManager::isFileExecutable(_runtime))
     throw CGINotExecutable("CGI not executable: " + _runtime);
 
-  std::string scriptPath =
-      _root + _request.getURIComponents().path;
+  std::string scriptPath = _root + _request.getURIComponents().path;
   if (FileManager::isDirectory(scriptPath)) {
     if (scriptPath[scriptPath.length() - 1] != '/')
       scriptPath += "/";
@@ -101,10 +103,9 @@ void CGIHandler::_checkIfProcessingPossible() {
 
 int CGIHandler::handleCGIRequest() {
   int status = -1;
-  if (_pid == -2)
-  {
+  if (_pid == -2) {
     try {
-        _checkIfProcessingPossible();
+      _checkIfProcessingPossible();
     } catch (...) {
       throw;
     }
@@ -146,17 +147,16 @@ int CGIHandler::handleCGIRequest() {
 }
 
 int CGIHandler::_processRequest() {
-  if (_pid == -2)
-  {
+  if (_pid == -2) {
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
     event.data.ptr = _connectionHandler;
-    event.events = EPOLLIN | EPOLLET;
+    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
       close(_outpipefd[0]);
       return CLOSED;
     }
-    _log.info("CGI: add fd to epoll: " + Utils::to_string(event.data.fd));
+    _log.info("CGI: add fd to epoll: " + Utils::to_string(_outpipefd[0]));
     _pid = fork();
   }
   if (_pid == -1) {
@@ -177,10 +177,10 @@ int CGIHandler::_processRequest() {
   throw ExecutorError("CGI script fatal : out of pid branches !!");  // -Werror
 }
 
-const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request, LocationConfig& location) {
-  std::string     extension = request.getURIComponents().extension;
-  if (FileManager::isDirectory(location.root +
-                               request.getURIComponents().path))
+const std::string CGIHandler::_identifyRuntime(const HTTPRequest& request,
+                                               const LocationConfig& location) {
+  std::string extension = request.getURIComponents().extension;
+  if (FileManager::isDirectory(location.root + request.getURIComponents().path))
     extension = location.index.substr(location.index.find_last_of('.') + 1);
 
   for (int i = 0; i < CGIHandler::_NUM_AVAILABLE_CGIS; i++) {
@@ -197,81 +197,87 @@ int CGIHandler::getCgifd() {
 
 int CGIHandler::_executeParentProcess() {
   close(_outpipefd[1]);
-  char        buffer[248];
-  ssize_t     count;
-  pid_t       pid = 0;
-  bool        done = false;
+  char    buffer[248];
+  ssize_t count = 0;
+  pid_t   pid = 0;
+  bool    done = false;
 
-  int status;
+  int status = -1;
   pthread_mutex_lock(&_mutex);
   done = _done;
   pthread_mutex_unlock(&_mutex);
-  if (!done && (pid = waitpid(_pid, &status, WNOHANG)) == -1)
-  {
+  if (!done && (pid = waitpid(_pid, &status, WNOHANG)) == -1) {
     _log.info("CGI: waitpid failed: " + std::string(strerror(errno)));
   }
   if (!done && pid == 0) {
     _log.info("CGI: script is still running");
   }
-  if (pid > 0)
-  {
+  if (pid > 0) {
     pthread_mutex_lock(&_mutex);
     _done = true;
     pthread_mutex_unlock(&_mutex);
   }
-  if (done && WIFSIGNALED(status))
-  {
-    _log.info("CGI: script finished with signal: " + Utils::to_string(WTERMSIG(status)));
+  if (done && WIFSIGNALED(status)) {
+    _log.info("CGI: script finished with signal: " +
+              Utils::to_string(WTERMSIG(status)));
     _done = true;
     if (WEXITSTATUS(status) != 0)
-      _log.info("CGI: script finished with errors, exit status: " + Utils::to_string(WEXITSTATUS(status)));
+      _log.info("CGI: script finished with errors, exit status: " +
+                Utils::to_string(WEXITSTATUS(status)));
   }
   count = read(_outpipefd[0], buffer, sizeof(buffer));
-  if (!done && count == -1)
-  {
+  if (!done && count == -1) {
     _log.info("CGI: read failed: " + std::string(strerror(errno)));
     return EXECUTING;
   }
-  if (count != -1)
-  {
+  if (count != -1) {
     _processOutputSize += count;
     _processOutput.append(buffer, count);
     _log.info("CGI: read " + Utils::to_string(count) + " bytes");
-    _log.info("CGI: processOutputSize: " + Utils::to_string(_processOutputSize));
+    _log.info("CGI: processOutputSize: " +
+              Utils::to_string(_processOutputSize));
   }
-  if (done)
-  {
-    _log.info("CGI: processOutput: " + _processOutput);
-    _log.info("CGI: process done");
-    std::size_t headerEndPos = _processOutput.find("\r\n\r\n");
-    if (headerEndPos == std::string::npos)
-      throw ExecutorError(
-          "CGI: Invalid response: no header-body separator found");
-    std::string headerPart = _processOutput.substr(0, headerEndPos);
-    std::string bodyContent =
-        _processOutput.substr(headerEndPos + 4);  // +4 to skip the "\r\n\r\n"
-
-    std::map<std::string, std::string> headers;
-    std::istringstream                 headerStream(headerPart);
-    std::string                        line;
-    while (std::getline(headerStream, line)) {
-      std::size_t colonPos = line.find(':');
-      if (colonPos == std::string::npos)
-        throw ExecutorError("CGI: Invalid response: malformed header line");
-      std::string key = line.substr(0, colonPos);
-      if (key.empty())
-        throw ExecutorError("CGI: Invalid response: empty header key");
-      std::string value = line.substr(colonPos + 2);  // +2 to skip ": "
-      if (value.empty())
-        throw ExecutorError("CGI: Invalid response: empty header value");
-      headers[key] = value;
-    }
-    headers["Content-Length"] = Utils::to_string(bodyContent.size());
-    _response.setHeaders(headers);
-    _response.setBody(bodyContent);
-    return SENDING;
+  if (done) {
+    return _postProcessOutput();
   }
   return EXECUTING;
+}
+
+int CGIHandler::_postProcessOutput() {
+  _log.info("CGI: processOutput: " + _processOutput);
+  _log.info("CGI: process done");
+  std::size_t headerEndPos = _processOutput.find("\r\n\r\n");
+  if (headerEndPos == std::string::npos)
+    throw ExecutorError(
+        "CGI: Invalid response: no header-body separator found");
+  std::string headerPart = _processOutput.substr(0, headerEndPos);
+  std::string bodyContent =
+      _processOutput.substr(headerEndPos + 4);  // +4 to skip the "\r\n\r\n"
+
+  std::map<std::string, std::string> headers = _parseOutputHeaders(headerPart);
+  headers["Content-Length"] = Utils::to_string(bodyContent.size());
+  _response.setHeaders(headers);
+  _response.setBody(bodyContent);
+  return SENDING;
+}
+
+std::map<std::string, std::string> CGIHandler::_parseOutputHeaders(const std::string& headerPart) {
+  std::map<std::string, std::string> headers;
+  std::istringstream                 headerStream(headerPart);
+  std::string                        line;
+  while (std::getline(headerStream, line)) {
+    std::size_t colonPos = line.find(':');
+    if (colonPos == std::string::npos)
+      throw ExecutorError("CGI: Invalid response: malformed header line");
+    std::string key = line.substr(0, colonPos);
+    if (key.empty())
+      throw ExecutorError("CGI: Invalid response: empty header key");
+    std::string value = line.substr(colonPos + 2);  // +2 to skip ": "
+    if (value.empty())
+      throw ExecutorError("CGI: Invalid response: empty header value");
+    headers[key] = value;
+  }
+  return headers;
 }
 
 void CGIHandler::_runScript() {
@@ -318,11 +324,11 @@ void CGIHandler::_runScript() {
   throw ExecutorError("CGI: execve failed: unable to execute CGI script");
 }
 
-std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request, LocationConfig& location) {
+std::vector<char*> CGIHandler::_buildScriptArguments(const HTTPRequest& request,
+                                        const LocationConfig& location) {
   std::vector<char*> argv;
 
-  std::string scriptPath =
-      location.root + request.getURIComponents().path;
+  std::string scriptPath = location.root + request.getURIComponents().path;
   if (FileManager::isDirectory(scriptPath)) {
     if (scriptPath[scriptPath.length() - 1] != '/')
       scriptPath += "/";
@@ -337,7 +343,8 @@ std::vector<char*> CGIHandler::_getArgv(const HTTPRequest& request, LocationConf
   return argv;
 }
 
-std::vector<char*> CGIHandler::_getEnvp(const HTTPRequest& request, LocationConfig& location) {
+std::vector<char*> CGIHandler::_buildScriptEnvironment(const HTTPRequest& request,
+                                        const LocationConfig& location) {
   std::vector<char*> envp;
 
   const std::map<std::string, std::string> headers = request.getHeaders();

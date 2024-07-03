@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CacheHandler.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 15:57:20 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/07/03 02:23:04 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,31 +44,28 @@ CacheHandler::~CacheHandler() {
 }
 
 int CacheHandler::getResponse(const HTTPRequest& request,
-                              HTTPResponse& response) {
-  pthread_mutex_lock(&_mutex);
+                              HTTPResponse&      response) {
+  LockGuard lock(_mutex);
   std::map<std::string, std::pair<HTTPResponse*, time_t> >::const_iterator it =
       _cache.find(_generateKey(request));
   if (it != _cache.end()) {
     if (it->second.second + _maxAge > time(NULL)) {  // Check cache freshness
       response = *(it->second.first);
-      pthread_mutex_unlock(&_mutex);
       return 0;
     } else {
       delete it->second.first;  // Response
       _cache.erase(it->first);
     }
   }
-  pthread_mutex_unlock(&_mutex);
   return -1;
 }
 
 void CacheHandler::storeResponse(const HTTPRequest&  request,
                                  const HTTPResponse& response) {
   std::string key = _generateKey(request);
-  pthread_mutex_lock(&_mutex);
+  LockGuard lock(_mutex);
   if (_cache.find(key) == _cache.end())
     _cache[key] = std::make_pair(new HTTPResponse(response), time(NULL));
-  pthread_mutex_unlock(&_mutex);
 }
 
 std::string CacheHandler::_generateKey(const HTTPRequest& request) const {

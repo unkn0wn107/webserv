@@ -24,7 +24,7 @@ class HTTPResponse;
 
 class HTTPProtocol {
  protected:
-  Logger&       _log;
+  Logger&      _log;
   ServerConfig _config;
 
  public:

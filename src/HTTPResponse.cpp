@@ -175,13 +175,29 @@ std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
     std::make_pair(504, std::string(ERR_PAGE_504)),
     std::make_pair(505, std::string(ERR_PAGE_505))};
 
-
 // HTTPResponse::HTTPResponse()
 //     : _log(Logger::getInstance()),
 //       _statusCode(HTTPResponse::OK),
 //       _config(NULL) {
 //   _protocol = "HTTP/1.1";
 // }
+
+HTTPResponse::HTTPResponse(const HTTPResponse& other)
+    : _log(other._log),
+      _statusCode(other._statusCode),
+      _statusMessage(other._statusMessage),
+      _headers(other._headers),
+      _body(other._body),
+      _file(other._file),
+      _protocol(other._protocol),
+      _config(other._config),
+      _errorPages(other._errorPages),
+      _responseBufferSize(other._responseBufferSize),
+      _responseBufferPos(other._responseBufferPos),
+      _responseFilePos(other._responseFilePos),
+      _fileSize(other._fileSize) {
+}
+
 
 HTTPResponse::~HTTPResponse() {
   _headers.clear();
@@ -190,6 +206,7 @@ HTTPResponse::~HTTPResponse() {
   _responseBuffer.clear();
 }
 
+// Doesn't carry const config
 HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
   if (this != &other) {
     _log = other._log;
@@ -199,13 +216,12 @@ HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
     _body = other._body;
     _file = other._file;
     _protocol = other._protocol;
-    _config = other._config;
     _errorPages = other._errorPages;
   }
   return *this;
 }
 
-HTTPResponse::HTTPResponse(int statusCode, LocationConfig& config)
+HTTPResponse::HTTPResponse(int statusCode, const LocationConfig& config)
     : _log(Logger::getInstance()),
       _statusCode(statusCode),
       _statusMessage(getStatusMessage(statusCode)),
@@ -246,13 +262,15 @@ void HTTPResponse::_errorResponse() {
 }
 
 void HTTPResponse::buildResponse() {
-  _log.info("HTTPResponse: buildResponse status: " + Utils::to_string(_statusCode));
+  _log.info("HTTPResponse: buildResponse status: " +
+            Utils::to_string(_statusCode));
   if (_statusCode >= 300)
     _errorResponse();
   if (_responseBuffer.empty()) {
     _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
                       _statusMessage + "\r\n";
-    for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
+    for (std::map<std::string, std::string>::const_iterator it =
+             _headers.begin();
          it != _headers.end(); ++it) {
       _responseBuffer += it->first + ": " + it->second + "\r\n";
     }
@@ -276,13 +294,14 @@ std::string HTTPResponse::defaultErrorPage(int status) {
 
 ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   ssize_t bytesSent;
-  size_t remaining = _responseBuffer.size() - _responseBufferPos;
+  size_t  remaining = _responseBuffer.size() - _responseBufferPos;
 
   if (sndbuf > remaining) {
     sndbuf = remaining;
   }
 
-  bytesSent = send(socket, _responseBuffer.c_str() + _responseBufferPos, sndbuf, 0);
+  bytesSent =
+      send(socket, _responseBuffer.c_str() + _responseBufferPos, sndbuf, 0);
   if (bytesSent == -1) {
     usleep(1000);
     return -1;
@@ -300,8 +319,9 @@ void HTTPResponse::_sendfile(int clientSocket, FILE* file, size_t sndbuf) {
   bytesSent = sendfile(clientSocket, fileno(file), &_responseFilePos, sndbuf);
   if (bytesSent == -1)
     usleep(1000);
-  _log.info("HTTPResponse: _sendfile bytesSent: " + Utils::to_string(bytesSent) +
-            " _responseFilePos: " + Utils::to_string(_responseFilePos));
+  _log.info(
+      "HTTPResponse: _sendfile bytesSent: " + Utils::to_string(bytesSent) +
+      " _responseFilePos: " + Utils::to_string(_responseFilePos));
 }
 
 int HTTPResponse::sendResponse(int clientSocket, size_t sndbuf) {
@@ -313,9 +333,10 @@ int HTTPResponse::sendResponse(int clientSocket, size_t sndbuf) {
   if (_file.empty())
     return 0;
   _toSend = fopen(_file.c_str(), "r");
-  if (!_toSend){
+  if (!_toSend) {
     sendResponse(500, clientSocket);
-    throw Exception("(fopen) Error opening file : " + _file + " : " + std::string(strerror(errno)));
+    throw Exception("(fopen) Error opening file : " + _file + " : " +
+                    std::string(strerror(errno)));
   }
   _sendfile(clientSocket, _toSend, sndbuf);
   fclose(_toSend);

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 01:18:58 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/03 19:16:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,7 +56,7 @@ Server& Server::getInstance() {
 }
 
 void Server::workerFinished() {
-  pthread_mutex_lock(&_mutex);
+  LockGuard lock(_mutex);
   _activeWorkers--;
   _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) +
             ")");
@@ -64,7 +64,6 @@ void Server::workerFinished() {
     _running = false;
     _log.info("SERVER: All workers finished");
   }
-  pthread_mutex_unlock(&_mutex);
 }
 
 void Server::start() {
@@ -102,7 +101,7 @@ void Server::stop(int signum) {
                                  Utils::to_string(signum));
     for (size_t i = 0; i < _workers.size(); i++) {
       _log.info("SERVER: stopping worker " + Utils::to_string(i) + " (" +
-                Utils::to_string(_workers[i]->_threadId) + ")");
+                Utils::to_string(_workers[i]->getThreadId()) + ")");
       _workers[i]->stop();
     }
     _log.info("SERVER: workers stopped");
@@ -224,7 +223,7 @@ void Server::_setupServerSockets() {
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
     event.data.fd = sock;
-    event.events = EPOLLIN | EPOLLET;
+    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {
       close(sock);
       _log.error(std::string("SERVER (assign conn): Failed \"epoll_ctl\": ") +

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 17:36:38 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/07/03 17:50:44 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,13 +19,13 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <set>
 #include <memory>
+#include <set>
 
 #include "Common.hpp"
 #include "Config.hpp"
-#include "Logger.hpp"
 #include "EventQueue.hpp"
+#include "Logger.hpp"
 #include "Worker.hpp"
 
 #define SHUTDOWN_DELAY 200000

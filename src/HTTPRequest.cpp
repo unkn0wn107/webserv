@@ -18,10 +18,7 @@ const std::string HTTPRequest::supportedMethods[4] = {"GET", "HEAD", "DELETE",
                                                       "POST"};
 
 HTTPRequest::HTTPRequest(std::string rawRequest /*, size_t readn*/)
-    : _rawRequest(rawRequest),
-      _method(""),
-      _uri(""),
-      _body("") {
+    : _rawRequest(rawRequest), _method(""), _uri(""), _body("") {
   parseRequest();
 }
 

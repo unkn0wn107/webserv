@@ -6,11 +6,12 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/03 01:09:18 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/03 02:25:28 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Logger.hpp"
+#include "Utils.hpp"
 #include <algorithm>
 #include <ctime>
 #include <iostream>
@@ -55,43 +56,39 @@ void Logger::_openLogFile() {
 }
 
 void Logger::info(const std::string& message) const {
-  pthread_mutex_lock(&_mutex);
+  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] INFO: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
   std::cout << "\033[1;32m" << msg << "\033[0m" << std::endl; // Green
-  pthread_mutex_unlock(&_mutex);
 }
 
 void Logger::warning(const std::string& message) const {
-  pthread_mutex_lock(&_mutex);
+  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] WARNING: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
   std::cout << "\033[1;33m" << msg << "\033[0m" << std::endl; // Yellow
-  pthread_mutex_unlock(&_mutex);
 }
 
 void Logger::error(const std::string& message) const {
-  pthread_mutex_lock(&_mutex);
+  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] ERROR: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
   std::cerr << "\033[1;31m" << msg << "\033[0m" << std::endl; // Red
-  pthread_mutex_unlock(&_mutex);
 }
 
 void Logger::emerg(const std::string& message) const {
-  pthread_mutex_lock(&_mutex);
+  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] EMERG: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
   std::cerr << "\033[1;35m" << msg << "\033[0m" << std::endl; // Magenta
-  pthread_mutex_unlock(&_mutex);
 }
 
 std::string Logger::_getCurrentTime() const {

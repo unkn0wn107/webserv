@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:32 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 00:46:31 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/03 02:20:50 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,4 +99,12 @@ char* Utils::cstr(const std::string& str) {
     throw Exception("Failed to allocate memory");
   std::strcpy(result, str.c_str());
   return result;
+}
+
+LockGuard::LockGuard(pthread_mutex_t& mutex) : _mutex(mutex) {
+  pthread_mutex_lock(&_mutex);
+}
+
+LockGuard::~LockGuard() {
+  pthread_mutex_unlock(&_mutex);
 }

@@ -39,8 +39,6 @@ CGIHandler::CGIHandler(HTTPRequest&       request,
     throw PipeFailure("CGI: Failed to create pipe");
   if (pipe(_outpipefd) == -1)
     throw PipeFailure("CGI: Failed to create pipe");
-  if (pthread_mutex_init(&_mutex, NULL) != 0)
-    throw MutexFailure("CGI: Failed to create mutex");
 }
 
 CGIHandler::~CGIHandler() {
@@ -57,7 +55,6 @@ CGIHandler::~CGIHandler() {
     close(_outpipefd[1]);
   Utils::freeCharVector(_argv);
   Utils::freeCharVector(_envp);
-  pthread_mutex_destroy(&_mutex);
 }
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
@@ -200,33 +197,28 @@ int CGIHandler::_executeParentProcess() {
   char    buffer[248];
   ssize_t count = 0;
   pid_t   pid = 0;
-  bool    done = false;
 
   int status = -1;
-  pthread_mutex_lock(&_mutex);
-  done = _done;
-  pthread_mutex_unlock(&_mutex);
-  if (!done && (pid = waitpid(_pid, &status, WNOHANG)) == -1) {
+  if (!_done && (pid = waitpid(_pid, &status, WNOHANG)) == -1) {
     _log.info("CGI: waitpid failed: " + std::string(strerror(errno)));
+    throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
   }
-  if (!done && pid == 0) {
+  if (!_done && pid == 0) {
     _log.info("CGI: script is still running");
+    return EXECUTING;
   }
   if (pid > 0) {
-    pthread_mutex_lock(&_mutex);
     _done = true;
-    pthread_mutex_unlock(&_mutex);
   }
-  if (done && WIFSIGNALED(status)) {
+  if (_done && WIFSIGNALED(status)) {
     _log.info("CGI: script finished with signal: " +
               Utils::to_string(WTERMSIG(status)));
-    _done = true;
     if (WEXITSTATUS(status) != 0)
-      _log.info("CGI: script finished with errors, exit status: " +
-                Utils::to_string(WEXITSTATUS(status)));
+      throw ExecutorError("CGI: script finished with errors, exit status: " +
+                          Utils::to_string(WEXITSTATUS(status)));
   }
   count = read(_outpipefd[0], buffer, sizeof(buffer));
-  if (!done && count == -1) {
+  if (!_done && count == -1) {
     _log.info("CGI: read failed: " + std::string(strerror(errno)));
     return EXECUTING;
   }
@@ -237,13 +229,14 @@ int CGIHandler::_executeParentProcess() {
     // _log.info("CGI: processOutputSize: " +
     //           Utils::to_string(_processOutputSize));
   }
-  if (done) {
-    return _postProcessOutput();
+  if (_done) {
+    _postProcessOutput();
+    return SENDING;
   }
   return EXECUTING;
 }
 
-int CGIHandler::_postProcessOutput() {
+void CGIHandler::_postProcessOutput() {
   _log.info("CGI: processOutput: " + _processOutput);
   _log.info("CGI: process done");
   std::size_t headerEndPos = _processOutput.find("\r\n\r\n");
@@ -258,7 +251,6 @@ int CGIHandler::_postProcessOutput() {
   headers["Content-Length"] = Utils::to_string(bodyContent.size());
   _response.setHeaders(headers);
   _response.setBody(bodyContent);
-  return SENDING;
 }
 
 std::map<std::string, std::string> CGIHandler::_parseOutputHeaders(const std::string& headerPart) {

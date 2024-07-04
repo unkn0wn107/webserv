@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:21:59 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/03 01:10:15 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 03:28:32 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,6 @@ class Logger {
 
   static Logger* _instance;
 
-  mutable pthread_mutex_t _mutex;
   Config                  _config;
   std::ofstream*          _progLogFile;
   std::string             _progLogFileName;

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 17:50:44 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 02:40:57 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,6 @@
 
 #include "Common.hpp"
 #include "Config.hpp"
-#include "EventQueue.hpp"
 #include "Logger.hpp"
 #include "Worker.hpp"
 
@@ -38,26 +37,20 @@ class Server {
   static Server*                              _instance;
   Config&                                     _config;
   Logger&                                     _log;
-  std::vector<Worker*>                        _workers;
   std::map<int, ListenConfig>                 _listenSockets;
-  pthread_mutex_t                             _mutex;
   int                                         _epollSocket;
-  int                                         _activeWorkers;
-  EventQueue                                  _events;
   bool                                        _running;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
 
   void _setupServerSockets();
-  void _setupWorkers();
   void _setupEpoll();
 
  public:
   Server();
   static Server& getInstance();
-  void           workerFinished();
   ~Server();
 
-  void start();
+  void run();
   void stop(int signum);
 };
 

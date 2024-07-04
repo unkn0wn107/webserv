@@ -135,7 +135,6 @@ class CGIHandler {
   std::string        _index;
   bool               _cgi;
   bool               _done;
-  pthread_mutex_t    _mutex;
 
   std::vector<char*> _argv;
   std::vector<char*> _envp;
@@ -191,7 +190,7 @@ class CGIHandler {
    * Processes the output from the CGI script after execution.
    * @return Status code indicating the result of the post-processing.
    */
-  int  _postProcessOutput();
+  void  _postProcessOutput();
 
   /**
    * Parses the headers from the CGI script output.
@@ -202,7 +201,6 @@ class CGIHandler {
 
   /**
    * Processes the CGI request.
-   * @return Status code indicating the result of the request processing.
    */
   int  _processRequest();
 

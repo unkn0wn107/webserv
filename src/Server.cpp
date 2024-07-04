@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 01:14:30 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 02:40:54 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,6 @@
 #include <climits>
 #include "Common.hpp"
 #include "ConfigManager.hpp"
-#include "EventQueue.hpp"
 #include "Utils.hpp"
 
 Server* Server::_instance = NULL;
@@ -22,32 +21,23 @@ int     Server::_callCount = 1;
 
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
-      _log(Logger::getInstance()),
-      _activeWorkers(0),
-      _events() {
+      _log(Logger::getInstance()) {
   _log.info("====================SERVER: Setup server " +
             Utils::to_string(_callCount));
   _setupEpoll();
   _setupServerSockets();
-  _setupWorkers();
-  pthread_mutex_init(&_mutex, NULL);
   _callCount++;
   _running = false;
   _instance = this;
 }
 
 Server::~Server() {
-  for (size_t i = 0; i < _workers.size(); i++) {
-    delete _workers[i];
-  }
-  _workers.clear();
   close(_epollSocket);
   for (std::map<int, ListenConfig>::iterator it = _listenSockets.begin();
        it != _listenSockets.end(); ++it) {
     close(it->first);
   }
   _listenSockets.clear();
-  pthread_mutex_destroy(&_mutex);
   CacheHandler::deleteInstance();
   ConfigManager::deleteInstance();
   Server::_instance = NULL;
@@ -61,28 +51,10 @@ Server& Server::getInstance() {
   return *_instance;
 }
 
-void Server::workerFinished() {
-  LockGuard lock(_mutex);
-  _activeWorkers--;
-  _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) +
-            ")");
-  if (_activeWorkers == 0) {
-    _running = false;
-    _log.info("SERVER: All workers finished");
-  }
-}
-
-void Server::start() {
+void Server::run() {
   _running = true;
-  for (size_t i = 0; i < _workers.size(); i++) {
-    _workers[i]->start();
-    pthread_mutex_lock(&_mutex);
-    _activeWorkers++;
-    pthread_mutex_unlock(&_mutex);
-  }
-  _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) +
-            ")");
   struct epoll_event events[MAX_EVENTS];
+  Worker worker(*this, _epollSocket, _listenSockets);
   while (_running) {
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
     if (nfds == 0) {
@@ -94,7 +66,7 @@ void Server::start() {
       continue;
     }
     for (int i = 0; i < nfds && _running; i++)
-      _events.push(events[i]);
+      worker.processEvent(events[i]);
   }
 }
 
@@ -102,20 +74,8 @@ void Server::stop(int signum) {
   if (signum == SIGINT || signum == SIGTERM) {
     Server::_instance->_log.info("Server stopped from signal " +
                                  Utils::to_string(signum));
-    for (size_t i = 0; i < _workers.size(); i++) {
-      _log.info("SERVER: stopping worker " + Utils::to_string(i) + " (" +
-                Utils::to_string(_workers[i]->getThreadId()) + ")");
-      _workers[i]->stop();
-    }
     _log.info("SERVER: workers stopped");
     _running = false;
-  }
-}
-
-void Server::_setupWorkers() {
-  for (int i = 0; i < _config.worker_processes; i++) {
-    _workers.push_back(
-        new Worker(*this, _epollSocket, _listenSockets, _events));
   }
 }
 

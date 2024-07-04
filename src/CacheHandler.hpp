@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 00:12:22 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 03:23:10 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,6 @@ class CacheHandler {
 
   std::string             _generateKey(const HTTPRequest& request) const;
   unsigned long           _hash(const std::string& str) const;
-  mutable pthread_mutex_t _mutex;
 };
 
 #endif

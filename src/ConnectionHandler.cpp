@@ -42,10 +42,6 @@ ConnectionHandler::ConnectionHandler(
       _startTime(time(NULL)),
       _cgiHandler(NULL),
       _step(0) {
-  if (pthread_mutex_init(&_mutex, NULL) != 0)
-    _log.error("CONNECTION_HANDLER: Failed to create mutex");
-  if (pthread_mutex_init(&_statusMutex, NULL) != 0)
-    _log.error("CONNECTION_HANDLER: Failed to create mutex");
 }
 
 ConnectionHandler::~ConnectionHandler() {
@@ -66,12 +62,6 @@ ConnectionHandler::~ConnectionHandler() {
     delete _cgiHandler;
     _cgiHandler = NULL;
   }
-  pthread_mutex_unlock(&_mutex);
-  pthread_mutex_destroy(&_mutex);
-  pthread_mutex_unlock(&_statusMutex);
-  pthread_mutex_destroy(&_statusMutex);
-  // _requestString.clear();
-  // _readn = 0;
 }
 
 int ConnectionHandler::getSocket() const {
@@ -97,18 +87,14 @@ int ConnectionHandler::getConnectionStatus() const {
 // }
 
 int ConnectionHandler::_checkConnectionStatus() {
-  pthread_mutex_lock(&_statusMutex);
   int status = _connectionStatus;
-  pthread_mutex_unlock(&_statusMutex);
   return status;
 }
 
 void ConnectionHandler::_setConnectionStatus(int status) {
   _log.info("CONNECTION_HANDLER: Setting connection status to: " +
             Utils::to_string(status));
-  pthread_mutex_lock(&_statusMutex);
   _connectionStatus = status;
-  pthread_mutex_unlock(&_statusMutex);
 }
 
 void ConnectionHandler::_receiveRequest() {
@@ -270,7 +256,6 @@ void ConnectionHandler::_processRequest() {
 }
 
 void ConnectionHandler::_processData() {
-  // LockGuard lock(_mutex);
   int status = _checkConnectionStatus();
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Status: " + Utils::to_string(status));
@@ -292,13 +277,12 @@ void ConnectionHandler::_processData() {
     if (_cgiHandler == NULL) {
       _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): CGIHandler is NULL");
       _setConnectionStatus(SENDING);
-      status = _checkConnectionStatus();
       return;
     }
     _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
               "): Processing data in EXECUTING state");
-    _setConnectionStatus(_cgiHandler->handleCGIRequest());
-    status = _checkConnectionStatus();
+    status = _cgiHandler->handleCGIRequest();
+    _setConnectionStatus(status);
     if (status == SENDING) {
       _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                 "): Sending after CGI");

@@ -35,7 +35,7 @@ SRC = $(SRC_DIR)/Server.cpp \
 		$(SRC_DIR)/Config.cpp $(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
 		$(SRC_DIR)/FileManager.cpp \
 		$(SRC_DIR)/ConnectionHandler.cpp $(SRC_DIR)/CacheHandler.cpp \
-		$(SRC_DIR)/Worker.cpp $(SRC_DIR)/EventQueue.cpp \
+		$(SRC_DIR)/Worker.cpp \
 		$(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp $(SRC_DIR)/URI.cpp \
 		$(SRC_DIR)/CGIHandler.cpp \
 		$(SRC_DIR)/VirtualServer.cpp $(SRC_DIR)/Common.cpp \

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 01:20:53 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 02:36:22 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
   }
   Server server;
   Logger::getInstance().info("Starting WebServ");
-  server.start();
+  server.run();
   Logger::getInstance().info("Shutdown WebServ");
   usleep(SHUTDOWN_DELAY);  // Wait for Logger to finish output logs
   Logger::deleteInstance();

@@ -6,14 +6,13 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 02:03:35 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 03:23:12 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CONNECTION_HANDLER_H
 #define CONNECTION_HANDLER_H
 
-#include <pthread.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <ctime>
@@ -90,8 +89,6 @@ class ConnectionHandler {
   int                         _count;
   time_t                      _startTime;
   CGIHandler*                 _cgiHandler;
-  pthread_mutex_t             _mutex;
-  pthread_mutex_t             _statusMutex;
   int                         _step;
 
   void           _receiveRequest();

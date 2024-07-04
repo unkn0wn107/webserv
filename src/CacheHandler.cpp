@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 01:44:27 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 03:26:43 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,9 +29,7 @@ void CacheHandler::deleteInstance() {
   }
 }
 
-CacheHandler::CacheHandler() : _maxAge(MAX_AGE) {
-  pthread_mutex_init(&_mutex, NULL);
-}
+CacheHandler::CacheHandler() : _maxAge(MAX_AGE) {}
 
 CacheHandler::~CacheHandler() {
   for (std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator it =
@@ -40,12 +38,10 @@ CacheHandler::~CacheHandler() {
     delete it->second.first;
   }
   _cache.clear();
-  pthread_mutex_destroy(&_mutex);
 }
 
 int CacheHandler::getResponse(const HTTPRequest& request,
                               HTTPResponse&      response) {
-  LockGuard lock(_mutex);
   std::map<std::string, std::pair<HTTPResponse*, time_t> >::const_iterator it =
       _cache.find(_generateKey(request));
   if (it != _cache.end()) {
@@ -63,7 +59,6 @@ int CacheHandler::getResponse(const HTTPRequest& request,
 void CacheHandler::storeResponse(const HTTPRequest&  request,
                                  const HTTPResponse& response) {
   std::string key = _generateKey(request);
-  LockGuard lock(_mutex);
   if (_cache.find(key) == _cache.end())
     _cache[key] = std::make_pair(new HTTPResponse(response), time(NULL));
 }

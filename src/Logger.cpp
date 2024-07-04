@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/03 02:25:28 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 03:28:20 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,6 @@
 Logger* Logger::_instance = NULL;
 
 Logger::Logger() : _progLogFile(new std::ofstream()) {
-  pthread_mutex_init(&_mutex, NULL);
 }
 
 Logger& Logger::getInstance() {
@@ -43,7 +42,6 @@ Logger::~Logger() {
     _progLogFile->close();
   }
   delete _progLogFile;
-  pthread_mutex_destroy(&_mutex);
 }
 
 void Logger::_openLogFile() {
@@ -56,7 +54,6 @@ void Logger::_openLogFile() {
 }
 
 void Logger::info(const std::string& message) const {
-  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] INFO: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
@@ -65,7 +62,6 @@ void Logger::info(const std::string& message) const {
 }
 
 void Logger::warning(const std::string& message) const {
-  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] WARNING: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
@@ -74,7 +70,6 @@ void Logger::warning(const std::string& message) const {
 }
 
 void Logger::error(const std::string& message) const {
-  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] ERROR: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
@@ -83,7 +78,6 @@ void Logger::error(const std::string& message) const {
 }
 
 void Logger::emerg(const std::string& message) const {
-  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] EMERG: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;

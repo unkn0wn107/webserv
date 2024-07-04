@@ -45,6 +45,8 @@ CGIHandler::CGIHandler(HTTPRequest&       request,
 
 CGIHandler::~CGIHandler() {
   _log.info("CGI: Destroying handler");
+  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
+  close(_outpipefd[0]);
   if (_inpipefd[0] != -1)
     close(_inpipefd[0]);
   if (_inpipefd[1] != -1)
@@ -56,8 +58,6 @@ CGIHandler::~CGIHandler() {
   Utils::freeCharVector(_argv);
   Utils::freeCharVector(_envp);
   pthread_mutex_destroy(&_mutex);
-  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
-  close(_outpipefd[0]);
 }
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
@@ -233,9 +233,9 @@ int CGIHandler::_executeParentProcess() {
   if (count != -1) {
     _processOutputSize += count;
     _processOutput.append(buffer, count);
-    _log.info("CGI: read " + Utils::to_string(count) + " bytes");
-    _log.info("CGI: processOutputSize: " +
-              Utils::to_string(_processOutputSize));
+    // _log.info("CGI: read " + Utils::to_string(count) + " bytes");
+    // _log.info("CGI: processOutputSize: " +
+    //           Utils::to_string(_processOutputSize));
   }
   if (done) {
     return _postProcessOutput();

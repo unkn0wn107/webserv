@@ -85,35 +85,35 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
     const LocationConfig& location = getLocationConfig(uri);
 
     if (protocol != "HTTP/1.1") {
-      _log.error("Unsupported protocol: " + protocol);
+      _log.warning("CheckRequest: Unsupported protocol: " + protocol);
       return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
     }
 
     if (std::find(location.allowed_methods.begin(),
                   location.allowed_methods.end(),
                   method) == location.allowed_methods.end()) {
-      _log.error("Method not allowed for this location");
+      _log.warning("CheckRequest: Method not allowed for this location");
       return new HTTPResponse(HTTPResponse::METHOD_NOT_ALLOWED, location);
     }
 
     if (method != "GET" && method != "HEAD") {
       if (!body.empty() && contentLength == -1) {
-        _log.error("Content length not provided");
+        _log.warning("CheckRequest: Content length not provided");
         return new HTTPResponse(HTTPResponse::LENGTH_REQUIRED, location);
       }
 
       if (contentLength < 0) {
-        _log.error("Negative content length");
+        _log.warning("CheckRequest: Negative content length");
         return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
       }
 
       if (contentLength != -1) {
         if (static_cast<size_t>(contentLength) > location.client_max_body_size) {
-          _log.error("Content length too big");
+          _log.warning("CheckRequest: Content length too big");
           return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE, location);
         }
         if (static_cast<size_t>(contentLength) != body.length()) {
-          _log.error("Content length mismatch");
+          _log.warning("CheckRequest: Content length mismatch");
           return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
         }
       }
@@ -125,7 +125,7 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
 
     return NULL; // Successful case with no specific response needed
   } catch (const std::exception& e) {
-    _log.error("Location not found for URI: " + uri);
+    _log.warning("CheckRequest: Location not found for URI: " + uri);
     // Define a default location config for error handling
     static const LocationConfig errorLocation;
     return new HTTPResponse(HTTPResponse::NOT_FOUND, errorLocation);

@@ -104,7 +104,7 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
                         Utils::to_string(FileManager::getFileSize(path)));
     response->setFile(path);
   } else {
-    _log.error("HTTPMethods::_handleGetRequest : File not found");
+    _log.warning("HTTPMethods::_handleGetRequest : File not found");
     return new HTTPResponse(HTTPResponse::NOT_FOUND, location);
   }
 
@@ -170,7 +170,7 @@ HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
     return response;
   } else {
     if (errno == ENOENT) {
-      _log.error("HTTPMethods::_handleDeleteRequest : File not found");
+      _log.warning("HTTPMethods::_handleDeleteRequest : File not found");
       return new HTTPResponse(HTTPResponse::NO_CONTENT, location);
     }
     _log.error("HTTPMethods::_handleDeleteRequest : File delete error");

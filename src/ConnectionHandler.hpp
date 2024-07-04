@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 18:36:39 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 02:03:35 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,8 +34,9 @@ class CGIHandler;
 
 class ConnectionHandler {
  public:
-  int                 getConnectionStatus();
+  int                 getConnectionStatus() const;
   int                 getSocket() const;
+  void                closeClientSocket();
   static const int    MAX_TRIES;
   static const time_t TIMEOUT;
 
@@ -45,7 +46,7 @@ class ConnectionHandler {
                     ListenConfig&                listenConfig);
   ~ConnectionHandler();
   int  processConnection();
-  bool isMarkedForDeletion();
+  // bool isMarkedForDeletion();
 
   class ConnectionException : public Exception {
    public:
@@ -68,6 +69,12 @@ class ConnectionHandler {
         : ConnectionException(message) {}
   };
 
+  class RequestException : public ConnectionException {
+   public:
+    RequestException(const std::string& message)
+        : ConnectionException(message) {}
+  };
+
  private:
   Logger&                     _log;
   int                         _connectionStatus;
@@ -86,7 +93,6 @@ class ConnectionHandler {
   pthread_mutex_t             _mutex;
   pthread_mutex_t             _statusMutex;
   int                         _step;
-  bool                        _markedForDeletion;
 
   void           _receiveRequest();
   void           _processRequest();
@@ -97,7 +103,15 @@ class ConnectionHandler {
   void           _processData();
   int            _checkConnectionStatus();
   void           _setConnectionStatus(int status);
-  void           _markForDeletion();
+
+  void           _processReadingState();
+  void           _processExecutingState();
+  void           _processSendingState();
+
+  void           _modifyEpollEventsForReading(struct epoll_event& event);
+  void           _modifyEpollEventsForExecuting(struct epoll_event& event);
+  void           _modifyEpollEventsForSending(struct epoll_event& event);
+  void           _handleClosedConnection(struct epoll_event& event, std::clock_t start);
 };
 
 #endif

@@ -41,8 +41,7 @@ ConnectionHandler::ConnectionHandler(
       _count(0),
       _startTime(time(NULL)),
       _cgiHandler(NULL),
-      _step(0),
-      _markedForDeletion(false) {
+      _step(0) {
   if (pthread_mutex_init(&_mutex, NULL) != 0)
     _log.error("CONNECTION_HANDLER: Failed to create mutex");
   if (pthread_mutex_init(&_statusMutex, NULL) != 0)
@@ -79,19 +78,23 @@ int ConnectionHandler::getSocket() const {
   return _clientSocket;
 }
 
-void ConnectionHandler::_markForDeletion() {
-  pthread_mutex_lock(&_mutex);
-  _markedForDeletion = true;
-  pthread_mutex_unlock(&_mutex);
-  _log.info("CONNECTION_HANDLER: Marked for deletion");
+int ConnectionHandler::getConnectionStatus() const {
+  return _connectionStatus;
 }
 
-bool ConnectionHandler::isMarkedForDeletion() {
-  pthread_mutex_lock(&_mutex);
-  bool marked = _markedForDeletion;
-  pthread_mutex_unlock(&_mutex);
-  return marked;
-}
+// void ConnectionHandler::_markForDeletion() {
+//   pthread_mutex_lock(&_mutex);
+//   _markedForDeletion = true;
+//   pthread_mutex_unlock(&_mutex);
+//   _log.info("CONNECTION_HANDLER: Marked for deletion");
+// }
+
+// bool ConnectionHandler::isMarkedForDeletion() {
+//   pthread_mutex_lock(&_mutex);
+//   bool marked = _markedForDeletion;
+//   pthread_mutex_unlock(&_mutex);
+//   return marked;
+// }
 
 int ConnectionHandler::_checkConnectionStatus() {
   pthread_mutex_lock(&_statusMutex);
@@ -155,9 +158,8 @@ void ConnectionHandler::_receiveRequest() {
         "CONNECTION_HANDLER: Request valid: no more to read but headers ended");
     _processRequest();
   } else if (bytes == 0)
-    _log.error(
-        "CONNECTION_HANDLER: Request invalid: no more to read but headers not "
-        "ended");
+    throw RequestException("CONNECTION_HANDLER: Request invalid: no more to read but headers not "
+        "ended. Headers: " + _requestString);
 }
 
 void ConnectionHandler::_sendResponse() {
@@ -300,8 +302,6 @@ void ConnectionHandler::_processData() {
     if (status == SENDING) {
       _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                 "): Sending after CGI");
-      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _cgiHandler->getCgifd(), NULL);
-      close(_cgiHandler->getCgifd());
       delete _cgiHandler;
       _cgiHandler = NULL;
       return;
@@ -329,7 +329,7 @@ int ConnectionHandler::processConnection() {
   struct epoll_event event;
   event.data.ptr = this;
   _step++;
-  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): _rcvbuf: " + Utils::to_string(_rcvbuf));
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): _sndbuf: " + Utils::to_string(_sndbuf));
@@ -339,104 +339,111 @@ int ConnectionHandler::processConnection() {
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): crrent read request: [" + _requestString +
             "]\nReadn: " + Utils::to_string(_readn));
+
   _processData();
-  if (_checkConnectionStatus() == READING) {
-    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-              "): Modifying epoll events for READING");
-    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                             "): epoll_ctl: ") +
-                 strerror(errno));
-      return 1;
-    }
-  } else if (_checkConnectionStatus() == EXECUTING) {
-    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-              "): Modifying epoll events for EXECUTING");
-    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(),
-                  &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                             "): epoll_ctl: ") +
-                 strerror(errno));
-      close(_clientSocket);
-      return 1;
-    }
-  } else if (_checkConnectionStatus() == SENDING) {
-    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-              "): Modifying epoll events for SENDING : " +
-              Utils::to_string(_clientSocket));
-    event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
-    if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-      _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                             "): epoll_ctl: ") +
-                 strerror(errno));
-      return 1;
-    }
-    // else if (_checkConnectionStatus() == DESTROYING) {
-    // _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-    //           "): Modifying epoll events for DESTROYING : " +
-    //           Utils::to_string(_clientSocket));
-    // if (epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL) == -1) {
-    //   _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-    //                          "): epoll_ctl: ") +
-    //              strerror(errno));
-    //   close(_clientSocket);
-    //   delete this;
-    //   return 1;
-    // }
-    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-              "): epoll_ctl: EPOLLOUT | EPOLLET | EPOLLONESHOT  ");
-  } else if (_checkConnectionStatus() == CLOSED) {
-    std::string host = _request->getHost();
-    std::string method = _request->getMethod();
-    std::string uri = _request->getURI();
-    std::string protocol = _request->getProtocol();
-    std::string status = Utils::to_string(_response->getStatusCode());
-    std::map<std::string, std::string> headers = _response->getHeaders();
-    std::map<std::string, std::string>::const_iterator it =
-        headers.find("Content-Length");
-    if (it != headers.end()) {
-      std::string contentLength = it->second;
-      _log.info("Request : " + host + " - " + method + " " + uri + " " +
-                protocol);
-      _log.info("Response : " + status + " sent " + contentLength + " bytes");
-    } else {
-      _log.info("Request : " + host + " - " + method + " " + uri + " " +
-                protocol);
-      _log.info("Response : " + status + " sent with no Content-Length");
-    }
-    std::clock_t end = std::clock();
-    double       duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;
-    if (duration > 0.005) {
-      _log.warning(
-          "CONNECTION_HANDLER: =================================Processing "
-          "time: " +
-          Utils::to_string(duration) + " seconds");
-    }
-    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-              "): Marking connection handler for deletion");
-    if (epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL) == -1)
-      _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-              "): Failed to delete client socket from epoll");
-    if (close(_clientSocket) == -1) {
-      _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-               "): Error closing client socket: " + std::string(strerror(errno)));
-    } else {
-      _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-              "): Client socket closed successfully");
-    }
-    // delete this;
-    return 0;
-  } else {
-    // Re-arm the socket in epoll for further operations
-    struct epoll_event event;
-    event.data.ptr = this;
-    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-      _log.error("epoll_ctl: " + std::string(strerror(errno)));
-      return 1;
-    }
+  switch (_checkConnectionStatus()) {
+    case READING:
+      _modifyEpollEventsForReading(event);
+      break;
+    case EXECUTING:
+      _modifyEpollEventsForExecuting(event);
+      break;
+    case SENDING:
+      _modifyEpollEventsForSending(event);
+      break;
+    case CLOSED:
+      _handleClosedConnection(event, start);
+      break;
   }
-  return 1;
+  return 0;
+}
+
+void ConnectionHandler::_modifyEpollEventsForReading(struct epoll_event& event) {
+  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+            "): Modifying epoll events for READING");
+  event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+  if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
+    _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                                                     "): epoll_ctl: ") +
+               strerror(errno));
+    close(_clientSocket);
+  }
+}
+
+void ConnectionHandler::_modifyEpollEventsForExecuting(struct epoll_event& event) {
+  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+            "): Modifying epoll events for EXECUTING");
+  event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+  if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(),
+                &event) == -1) {
+    _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                           "): epoll_ctl: ") +
+               strerror(errno));
+    close(_clientSocket);
+  }
+}
+
+void ConnectionHandler::_modifyEpollEventsForSending(struct epoll_event& event) {
+  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+            "): Modifying epoll events for SENDING : " +
+            Utils::to_string(_clientSocket));
+  event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
+  if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
+    _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                           "): epoll_ctl: ") +
+               strerror(errno));
+    close(_clientSocket);
+  }
+  _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+            "): epoll_ctl: EPOLLOUT | EPOLLET | EPOLLONESHOT  ");
+}
+
+void ConnectionHandler::_handleClosedConnection(struct epoll_event&, std::clock_t start) {
+  if (!_request)
+    return;
+  std::string host = _request->getHost();
+  std::string method = _request->getMethod();
+  std::string uri = _request->getURI();
+  std::string protocol = _request->getProtocol();
+  std::string status = Utils::to_string(_response->getStatusCode());
+  std::map<std::string, std::string> headers = _response->getHeaders();
+  std::map<std::string, std::string>::const_iterator it =
+      headers.find("Content-Length");
+  if (it != headers.end()) {
+    std::string contentLength = it->second;
+    _log.info("Request : " + host + " - " + method + " " + uri + " " +
+              protocol);
+    _log.info("Response : " + status + " sent " + contentLength + " bytes");
+  } else {
+    _log.info("Request : " + host + " - " + method + " " + uri + " " +
+              protocol);
+    _log.info("Response : " + status + " sent with no Content-Length");
+  }
+  std::clock_t end = std::clock();
+  double       duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;
+  if (duration > 0.005) {
+    _log.warning(
+        "CONNECTION_HANDLER: =================================Processing "
+        "time: " +
+        Utils::to_string(duration) + " seconds");
+  }
+  closeClientSocket();
+}
+
+void ConnectionHandler::closeClientSocket() {
+  if (fcntl(_clientSocket, F_GETFD) != -1 || errno != EBADF) {
+  if (epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL) == -1)
+    _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+            "): Failed to delete client socket from epoll : " +  Utils::to_string(_clientSocket) + " " + std::string(strerror(errno)));
+  if (close(_clientSocket) == -1) {
+    _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+              "): Error closing client socket: " + std::string(strerror(errno)));
+  } else {
+    _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+            "): Client socket closed successfully");
+  }
+  } else {
+    _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+            "): Invalid client socket: " + Utils::to_string(_clientSocket));
+  } 
 }

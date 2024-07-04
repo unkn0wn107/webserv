@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 02:23:04 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 01:44:27 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,13 +51,13 @@ int CacheHandler::getResponse(const HTTPRequest& request,
   if (it != _cache.end()) {
     if (it->second.second + _maxAge > time(NULL)) {  // Check cache freshness
       response = *(it->second.first);
-      return 0;
+      return 1;
     } else {
       delete it->second.first;  // Response
       _cache.erase(it->first);
     }
   }
-  return -1;
+  return 0;
 }
 
 void CacheHandler::storeResponse(const HTTPRequest&  request,

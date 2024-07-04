@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 19:16:16 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 01:14:30 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,12 @@ Server::~Server() {
     delete _workers[i];
   }
   _workers.clear();
+  close(_epollSocket);
+  for (std::map<int, ListenConfig>::iterator it = _listenSockets.begin();
+       it != _listenSockets.end(); ++it) {
+    close(it->first);
+  }
+  _listenSockets.clear();
   pthread_mutex_destroy(&_mutex);
   CacheHandler::deleteInstance();
   ConfigManager::deleteInstance();
@@ -87,11 +93,8 @@ void Server::start() {
       usleep(1000);
       continue;
     }
-    for (int i = 0; i < nfds && _running; i++) {
-      _log.info("SERVER: event " + Utils::to_string(i) + ": " +
-                Utils::to_string(events[i].data.fd));
+    for (int i = 0; i < nfds && _running; i++)
       _events.push(events[i]);
-    }
   }
 }
 
@@ -223,7 +226,7 @@ void Server::_setupServerSockets() {
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
     event.data.fd = sock;
-    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+    event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {
       close(sock);
       _log.error(std::string("SERVER (assign conn): Failed \"epoll_ctl\": ") +

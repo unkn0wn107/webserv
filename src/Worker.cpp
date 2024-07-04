@@ -42,11 +42,6 @@ bool Worker::Thread::create(void* (*start_routine)(void*), void* arg) {
   return pthread_create(&_thread, NULL, start_routine, arg) == 0;
 }
 
-// Worker::Mutex::Mutex() { pthread_mutex_init(&_mutex, NULL); }
-// Worker::Mutex::~Mutex() { pthread_mutex_destroy(&_mutex); }
-// void Worker::Mutex::lock() { pthread_mutex_lock(&_mutex); }
-// void Worker::Mutex::unlock() { pthread_mutex_unlock(&_mutex); }
-
 void Worker::start() {
   if (!_thread.create(_workerRoutine, this)) {
     _log.error("WORKER : Failed to create thread");
@@ -92,18 +87,25 @@ void Worker::_runEventLoop() {
     if (_listenSockets.find(event.data.fd) != _listenSockets.end() && (event.events & EPOLLIN)) {
         _acceptNewConnection(event.data.fd);
     } else {
-        ConnectionHandler* handler = reinterpret_cast<ConnectionHandler*>(event.data.ptr);
+        ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
         _log.info("WORKER (" + Utils::to_string(_threadId) +
                   "): Handler: " + (handler ? "Valid" : "Invalid"));
         if (handler && _handlers.find(handler->getSocket()) != _handlers.end() && event.events) {
-            if (handler->processConnection() == 0) {
+            if (handler->processConnection() == 1) {
               _handlers.erase(handler->getSocket());
+              _log.warning("WORKER (" + Utils::to_string(_threadId) +
+                        "): Handler deleted with con status " + Utils::to_string(handler->getConnectionStatus()));
               delete handler;
+              continue;
             }
         } else {
+          if (handler->getSocket() > 0) {
+            _log.info("WORKER (" + Utils::to_string(_threadId) +
+                      "): Event pushed back to Queue " + Utils::to_string(handler->getSocket()));
             _events.push(event);
             usleep(500);
             continue;
+          }
         }
     }
 
@@ -116,9 +118,11 @@ void Worker::_runEventLoop() {
                    " seconds");
     }
   }
+
   _log.info("WORKER (" + Utils::to_string(_threadId) +
             "): Cleaning up handlers");
   for (std::map<int, ConnectionHandler*>::iterator it = _handlers.begin(); it != _handlers.end(); ++it) {
+    it->second->closeClientSocket();
     delete it->second;
   }
   _handlers.clear(); // Ensure all handler pointers are removed after deletion
@@ -145,7 +149,6 @@ void Worker::_acceptNewConnection(int fd) {
     }
     _log.info("WORKER (" + Utils::to_string(_threadId) +
               "): Accepted new connection: " + Utils::to_string(new_socket));
-    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     ListenConfig                listenConfig = _listenSockets[fd];
     std::vector<VirtualServer*> virtualServers =
         _setupAssociatedVirtualServers(listenConfig);
@@ -153,6 +156,7 @@ void Worker::_acceptNewConnection(int fd) {
         new_socket, _epollSocket, virtualServers, listenConfig);
     _handlers[new_socket] = handler;
     event.data.ptr = handler;
+    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
       _log.error("WORKER (" + Utils::to_string(_threadId) +
                  "): Failed \"epoll_ctl\"");

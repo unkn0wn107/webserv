@@ -6,15 +6,16 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 01:14:30 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 20:47:08 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Server.hpp"
 #include <climits>
+
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 #include "EventQueue.hpp"
+#include "Server.hpp"
 #include "Utils.hpp"
 
 Server* Server::_instance = NULL;
@@ -23,6 +24,8 @@ int     Server::_callCount = 1;
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
+      _listenSockets(),
+      _listenEventData(),
       _activeWorkers(0),
       _events() {
   _log.info("====================SERVER: Setup server " +
@@ -46,7 +49,12 @@ Server::~Server() {
        it != _listenSockets.end(); ++it) {
     close(it->first);
   }
+  for (std::set<EventData*>::iterator it = _listenEventData.begin();
+       it != _listenEventData.end(); ++it) {
+    delete *it;
+  }
   _listenSockets.clear();
+  _listenEventData.clear();
   pthread_mutex_destroy(&_mutex);
   CacheHandler::deleteInstance();
   ConfigManager::deleteInstance();
@@ -225,10 +233,12 @@ void Server::_setupServerSockets() {
 
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
-    event.data.fd = sock;
+    EventData* eventData = new EventData(sock, NULL, -1, true);
+    event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {
       close(sock);
+      delete eventData;
       _log.error(std::string("SERVER (assign conn): Failed \"epoll_ctl\": ") +
                  strerror(errno) + " (" + Utils::to_string(sock) + ")");
       continue;
@@ -236,5 +246,6 @@ void Server::_setupServerSockets() {
     _log.info("SERVER (assign conn): Add socket to epoll : " +
               Utils::to_string(sock));
     _listenSockets[sock] = listenConfig;
+    _listenEventData.insert(eventData);
   }
 }

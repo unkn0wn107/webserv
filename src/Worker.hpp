@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/03 18:32:56 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/05 01:40:26 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,11 +22,12 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
-#include <queue>
 #include <map>
+#include <queue>
 
 #include "Common.hpp"
 #include "ConnectionHandler.hpp"
+#include "EventData.hpp"
 #include "EventQueue.hpp"
 #include "Logger.hpp"
 #include "Server.hpp"
@@ -43,13 +44,13 @@ class Worker {
   Worker(Server&                      server,
          int                          epollSocket,
          std::map<int, ListenConfig>& listenSockets,
-         EventQueue& events);
+         EventQueue&                  events);
   ~Worker();
 
-  void start();
-  void stop();
+  void  start();
+  void  stop();
   pid_t getThreadId() const;
-  int  getLoad() const;
+  int   getLoad() const;
 
  private:
   class Thread {
@@ -74,17 +75,23 @@ class Worker {
   //   pthread_mutex_t _mutex;
   // };
 
-  static void* _workerRoutine(void* arg);
-  void         _runEventLoop();
-  void         _acceptNewConnection(int fd);
-  void         _handleIncomingConnection(epoll_event& event);
+  static void*                _workerRoutine(void* arg);
+  void                        _runEventLoop();
+  void                        _acceptNewConnection(int fd);
+  void                        _handleIncomingConnection(epoll_event& event);
   std::vector<VirtualServer*> _setupAssociatedVirtualServers(
       const ListenConfig& listenConfig);
+  void _launchEventProcessing(EventData* eventData, struct epoll_event& event);
+  void _pushBackToQueue(EventData* eventData, const struct epoll_event& event);
+
+  void _cleanUpForceResponse();
+  void _cleanUpSendings();
+  void _cleanUpAll();
 
   Server&                      _server;
-  EventQueue& _events;
+  EventQueue&                  _events;
   Thread                       _thread;
-  std::map<int, ConnectionHandler*> _handlers;
+  std::map<int, EventData*>    _eventsData;
   const Config&                _config;
   Logger&                      _log;
   int                          _epollSocket;
@@ -92,7 +99,7 @@ class Worker {
   int                          _load;
   bool                         _shouldStop;
   // Mutex                        _mutex;
-  pid_t                        _threadId;
+  pid_t _threadId;
 
   Worker(const Worker&);
   Worker& operator=(const Worker&);

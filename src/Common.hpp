@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Common.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 11:09:02 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/07/02 12:48:06 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/05 02:47:41 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,20 @@ int         set_non_blocking(int sockfd);
 void        signalHandler(int signum);
 std::string generateSessionId(void);
 
-enum ConnectionStatus { READING, EXECUTING, SENDING, CLOSED };
+enum ConnectionStatus { READING, EXECUTING, SENDING, ERROR, CLOSED };
+
+enum CGIState {
+  NONE,
+  INIT,
+  CACHE_CHECK,
+  PROCESS_SETUP,
+  RUN_SCRIPT,
+  READ_FROM_CGI,
+  PROCESS_OUTPUT,
+  FINALIZE_RESPONSE,
+  ADD_HEADERS,
+  DONE,
+  CGI_ERROR,
+};
 
 #endif

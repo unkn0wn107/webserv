@@ -36,28 +36,31 @@ class ConnectionHandler;
 
 class CGIHandler {
  public:
-  CGIHandler(HTTPRequest&       request,
-             HTTPResponse&      response,
-             int                epollSocket,
+  CGIHandler(HTTPRequest&          request,
+             HTTPResponse&         response,
+             int                   epollSocket,
              const LocationConfig& location,
-             ConnectionHandler* connectionHandler);
+             ConnectionHandler*    connectionHandler);
   ~CGIHandler();
 
-  int getCgifd();
+  int      getCgifd();
+  CGIState getCgiState();
 
   /**
    * Check if url has an executable file extension.
    * @param request The HTTP request object.
    * @return true if the URL ends with a registered CGI script extension.
    */
-  static bool isScript(const HTTPRequest& request,
+  static bool isScript(const HTTPRequest&    request,
                        const LocationConfig& location);
 
   /**
    * Handles the CGI request and generates an HTTP response.
    * @return HTTPResponse object containing the response from the CGI script.
    */
-  int handleCGIRequest();
+  ConnectionStatus handleCGIRequest();
+
+  ConnectionStatus mapStateToConnectionStatus() const;
 
   class NoRuntimeError : public Exception {
    public:
@@ -123,19 +126,21 @@ class CGIHandler {
   static Logger&       _log;
   static CacheHandler& _cacheHandler;
 
-  int                _epollSocket;
-  ConnectionHandler* _connectionHandler;
-  HTTPRequest&       _request;
-  HTTPResponse&      _response;
-  const LocationConfig&    _location;
-  std::string        _processOutput;
-  size_t             _processOutputSize;
-  std::string        _runtime;
-  std::string        _root;
-  std::string        _index;
-  bool               _cgi;
-  bool               _done;
-  pthread_mutex_t    _mutex;
+  CGIState _state;
+
+  int                   _epollSocket;
+  ConnectionHandler*    _connectionHandler;
+  HTTPRequest&          _request;
+  HTTPResponse&         _response;
+  const LocationConfig& _location;
+  std::string           _processOutput;
+  size_t                _processOutputSize;
+  std::string           _runtime;
+  std::string           _root;
+  std::string           _index;
+  bool                  _cgi;
+  bool                  _done;
+  pthread_mutex_t       _mutex;
 
   std::vector<char*> _argv;
   std::vector<char*> _envp;
@@ -152,7 +157,7 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return String representing the runtime to be used.
    */
-  static const std::string _identifyRuntime(const HTTPRequest& request,
+  static const std::string _identifyRuntime(const HTTPRequest&    request,
                                             const LocationConfig& location);
 
   /**
@@ -169,8 +174,9 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return Array of environment variable strings.
    */
-  static std::vector<char*> _buildScriptEnvironment(const HTTPRequest& request,
-                                     const LocationConfig& location);
+  static std::vector<char*> _buildScriptEnvironment(
+      const HTTPRequest&    request,
+      const LocationConfig& location);
 
   /**
    * Generates a list of arguments for the CGI script based on the HTTP request.
@@ -178,33 +184,33 @@ class CGIHandler {
    * @return A vector of strings, each representing an argument for the CGI
    * script.
    */
-  static std::vector<char*> _buildScriptArguments(const HTTPRequest& request,
-                                     const LocationConfig& location);
+  static std::vector<char*> _buildScriptArguments(
+      const HTTPRequest&    request,
+      const LocationConfig& location);
 
   /**
    * Executes the parent process logic for CGI script execution.
-   * @return Status code indicating the result of the execution.
    */
-  int  _executeParentProcess();
+  void _executeParentProcess();
 
   /**
    * Processes the output from the CGI script after execution.
-   * @return Status code indicating the result of the post-processing.
    */
-  int  _postProcessOutput();
+  void _postProcessOutput();
 
   /**
    * Parses the headers from the CGI script output.
    * @param headerPart The header part of the CGI script output.
    * @return A map containing the parsed headers.
    */
-  std::map<std::string, std::string> _parseOutputHeaders(const std::string& headerPart);
+  std::map<std::string, std::string> _parseOutputHeaders(
+      const std::string& headerPart);
 
   /**
    * Processes the CGI request.
    * @return Status code indicating the result of the request processing.
    */
-  int  _processRequest();
+  int _processRequest();
 
   /**
    * Runs the CGI script.

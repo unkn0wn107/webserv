@@ -39,11 +39,11 @@ class Utils {
 };
 
 class LockGuard {
-public:
+ public:
   explicit LockGuard(pthread_mutex_t& mutex);
   ~LockGuard();
 
-private:
+ private:
   pthread_mutex_t& _mutex;
 };
 

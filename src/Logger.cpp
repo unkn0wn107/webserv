@@ -11,12 +11,12 @@
 /* ************************************************************************** */
 
 #include "Logger.hpp"
-#include "Utils.hpp"
 #include <algorithm>
 #include <ctime>
 #include <iostream>
 #include <sstream>
 #include "Config.hpp"
+#include "Utils.hpp"
 
 Logger* Logger::_instance = NULL;
 
@@ -56,39 +56,39 @@ void Logger::_openLogFile() {
 }
 
 void Logger::info(const std::string& message) const {
-  LockGuard lock(_mutex);
+  LockGuard   lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] INFO: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
-  std::cout << "\033[1;32m" << msg << "\033[0m" << std::endl; // Green
+  std::cout << "\033[1;32m" << msg << "\033[0m" << std::endl;  // Green
 }
 
 void Logger::warning(const std::string& message) const {
-  LockGuard lock(_mutex);
+  LockGuard   lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] WARNING: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
-  std::cout << "\033[1;33m" << msg << "\033[0m" << std::endl; // Yellow
+  std::cout << "\033[1;33m" << msg << "\033[0m" << std::endl;  // Yellow
 }
 
 void Logger::error(const std::string& message) const {
-  LockGuard lock(_mutex);
+  LockGuard   lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] ERROR: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
-  std::cerr << "\033[1;31m" << msg << "\033[0m" << std::endl; // Red
+  std::cerr << "\033[1;31m" << msg << "\033[0m" << std::endl;  // Red
 }
 
 void Logger::emerg(const std::string& message) const {
-  LockGuard lock(_mutex);
+  LockGuard   lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] EMERG: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
-  std::cerr << "\033[1;35m" << msg << "\033[0m" << std::endl; // Magenta
+  std::cerr << "\033[1;35m" << msg << "\033[0m" << std::endl;  // Magenta
 }
 
 std::string Logger::_getCurrentTime() const {

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 17:50:44 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 20:47:14 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@
 
 #include "Common.hpp"
 #include "Config.hpp"
+#include "EventData.hpp"
 #include "EventQueue.hpp"
 #include "Logger.hpp"
 #include "Worker.hpp"
@@ -40,6 +41,7 @@ class Server {
   Logger&                                     _log;
   std::vector<Worker*>                        _workers;
   std::map<int, ListenConfig>                 _listenSockets;
+  std::set<EventData*>                        _listenEventData;
   pthread_mutex_t                             _mutex;
   int                                         _epollSocket;
   int                                         _activeWorkers;

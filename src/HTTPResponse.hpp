@@ -28,10 +28,12 @@
 #define ERR_PAGE_400                                                           \
   "<!DOCTYPE html><html><body><h1>400 Bad Request</h1><p>Your browser sent a " \
   "request that this server could not understand.</p></body></html>"
-#define ERR_PAGE_401 \
-  "<!DOCTYPE html><html><body><h1>401 Unauthorized</h1><p>Authentication is required and has failed or has not yet been provided.</p></body></html>"
-#define ERR_PAGE_402 \
-  "<!DOCTYPE html><html><body><h1>402 Payment Required</h1><p>This request requires payment.</p></body></html>"
+#define ERR_PAGE_401                                                          \
+  "<!DOCTYPE html><html><body><h1>401 Unauthorized</h1><p>Authentication is " \
+  "required and has failed or has not yet been provided.</p></body></html>"
+#define ERR_PAGE_402                                                         \
+  "<!DOCTYPE html><html><body><h1>402 Payment Required</h1><p>This request " \
+  "requires payment.</p></body></html>"
 #define ERR_PAGE_403                                                    \
   "<!DOCTYPE html><html><body><h1>403 Forbidden</h1><p>You don't have " \
   "permission to access this resource.</p></body></html>"
@@ -41,34 +43,54 @@
 #define ERR_PAGE_405                                                          \
   "<!DOCTYPE html><html><body><h1>405 Method Not Allowed</h1><p>The request " \
   "method is not supported for the requested resource.</p></body></html>"
-#define ERR_PAGE_406 \
-  "<!DOCTYPE html><html><body><h1>406 Not Acceptable</h1><p>The requested resource is capable of generating only content not acceptable according to the Accept headers sent in the request.</p></body></html>"
-#define ERR_PAGE_407 \
-  "<!DOCTYPE html><html><body><h1>407 Proxy Authentication Required</h1><p>Authentication with the proxy is required.</p></body></html>"
-#define ERR_PAGE_408 \
-  "<!DOCTYPE html><html><body><h1>408 Request Timeout</h1><p>The server timed out waiting for the request.</p></body></html>"
-#define ERR_PAGE_409 \
-  "<!DOCTYPE html><html><body><h1>409 Conflict</h1><p>The request could not be completed due to a conflict with the current state of the resource.</p></body></html>"
-#define ERR_PAGE_410 \
-  "<!DOCTYPE html><html><body><h1>410 Gone</h1><p>The requested resource is no longer available and will not be available again.</p></body></html>"
-#define ERR_PAGE_411 \
-  "<!DOCTYPE html><html><body><h1>411 Length Required</h1><p>The request did not specify the length of its content, which is required by the requested resource.</p></body></html>"
-#define ERR_PAGE_412 \
-  "<!DOCTYPE html><html><body><h1>412 Precondition Failed</h1><p>The server does not meet one of the preconditions that the requester put on the request.</p></body></html>"
-#define ERR_PAGE_413                                                          \
+#define ERR_PAGE_406                                                         \
+  "<!DOCTYPE html><html><body><h1>406 Not Acceptable</h1><p>The requested "  \
+  "resource is capable of generating only content not acceptable according " \
+  "to the Accept headers sent in the request.</p></body></html>"
+#define ERR_PAGE_407                                         \
+  "<!DOCTYPE html><html><body><h1>407 Proxy Authentication " \
+  "Required</h1><p>Authentication with the proxy is "        \
+  "required.</p></body></html>"
+#define ERR_PAGE_408                                                      \
+  "<!DOCTYPE html><html><body><h1>408 Request Timeout</h1><p>The server " \
+  "timed out waiting for the request.</p></body></html>"
+#define ERR_PAGE_409                                                          \
+  "<!DOCTYPE html><html><body><h1>409 Conflict</h1><p>The request could not " \
+  "be completed due to a conflict with the current state of the "             \
+  "resource.</p></body></html>"
+#define ERR_PAGE_410                                                          \
+  "<!DOCTYPE html><html><body><h1>410 Gone</h1><p>The requested resource is " \
+  "no longer available and will not be available again.</p></body></html>"
+#define ERR_PAGE_411                                                           \
+  "<!DOCTYPE html><html><body><h1>411 Length Required</h1><p>The request did " \
+  "not specify the length of its content, which is required by the requested " \
+  "resource.</p></body></html>"
+#define ERR_PAGE_412                                                          \
+  "<!DOCTYPE html><html><body><h1>412 Precondition Failed</h1><p>The server " \
+  "does not meet one of the preconditions that the requester put on the "     \
+  "request.</p></body></html>"
+#define ERR_PAGE_413                                                        \
   "<!DOCTYPE html><html><body><h1>413 Request Entity Too Large</h1><p>The " \
   "request entity is too large for the server to process.</p></body></html>"
-#define ERR_PAGE_414 \
-  "<!DOCTYPE html><html><body><h1>414 URI Too Long</h1><p>The URI provided was too long for the server to process.</p></body></html>"
-#define ERR_PAGE_415 \
-  "<!DOCTYPE html><html><body><h1>415 Unsupported Media Type</h1><p>The request entity has a media type which the server or resource does not support.</p></body></html>"
-#define ERR_PAGE_416 \
-  "<!DOCTYPE html><html><body><h1>416 Range Not Satisfiable</h1><p>The client has asked for a portion of the file, but the server cannot supply that portion.</p></body></html>"
-#define ERR_PAGE_417 \
-  "<!DOCTYPE html><html><body><h1>417 Expectation Failed</h1><p>The server cannot meet the requirements of the Expect request-header field.</p></body></html>"
-#define ERR_PAGE_426 \
-  "<!DOCTYPE html><html><body><h1>426 Upgrade Required</h1><p>The client should switch to a different protocol.</p></body></html>"
-#define ERR_PAGE_500                                                          \
+#define ERR_PAGE_414                                                         \
+  "<!DOCTYPE html><html><body><h1>414 URI Too Long</h1><p>The URI provided " \
+  "was too long for the server to process.</p></body></html>"
+#define ERR_PAGE_415                                                       \
+  "<!DOCTYPE html><html><body><h1>415 Unsupported Media Type</h1><p>The "  \
+  "request entity has a media type which the server or resource does not " \
+  "support.</p></body></html>"
+#define ERR_PAGE_416                                                          \
+  "<!DOCTYPE html><html><body><h1>416 Range Not Satisfiable</h1><p>The "      \
+  "client has asked for a portion of the file, but the server cannot supply " \
+  "that portion.</p></body></html>"
+#define ERR_PAGE_417                                                         \
+  "<!DOCTYPE html><html><body><h1>417 Expectation Failed</h1><p>The server " \
+  "cannot meet the requirements of the Expect request-header "               \
+  "field.</p></body></html>"
+#define ERR_PAGE_426                                                       \
+  "<!DOCTYPE html><html><body><h1>426 Upgrade Required</h1><p>The client " \
+  "should switch to a different protocol.</p></body></html>"
+#define ERR_PAGE_500                                                      \
   "<!DOCTYPE html><html><body><h1>500 Internal Server Error</h1><p>The "  \
   "server encountered an internal error and was unable to complete your " \
   "request.</p></body></html>"
@@ -119,7 +141,7 @@ class HTTPResponse {
   HTTPResponse(const HTTPResponse& other);
   ~HTTPResponse();
   // TODO : Check if doesn't carry const config is an issue
-  HTTPResponse& operator=(const HTTPResponse& other);
+  HTTPResponse&      operator=(const HTTPResponse& other);
   static std::string getContentType(const std::string& path);
   static std::string getExtensionFromContentType(
       const std::string& contentType);

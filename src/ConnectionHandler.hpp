@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 02:03:35 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/05 01:34:46 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,19 +34,24 @@ class CGIHandler;
 
 class ConnectionHandler {
  public:
-  int                 getConnectionStatus() const;
-  int                 getSocket() const;
+  ConnectionStatus    getConnectionStatus() const;
+  std::string         getStatusString() const;
+  int                 processConnection(struct epoll_event& event);
+  void                setInternalServerError();
+  void                forceSendResponse();
   void                closeClientSocket();
   static const int    MAX_TRIES;
   static const time_t TIMEOUT;
+
+  bool isBusy();
+  void setBusy();
+  void setNotBusy();
 
   ConnectionHandler(int                          clientSocket,
                     int                          epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
                     ListenConfig&                listenConfig);
   ~ConnectionHandler();
-  int  processConnection();
-  // bool isMarkedForDeletion();
 
   class ConnectionException : public Exception {
    public:
@@ -77,7 +82,8 @@ class ConnectionHandler {
 
  private:
   Logger&                     _log;
-  int                         _connectionStatus;
+  bool                        _busy;
+  ConnectionStatus            _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
   size_t                      _rcvbuf;
@@ -90,28 +96,28 @@ class ConnectionHandler {
   int                         _count;
   time_t                      _startTime;
   CGIHandler*                 _cgiHandler;
+  CGIState                    _cgiState;
   pthread_mutex_t             _mutex;
   pthread_mutex_t             _statusMutex;
   int                         _step;
 
-  void           _receiveRequest();
-  void           _processRequest();
-  VirtualServer* _selectVirtualServer(std::string host);
-  VirtualServer* _findDefaultServer();
-  std::string    _extractHost(const std::string& requestHeader);
-  void           _sendResponse();
-  void           _processData();
-  int            _checkConnectionStatus();
-  void           _setConnectionStatus(int status);
+  void             _receiveRequest();
+  void             _processRequest();
+  VirtualServer*   _selectVirtualServer(std::string host);
+  VirtualServer*   _findDefaultServer();
+  std::string      _extractHost(const std::string& requestHeader);
+  void             _sendResponse();
+  void             _makeAction();
+  ConnectionStatus _checkConnectionStatus();
+  void             _setConnectionStatus(ConnectionStatus status);
 
-  void           _processReadingState();
-  void           _processExecutingState();
-  void           _processSendingState();
+  void _processExecutingState();
+  void _cleanupCGIHandler();
 
-  void           _modifyEpollEventsForReading(struct epoll_event& event);
-  void           _modifyEpollEventsForExecuting(struct epoll_event& event);
-  void           _modifyEpollEventsForSending(struct epoll_event& event);
-  void           _handleClosedConnection(struct epoll_event& event, std::clock_t start);
+  void _modifyEpollEventsForReading(struct epoll_event& event);
+  void _modifyEpollEventsForExecuting(struct epoll_event& event);
+  void _modifyEpollEventsForSending(struct epoll_event& event);
+  void _handleClosedConnection();
 };
 
 #endif

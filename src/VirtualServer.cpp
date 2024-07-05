@@ -79,7 +79,7 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
   std::string method = request.getMethod();
   std::string uri = request.getURI();
   std::string body = request.getBody();
-  int contentLength = request.getContentLength();
+  int         contentLength = request.getContentLength();
 
   try {
     const LocationConfig& location = getLocationConfig(uri);
@@ -108,9 +108,11 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
       }
 
       if (contentLength != -1) {
-        if (static_cast<size_t>(contentLength) > location.client_max_body_size) {
+        if (static_cast<size_t>(contentLength) >
+            location.client_max_body_size) {
           _log.warning("CheckRequest: Content length too big");
-          return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE, location);
+          return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE,
+                                  location);
         }
         if (static_cast<size_t>(contentLength) != body.length()) {
           _log.warning("CheckRequest: Content length mismatch");
@@ -123,7 +125,7 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
       return new HTTPResponse(location.returnCode, location);
     }
 
-    return NULL; // Successful case with no specific response needed
+    return NULL;  // Successful case with no specific response needed
   } catch (const std::exception& e) {
     _log.warning("CheckRequest: Location not found for URI: " + uri);
     // Define a default location config for error handling
@@ -135,7 +137,7 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
 std::map<int, std::string> VirtualServer::_getErrorPages(
     const std::string& uri) {
   std::map<int, std::string> errorPages;
-  const LocationConfig& location = getLocationConfig(uri);
+  const LocationConfig&      location = getLocationConfig(uri);
   for (std::map<int, std::string>::const_iterator it =
            location.error_pages.begin();
        it != location.error_pages.end(); ++it) {

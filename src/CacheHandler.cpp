@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 01:44:27 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/04 22:55:38 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,7 +49,10 @@ int CacheHandler::getResponse(const HTTPRequest& request,
   std::map<std::string, std::pair<HTTPResponse*, time_t> >::const_iterator it =
       _cache.find(_generateKey(request));
   if (it != _cache.end()) {
-    if (it->second.second + _maxAge > time(NULL)) {  // Check cache freshness
+    if (it->second.first == NULL) {  // Check if cache is currently building
+      return -1;
+    } else if (it->second.second + _maxAge >
+               time(NULL)) {  // Check cache freshness
       response = *(it->second.first);
       return 1;
     } else {
@@ -63,7 +66,7 @@ int CacheHandler::getResponse(const HTTPRequest& request,
 void CacheHandler::storeResponse(const HTTPRequest&  request,
                                  const HTTPResponse& response) {
   std::string key = _generateKey(request);
-  LockGuard lock(_mutex);
+  LockGuard   lock(_mutex);
   if (_cache.find(key) == _cache.end())
     _cache[key] = std::make_pair(new HTTPResponse(response), time(NULL));
 }

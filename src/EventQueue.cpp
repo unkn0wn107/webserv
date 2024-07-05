@@ -11,10 +11,10 @@
 /* ************************************************************************** */
 
 #include "EventQueue.hpp"
-#include "Utils.hpp"
+#include <errno.h>
 #include <pthread.h>
 #include <queue>
-#include <errno.h>
+#include "Utils.hpp"
 
 EventQueue::EventQueue() {
   pthread_mutex_init(&_mutex, NULL);
@@ -27,32 +27,32 @@ EventQueue::~EventQueue() {
 }
 
 void EventQueue::push(const struct epoll_event& event) {
-    LockGuard lock(_mutex);
-    _queue.push(event);
-    pthread_cond_signal(&_cond);
+  LockGuard lock(_mutex);
+  _queue.push(event);
+  pthread_cond_signal(&_cond);
 }
 
 bool EventQueue::pop(struct epoll_event& event) {
-    LockGuard lock(_mutex);
-    while (_queue.empty()) {
-        pthread_cond_wait(&_cond, &_mutex);
-    }
-    event = _queue.front();
-    _queue.pop();
-    return true;
+  LockGuard lock(_mutex);
+  while (_queue.empty()) {
+    pthread_cond_wait(&_cond, &_mutex);
+  }
+  event = _queue.front();
+  _queue.pop();
+  return true;
 }
 
 bool EventQueue::try_pop(struct epoll_event& event) {
-    LockGuard lock(_mutex);
-    if (_queue.empty()) {
-        return false;
-    }
-    event = _queue.front();
-    _queue.pop();
-    return true;
+  LockGuard lock(_mutex);
+  if (_queue.empty()) {
+    return false;
+  }
+  event = _queue.front();
+  _queue.pop();
+  return true;
 }
 
 bool EventQueue::empty() const {
-    LockGuard lock(_mutex);
-    return _queue.empty();
+  LockGuard lock(_mutex);
+  return _queue.empty();
 }

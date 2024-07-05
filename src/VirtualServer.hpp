@@ -37,18 +37,18 @@ class VirtualServer {
  public:
   VirtualServer(const ServerConfig& serverConfig);
   ~VirtualServer();
-  bool            isDefaultServer();
-  bool            isHostMatching(const std::string& host) const;
-  HTTPResponse*   checkRequest(HTTPRequest& request);
-  std::string     getServerName() const;
-  HTTPResponse*   handleRequest(HTTPRequest& request);
+  bool                  isDefaultServer();
+  bool                  isHostMatching(const std::string& host) const;
+  HTTPResponse*         checkRequest(HTTPRequest& request);
+  std::string           getServerName() const;
+  HTTPResponse*         handleRequest(HTTPRequest& request);
   const LocationConfig& getLocationConfig(const std::string& uri) const;
-  std::string     getRoot() const;
-  void            storeSessionData(const std::string& sessionId,
-                                   const std::string& key,
-                                   const std::string& value);
-  std::string     getSessionData(const std::string& sessionId,
-                                 const std::string& key);
+  std::string           getRoot() const;
+  void                  storeSessionData(const std::string& sessionId,
+                                         const std::string& key,
+                                         const std::string& value);
+  std::string           getSessionData(const std::string& sessionId,
+                                       const std::string& key);
   void deleteSessionData(const std::string& sessionId, const std::string& key);
   void clearSessionData(const std::string& sessionId);
 };

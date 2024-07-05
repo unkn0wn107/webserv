@@ -37,11 +37,11 @@ class ConfigManager {
    * Retrieve all config.
    * @return The configuration object.
    */
-  Config&         getConfig();
-  ServerConfig&   getServerConfig();
+  Config&               getConfig();
+  ServerConfig&         getServerConfig();
   const LocationConfig& getLocationConfig() const;
-  ListenConfig&   getListenConfig();
-  static void     printConfig();
+  ListenConfig&         getListenConfig();
+  static void           printConfig();
 
   static void loadConfig(const std::string& filepath);
 

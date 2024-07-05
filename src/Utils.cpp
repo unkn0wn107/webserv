@@ -6,11 +6,12 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:32 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 02:20:50 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/05 03:04:49 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Utils.hpp"
+#include "Common.hpp"
 
 template <typename T>
 T Utils::stoi(const std::string& str) {

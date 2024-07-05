@@ -210,9 +210,7 @@ HTTPResponse::HTTPResponse(const HTTPResponse& other)
       _responseBufferSize(other._responseBufferSize),
       _responseBufferPos(other._responseBufferPos),
       _responseFilePos(other._responseFilePos),
-      _fileSize(other._fileSize) {
-}
-
+      _fileSize(other._fileSize) {}
 
 HTTPResponse::~HTTPResponse() {
   _headers.clear();

@@ -13,11 +13,12 @@
 #include "Worker.hpp"
 #include "Common.hpp"
 #include "ConfigManager.hpp"
+#include "EventData.hpp"
 
 Worker::Worker(Server&                      server,
                int                          epollSocket,
                std::map<int, ListenConfig>& listenSockets,
-               EventQueue& events)
+               EventQueue&                  events)
     : _server(server),
       _events(events),
       _config(ConfigManager::getInstance().getConfig()),
@@ -74,6 +75,7 @@ void* Worker::_workerRoutine(void* arg) {
 
 void Worker::_runEventLoop() {
   while (!_shouldStop) {
+    std::clock_t       start = std::clock();
     struct epoll_event event;
 
     if (!_events.try_pop(event)) {
@@ -84,49 +86,65 @@ void Worker::_runEventLoop() {
     _log.info("WORKER (" + Utils::to_string(_threadId) +
               "): Event: " + Utils::to_string(event.events));
 
-    if (_listenSockets.find(event.data.fd) != _listenSockets.end() && (event.events & EPOLLIN)) {
-        _acceptNewConnection(event.data.fd);
-    } else {
-        ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
-        _log.info("WORKER (" + Utils::to_string(_threadId) +
-                  "): Handler: " + (handler ? "Valid" : "Invalid"));
-        if (handler && _handlers.find(handler->getSocket()) != _handlers.end() && event.events) {
-            if (handler->processConnection() == 1) {
-              _handlers.erase(handler->getSocket());
-              _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                        "): Handler deleted with con status " + Utils::to_string(handler->getConnectionStatus()));
-              delete handler;
-              continue;
-            }
-        } else {
-          if (handler->getSocket() > 0) {
-            _log.info("WORKER (" + Utils::to_string(_threadId) +
-                      "): Event pushed back to Queue " + Utils::to_string(handler->getSocket()));
-            _events.push(event);
-            usleep(500);
-            continue;
-          }
-        }
+    EventData* eventData = static_cast<EventData*>(event.data.ptr);
+    if (eventData->isListening && (event.events & EPOLLIN)) {
+      _acceptNewConnection(eventData->fd);
+    } else if (eventData->handler) {
+      if (eventData->handler->isBusy())
+        _pushBackToQueue(eventData, event);
+      else if (event.events) {  // (eventData->threadId == _threadId ||
+                                // eventData->threadId == -1) &&
+        // Handle own thread affiliated events and events with no thread
+        // affinity
+        eventData->handler->setBusy();
+        _launchEventProcessing(eventData, event);
+      } else {
+        _pushBackToQueue(eventData, event);
+      }
     }
 
-    std::clock_t _start = std::clock();
     std::clock_t end = std::clock();
-    double duration = static_cast<double>(end - _start) / CLOCKS_PER_SEC;
+    double       duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;
     if (duration > 0.005) {
       _log.warning("WORKER (" + Utils::to_string(_threadId) +
                    "): Event loop time: " + Utils::to_string(duration) +
                    " seconds");
     }
   }
+  _cleanUpForceResponse();
+  _cleanUpSendings();
+  _cleanUpAll();
+}
 
-  _log.info("WORKER (" + Utils::to_string(_threadId) +
-            "): Cleaning up handlers");
-  for (std::map<int, ConnectionHandler*>::iterator it = _handlers.begin(); it != _handlers.end(); ++it) {
-    it->second->closeClientSocket();
-    delete it->second;
+void Worker::_launchEventProcessing(EventData*          eventData,
+                                    struct epoll_event& event) {
+  int handlerStatus = 0;
+  try {
+    handlerStatus = eventData->handler->processConnection(event);
+    eventData->handler->setNotBusy();
+  } catch (std::exception& e) {
+    eventData->handler->setNotBusy();
   }
-  _handlers.clear(); // Ensure all handler pointers are removed after deletion
-  _log.info("WORKER (" + Utils::to_string(_threadId) + "): End of event loop");
+
+  if (handlerStatus == 1) {  // Done
+    _eventsData.erase(eventData->fd);
+    _log.warning("WORKER (" + Utils::to_string(_threadId) +
+                 "): Handler deleted with con status " +
+                 eventData->handler->getStatusString());
+    delete eventData->handler;
+    delete eventData;
+  }
+}
+
+void Worker::_pushBackToQueue(EventData*                eventData,
+                              const struct epoll_event& event) {
+  if (eventData->fd > 0) {
+    _log.info("WORKER (" + Utils::to_string(_threadId) +
+              "): Event pushed back to Queue for other thread " +
+              Utils::to_string(eventData->threadId));
+    _events.push(event);
+    usleep(500);
+  }
 }
 
 void Worker::_acceptNewConnection(int fd) {
@@ -136,16 +154,22 @@ void Worker::_acceptNewConnection(int fd) {
   struct epoll_event      event;
 
   memset(&address, 0, sizeof(address));
-  memset(&event, 0, sizeof(event));
-  while (!_shouldStop) {
-    new_socket = accept(fd, (struct sockaddr*)&address, &addrlen); //creer un nouveau sockect d'echange d'event
+  if (!_shouldStop) {
+    new_socket =
+        accept(fd, (struct sockaddr*)&address,
+               &addrlen);  // creer un nouveau sockect d'echange d'event
     if (new_socket <= 0) {
-      break;
+      _log.error("WORKER (" + Utils::to_string(_threadId) +
+                 "): Failed \"accept\" on listening socket " +
+                 Utils::to_string(fd));
+      return;
     }
     if (set_non_blocking(new_socket) == -1) {
       _log.error("WORKER (" + Utils::to_string(_threadId) +
-                 "): Failed \"set_non_blocking\"");
-      continue;
+                 "): Failed \"set_non_blocking\" on new socket " +
+                 Utils::to_string(new_socket));
+      close(new_socket);
+      return;
     }
     _log.info("WORKER (" + Utils::to_string(_threadId) +
               "): Accepted new connection: " + Utils::to_string(new_socket));
@@ -154,29 +178,20 @@ void Worker::_acceptNewConnection(int fd) {
         _setupAssociatedVirtualServers(listenConfig);
     ConnectionHandler* handler = new ConnectionHandler(
         new_socket, _epollSocket, virtualServers, listenConfig);
-    _handlers[new_socket] = handler;
-    event.data.ptr = handler;
+    EventData* eventData = new EventData(new_socket, handler, _threadId);
+    _eventsData[new_socket] = eventData;
+    event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
       _log.error("WORKER (" + Utils::to_string(_threadId) +
-                 "): Failed \"epoll_ctl\"");
+                 "): Failed \"epoll_ctl\" on new socket " +
+                 Utils::to_string(new_socket));
       close(new_socket);
-      continue;
+      delete handler;
+      delete eventData;
     }
   }
 }
-
-// void Worker::_handleIncomingConnection(epoll_event& event) {
-//   ConnectionHandler* handler = static_cast<ConnectionHandler*>(event.data.ptr);
-//   _log.info("WORKER (" + Utils::to_string(_threadId) +
-//             "): Handling incoming connection at address " +
-//             Utils::to_string(reinterpret_cast<uintptr_t>(event.data.ptr)));
-//   if (handler->processConnection() == 1)
-//     return;
-//   delete handler;
-//   event.data.ptr = NULL;
-//   epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, &event);
-// }
 
 std::vector<VirtualServer*> Worker::_setupAssociatedVirtualServers(
     const ListenConfig& listenConfig) {
@@ -193,4 +208,55 @@ std::vector<VirtualServer*> Worker::_setupAssociatedVirtualServers(
     }
   }
   return virtualServers;
+}
+
+void Worker::_cleanUpForceResponse() {
+  bool hasOtherStatus = true;
+  while (hasOtherStatus) {
+    hasOtherStatus = false;
+    for (std::map<int, EventData*>::iterator it = _eventsData.begin();
+         it != _eventsData.end(); ++it) {
+      if (!it->second->handler) {
+        _eventsData.erase(it);
+        continue;
+      }
+      ConnectionStatus status = it->second->handler->getConnectionStatus();
+      if (status != SENDING && status != CLOSED &&
+          !it->second->handler->isBusy()) {
+        it->second->handler->setInternalServerError();
+        hasOtherStatus = true;
+      }
+    }
+  }
+}
+
+void Worker::_cleanUpSendings() {
+  bool hasSending = true;
+  while (hasSending) {
+    hasSending = false;
+    for (std::map<int, EventData*>::iterator it = _eventsData.begin();
+         it != _eventsData.end(); ++it) {
+      if (!it->second->handler) {
+        _eventsData.erase(it);
+        continue;
+      }
+      if (it->second->handler->getConnectionStatus() == SENDING &&
+          !it->second->handler->isBusy()) {
+        it->second->handler->forceSendResponse();
+        hasSending = true;
+      }
+    }
+  }
+}
+
+void Worker::_cleanUpAll() {
+  for (std::map<int, EventData*>::iterator it = _eventsData.begin();
+       it != _eventsData.end(); ++it) {
+    if (!it->second->handler)
+      continue;
+    it->second->handler->closeClientSocket();
+    delete it->second->handler;
+    delete it->second;
+    _eventsData.erase(it);
+  }
 }

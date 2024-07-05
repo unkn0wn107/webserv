@@ -29,10 +29,13 @@
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
+#include "EventData.hpp"
+
 #define CGI_TIMEOUT_SEC 10
 // enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
 
 class ConnectionHandler;
+struct EventData;
 
 class CGIHandler {
  public:
@@ -130,9 +133,11 @@ class CGIHandler {
 
   int                   _epollSocket;
   ConnectionHandler*    _connectionHandler;
+  EventData*            _eventData;
   HTTPRequest&          _request;
   HTTPResponse&         _response;
   const LocationConfig& _location;
+  std::time_t           _runStartTime;
   std::string           _processOutput;
   size_t                _processOutputSize;
   std::string           _runtime;

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/04 19:31:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 20:13:56 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/05 21:33:12 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,8 @@
 #define EVENTDATA_HPP
 
 #include "ConnectionHandler.hpp"
+
+class ConnectionHandler;
 
 struct EventData {
   int                fd;

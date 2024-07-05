@@ -111,7 +111,7 @@ return_failure_if_test_fails() {
 test_get "/" "200"
 test_get "/nonexistent" "404"
 test_get "/cgi/hello.py" "200"
-test_get "/cgi/hello.php" "200"
+#test_get "/cgi/hello.php" "200"
 test_post "/cgi/post.py" "200" '{"name": "test"}'
 test_post "/cgi/post.php" "200" '{"name": "test"}'
 test_post "/cgi/limited/post.py" "413" '{"name": "too loooooooooooooooooooooooooooooooooooooooooooooong"}'

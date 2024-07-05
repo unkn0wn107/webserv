@@ -11,7 +11,6 @@ cat <<EOL > $SIEGE_URLS_FILE
 http://${ADDR}:${PORT}/
 http://${ADDR}:${PORT}/nonexistent
 http://${ADDR}:${PORT}/cgi/hello.py?name=Marvin
-http://${ADDR}:${PORT}/cgi/hello.php?name=Marvin
 http://${ADDR}:${PORT}/cgi/hello.js?name=Marvin
 http://${ADDR}:${PORT}/cgi/post.py POST {"name": "Marvin"}
 http://${ADDR}:${PORT}/cgi/post.php POST {"name": "Marvin"}

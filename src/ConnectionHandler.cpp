@@ -126,18 +126,14 @@ void ConnectionHandler::setNotBusy() {
 }
 
 ConnectionStatus ConnectionHandler::_checkConnectionStatus() {
-  pthread_mutex_lock(&_statusMutex);
   ConnectionStatus status = _connectionStatus;
-  pthread_mutex_unlock(&_statusMutex);
   return status;
 }
 
 void ConnectionHandler::_setConnectionStatus(ConnectionStatus status) {
   _log.info("CONNECTION_HANDLER: Setting connection status to: " +
             getStatusString());
-  pthread_mutex_lock(&_statusMutex);
   _connectionStatus = status;
-  pthread_mutex_unlock(&_statusMutex);
 }
 
 void ConnectionHandler::_receiveRequest() {
@@ -333,11 +329,11 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
             "): Status: " + getStatusString());
 
   try {
-    if (status == READING)
+    if (_checkConnectionStatus() == READING)
       _receiveRequest();
-    else if (status == EXECUTING)
+    if (_checkConnectionStatus() == EXECUTING)
       _processExecutingState();
-    else if (status == SENDING)
+    if (_checkConnectionStatus() == SENDING)
       _sendResponse();
   } catch (const Exception& e) {
     _setConnectionStatus(CLOSED);
@@ -362,13 +358,13 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       break;
 
     case EXECUTING:
-      event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-      if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(),
-                    &event) == -1) {
-        _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                               "): epoll_ctl: ") +
-                   strerror(errno));
-        close(_clientSocket);
+      if (_cgiState == SCRIPT_RUNNING) {
+        event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+        if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
+          _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                                 "): epoll_ctl: ") +
+                     strerror(errno));
+        }
       }
       break;
 

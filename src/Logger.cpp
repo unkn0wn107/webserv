@@ -6,17 +6,19 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/03 02:25:28 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/05 22:36:38 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Logger.hpp"
 #include <algorithm>
 #include <ctime>
 #include <iostream>
 #include <sstream>
+
+#include "Logger.hpp"
 #include "Config.hpp"
 #include "Utils.hpp"
+#include "Common.hpp"
 
 Logger* Logger::_instance = NULL;
 
@@ -56,39 +58,55 @@ void Logger::_openLogFile() {
 }
 
 void Logger::info(const std::string& message) const {
-  LockGuard   lock(_mutex);
+#if LOG_LEVEL >= LOG_LEVEL_INFO
+  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] INFO: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
   std::cout << "\033[1;32m" << msg << "\033[0m" << std::endl;  // Green
+#else
+  (void)message; // Avoid unused parameter warning
+#endif
 }
 
 void Logger::warning(const std::string& message) const {
-  LockGuard   lock(_mutex);
+#if LOG_LEVEL >= LOG_LEVEL_WARNING
+  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] WARNING: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
   std::cout << "\033[1;33m" << msg << "\033[0m" << std::endl;  // Yellow
+#else
+  (void)message; // Avoid unused parameter warning
+#endif
 }
 
 void Logger::error(const std::string& message) const {
-  LockGuard   lock(_mutex);
+#if LOG_LEVEL >= LOG_LEVEL_ERROR
+  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] ERROR: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
   std::cerr << "\033[1;31m" << msg << "\033[0m" << std::endl;  // Red
+#else
+  (void)message; // Avoid unused parameter warning
+#endif
 }
 
 void Logger::emerg(const std::string& message) const {
-  LockGuard   lock(_mutex);
+#if LOG_LEVEL >= LOG_LEVEL_ERROR // Assuming EMERG is at least as critical as ERROR
+  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] EMERG: " + message;
   if (_progLogFile->is_open()) {
     *_progLogFile << msg << std::endl;
   }
   std::cerr << "\033[1;35m" << msg << "\033[0m" << std::endl;  // Magenta
+#else
+  (void)message; // Avoid unused parameter warning
+#endif
 }
 
 std::string Logger::_getCurrentTime() const {

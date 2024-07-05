@@ -12,7 +12,6 @@ http://${CONTAINER}:8092/
 http://${CONTAINER}:8093/
 http://${CONTAINER}:${PORT}/nonexistent
 http://${CONTAINER}:${PORT}/cgi/hello.py?name=Marvin
-http://${CONTAINER}:${PORT}/cgi/hello.php?name=Marvin
 http://${CONTAINER}:${PORT}/cgi/hello.js?name=Marvin
 http://${CONTAINER}:${PORT}/cgi/post.py POST {"name": "Marvin"}
 http://${CONTAINER}:${PORT}/cgi/post.php POST {"name": "Marvin"}

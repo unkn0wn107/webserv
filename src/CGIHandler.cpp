@@ -11,7 +11,6 @@
 /* ************************************************************************** */
 
 #include "CGIHandler.hpp"
-#include "EventData.hpp"
 
 Logger&       CGIHandler::_log = Logger::getInstance();
 CacheHandler& CGIHandler::_cacheHandler = CacheHandler::getInstance();
@@ -24,9 +23,11 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
     : _state(INIT),
       _epollSocket(epollSocket),
       _connectionHandler(connectionHandler),
+      _eventData(NULL),
       _request(request),
       _response(response),
       _location(location),
+      _runStartTime(std::time(NULL)),
       _processOutput(""),
       _processOutputSize(0),
       _runtime(_identifyRuntime(_request, _location)),
@@ -48,6 +49,8 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
 CGIHandler::~CGIHandler() {
   _log.info("CGI: Destroying handler");
   epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
+  if (_eventData)
+    delete _eventData;
   close(_outpipefd[0]);
   if (_inpipefd[0] != -1)
     close(_inpipefd[0]);
@@ -123,76 +126,78 @@ void CGIHandler::_checkIfProcessingPossible() {
 }
 
 ConnectionStatus CGIHandler::handleCGIRequest() {
-  switch (_state) {
-    case INIT:
-      try {
-        _checkIfProcessingPossible();
-        std::string cacheControl = _request.getHeader("Cache-Control");
-        _log.info("CGI: cacheControl: " +
-                  (cacheControl.empty() ? "Empty header" : cacheControl));
+  bool continueProcessing = true;
 
-        if (cacheControl.empty())
-          _state = CACHE_CHECK;
-        else
-          _state = PROCESS_SETUP;
-        return handleCGIRequest();
-      } catch (...) {
-        throw;
-      }
-      break;
+  while (continueProcessing) {
+    _log.info("CGI: state: " + Utils::to_string(static_cast<int>(_state)));
+    switch (_state) {
+      case INIT:
+        try {
+          _checkIfProcessingPossible();
+          std::string cacheControl = _request.getHeader("Cache-Control");
+          _log.info("CGI: cacheControl: " +
+                    (cacheControl.empty() ? "Empty header = cache active" : cacheControl));
 
-    case CACHE_CHECK:  // 3 types : no cache, cache currently building and not
-                       // found
-      try {
-        std::string uriPath = _request.getURIComponents().path;
-        int cacheStatus = _cacheHandler.getResponse(_request, _response);
-        _log.info("CGI: For URI path: " + uriPath + ", cacheStatus: " +
-                  (cacheStatus == -1  ? "Cache currently building"
-                   : cacheStatus == 1 ? "Cache found"
-                                      : "Cache not found"));
-        if (cacheStatus == 1)
-          _state = DONE;
-        // else if (cacheStatus == -1)
-        //   _state = CACHE_CHECK;
-        else
-          _state = PROCESS_SETUP;
-        return handleCGIRequest();
-      } catch (...) {
-        throw;
-      }
-      break;
-
-    case PROCESS_SETUP:  // Set-up execution environment
-      try {
-        struct epoll_event event;
-        memset(&event, 0, sizeof(event));
-        event.data.ptr = new EventData(_outpipefd[0], _connectionHandler);
-        event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-        if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) ==
-            -1) {
-          close(_outpipefd[0]);
-          delete static_cast<EventData*>(event.data.ptr);
-          _state = CGI_ERROR;
-          return mapStateToConnectionStatus();
+          if (cacheControl.empty())
+            _state = CACHE_CHECK;
+          else
+            _state = REGISTER_SCRIPT_FD;
+        } catch (...) {
+          throw;
         }
-      } catch (...) {
-        throw;
-      }
-      _state = RUN_SCRIPT;
-      return handleCGIRequest();
-      break;
+        break;
 
-    case RUN_SCRIPT:
-      try {
-        _log.info("CGI: add fd to epoll: " + Utils::to_string(_outpipefd[0]));
-        _pid = fork();
-        if (_pid == -1) {
-          throw ForkFailure("CGI: Failed to fork process");
-        } else if (_pid > 0) {
-          close(_inpipefd[1]);
-          close(_outpipefd[0]);
-          _state = READ_FROM_CGI;
-        } else if (_pid == 0) {
+      case CACHE_CHECK:  // 3 types : no cache, cache currently building and not
+                        // found
+        try {
+          std::string uriPath = _request.getURIComponents().path;
+          int cacheStatus = _cacheHandler.getResponse(_request, _response);
+          _log.info("CGI: For URI path: " + uriPath + ", cacheStatus: " +
+                    (cacheStatus == -1  ? "Cache currently building"
+                    : cacheStatus == 1 ? "Cache found"
+                                        : "Cache not found"));
+          if (cacheStatus == 1)
+            _state = DONE;
+          // else if (cacheStatus == -1)
+          //   _state = CACHE_CHECK;
+          else
+            _state = REGISTER_SCRIPT_FD;
+        } catch (...) {
+          throw;
+        }
+        break;
+
+      case REGISTER_SCRIPT_FD:  // Set-up execution environment
+        try {
+          _pid = fork();
+          if (_pid == -1)
+            throw ForkFailure("CGI: Failed to fork process");
+          if (_pid > 0) {
+            struct epoll_event event;
+            memset(&event, 0, sizeof(event));
+            _eventData = new EventData(_outpipefd[0], _connectionHandler);
+            event.data.ptr = _eventData;
+            event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+            if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) ==
+                -1) {
+              close(_outpipefd[0]);
+              delete _eventData;
+              _state = CGI_ERROR;
+            }
+            close(_inpipefd[0]);
+            close(_outpipefd[1]);
+            _state = SCRIPT_RUNNING;
+            _runStartTime = std::time(NULL);
+            continueProcessing = false;
+          } else if (_pid == 0)
+            _state = RUN_SCRIPT;
+        } catch (...) {
+          throw;
+        }
+        break;
+
+      case RUN_SCRIPT:
+        try {
           _log.info(
               "CGI: executing: " + _request.getURIComponents().scriptName +
               " with runtime: " + _runtime);
@@ -206,7 +211,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
                 "CGI: dup2 failed: unable to redirect stdin to pipe");
           close(_inpipefd[0]);
           std::string postData = _request.getBody();
-          std::size_t totalWritten = 0;
+          std::size_t totalWritten = 0; 
           int         trys = 0;  // Ajout d'un compteur de tentatives
 
           while (totalWritten < postData.size()) {
@@ -239,136 +244,159 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           }
           close(_inpipefd[1]);
           execve(_argv[0], &_argv[0], &_envp[0]);
-          throw ExecutorError(
-              "CGI: execve failed: unable to execute CGI script");
+          _log.error("CGI: execve failed: unable to execute CGI script");
+          exit(EXIT_FAILURE);
+        } catch (...) {
+          _state = CGI_ERROR;
+          throw;
         }
-      } catch (...) {
-        _state = CGI_ERROR;
-        throw;
-      }
-      _state = READ_FROM_CGI;
-      break;
+        break;
 
-    case READ_FROM_CGI:
-      try {
-        char    buffer[248];
-        ssize_t count = 0;
-        pid_t   pidReturn = 0;
-        bool    done = false;
-        int     status = -1;
+      case SCRIPT_RUNNING:
+        try {
+          pid_t   pidReturn = 0;
+          int     status = -1;
 
-        close(_outpipefd[1]);
-        _outpipefd[1] = -1;
-
-        if (!_done &&
-            (pidReturn = waitpid(_pid, &status,
-                                 WNOHANG | WUNTRACED | WCONTINUED)) == -1) {
-          _log.info("CGI: waitpid failed: " + std::string(strerror(errno)));
-        }
-        if (!_done && (pidReturn == 0 || WIFCONTINUED(status))) {
-          _log.info("CGI: script is still running");
-          _state = RUN_SCRIPT;
-          return mapStateToConnectionStatus();
-        }
-        if (pidReturn > 0) {
-          _done = true;
+          if ((pidReturn = waitpid(_pid, &status,
+                                  WNOHANG | WUNTRACED)) == -1) {
+            _log.info("CGI: waitpid failed: " + std::string(strerror(errno)));
+            _state = CGI_ERROR;
+            break;
+          }
+          if (pidReturn == 0) {
+            _log.info("CGI: script is still running");
+            if (std::time(NULL) - _runStartTime > CGI_TIMEOUT_SEC) {
+              _log.error("CGI: script timedout after " +
+                         Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
+              kill(_pid, SIGKILL);
+              int statusClean;
+              waitpid(_pid, &statusClean, 0); // To stop child process in Zombie state
+              _state = CGI_ERROR;
+              break;
+            }
+            continueProcessing = false;
+            break;
+          }
           if (WIFEXITED(status)) {
             int exitStatus = WEXITSTATUS(status);
             _log.info("CGI: script exited, status=" +
                       Utils::to_string(exitStatus));
             if (exitStatus != 0) {
               _log.warning("CGI: script finished with errors, exit status: " +
-                           Utils::to_string(exitStatus));
+                          Utils::to_string(exitStatus));
             }
-          }
-          if (WIFSIGNALED(status))
+            _state = READ_FROM_CGI;
+            break;
+          } else if (WIFSIGNALED(status)) {
             _log.error("CGI: script killed by signal: " +
-                       Utils::to_string(WTERMSIG(status)));
-          if (WIFSTOPPED(status))
+                      Utils::to_string(WTERMSIG(status)));
+            _state = CGI_ERROR;
+            break;
+          } else if (WIFSTOPPED(status)) {
             _log.error("CGI: script stopped by signal: " +
-                       Utils::to_string(WSTOPSIG(status)));
+                      Utils::to_string(WSTOPSIG(status)));
+            _state = CGI_ERROR;
+            break;
+          }
+          _state = CGI_ERROR;
+          break;
+        } catch (...) {
+          _state = CGI_ERROR;
+          throw;
         }
+        break;
 
-        count = read(_outpipefd[0], buffer, sizeof(buffer));
-        if (!done && count == -1) {
-          _log.warning("CGI: read failed: " + std::string(strerror(errno)));
-          return mapStateToConnectionStatus();
-        }
-        if (count != -1) {
-          _processOutputSize += count;
-          _processOutput.append(buffer, count);
-          // _log.info("CGI: read " + Utils::to_string(count) + " bytes");
-          // _log.info("CGI: processOutputSize: " +
-          //           Utils::to_string(_processOutputSize));
-        }
-        if (done) {
+
+      case READ_FROM_CGI:
+        try {
+          close(_outpipefd[1]);
+          char    buffer[512];
+          ssize_t count = 0;
+          while ((count = read(_outpipefd[0], buffer, sizeof(buffer))) > 0) {
+            _processOutputSize += count;
+            _processOutput.append(buffer, count);
+            _log.info("CGI: read " + Utils::to_string(count) + " bytes");
+            _log.info("CGI: processOutputSize: " +
+                      Utils::to_string(_processOutputSize));
+          }
+          if (count == -1) {
+            _log.warning("CGI: read failed: " + std::string(strerror(errno)));
+            _state = CGI_ERROR;
+            continueProcessing = false;
+            break;
+          }
           _state = PROCESS_OUTPUT;
-          return handleCGIRequest();
+        } catch (...) {
+          _state = CGI_ERROR;
+          throw;
         }
-      } catch (...) {
-        _state = CGI_ERROR;
-        throw;
-      }
-      _state = PROCESS_OUTPUT;
-      break;
+        break;
 
-    case PROCESS_OUTPUT:
-      try {
-        _log.info("CGI: processOutput: " + _processOutput);
-        _log.info("CGI: process done");
-        std::size_t headerEndPos = _processOutput.find("\r\n\r\n");
-        if (headerEndPos == std::string::npos)
-          throw ExecutorError(
-              "CGI: Invalid response: no header-body separator found");
-        std::string headerPart = _processOutput.substr(0, headerEndPos);
-        std::string bodyContent = _processOutput.substr(
-            headerEndPos + 4);  // +4 to skip the "\r\n\r\n"
+      case PROCESS_OUTPUT:
+        try {
+          // Normalize for LF => CRLF
+          std::string normalizedOutput = _processOutput;
+          std::string::size_type pos = 0;
+          while ((pos = normalizedOutput.find('\n', pos)) != std::string::npos) {
+              if (pos == 0 || normalizedOutput[pos - 1] != '\r') {
+                  normalizedOutput.replace(pos, 1, "\r\n");
+                  pos += 2; // Skip past the new \r\n
+              } else {
+                  ++pos; // Already \r\n, move to the next character
+              }
+          }
+          _log.info("CGI: processOutput: " + normalizedOutput);
+          std::size_t headerEndPos = normalizedOutput.find("\r\n\r\n");
+          if (headerEndPos == std::string::npos)
+            throw ExecutorError(
+                "CGI: Invalid response: no header-body separator found");
+          std::string headerPart = normalizedOutput.substr(0, headerEndPos);
+          std::string bodyContent = normalizedOutput.substr(
+              headerEndPos + 4);  // +4 to skip the "\r\n\r\n"
 
-        std::map<std::string, std::string> headers =
-            _parseOutputHeaders(headerPart);
-        headers["Content-Length"] = Utils::to_string(bodyContent.size());
-        _response.setHeaders(headers);
-        _response.setBody(bodyContent);
-      } catch (...) {
-        _state = CGI_ERROR;
-        throw;
-      }
-      _state = FINALIZE_RESPONSE;
-      return handleCGIRequest();
-      break;
-
-    case FINALIZE_RESPONSE:
-      try {
-        std::map<std::string, std::string> headers =
-            _parseOutputHeaders(_processOutput);
-        headers["Content-Length"] =
-            Utils::to_string(_response.getBody().size());
-        _response.setHeaders(headers);
-
-        if (_request.getHeader("Cache-Control") == "no-cache")
-          _response.addHeader("Cache-Control", "no-cache");
-        else {
-          _response.addHeader(
-              "Cache-Control",
-              "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
-          _cacheHandler.storeResponse(_request, _response);
+          std::map<std::string, std::string> headers =
+              _parseOutputHeaders(headerPart);
+          headers["Content-Length"] = Utils::to_string(bodyContent.size());
+          _response.setHeaders(headers);
+          _response.setBody(bodyContent);
+        } catch (...) {
+          _state = CGI_ERROR;
+          throw;
         }
-      } catch (...) {
-        _state = CGI_ERROR;
-        throw;
-      }
-      _state = DONE;
-      break;
+        _state = FINALIZE_RESPONSE;
+        break;
 
-    case CGI_ERROR:
-      return mapStateToConnectionStatus();
+      case FINALIZE_RESPONSE:
+        try {
+          if (_request.getHeader("Cache-Control") == "no-cache")
+            _response.addHeader("Cache-Control", "no-cache");
+          else {
+            _response.addHeader(
+                "Cache-Control",
+                "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
+            _cacheHandler.storeResponse(_request, _response);
+          }
+        } catch (...) {
+          _state = CGI_ERROR;
+          throw;
+        }
+        _state = DONE;
+        break;
 
-    case DONE:
-      return mapStateToConnectionStatus();
+      case CGI_ERROR:
+        _response.setStatusCode(500);
+        _state = DONE;
+        break;
 
-    default:
-      _log.error("CGI: Unexpected default state encountered");
-      return ERROR;
+      case DONE:
+        continueProcessing = false;
+        break;
+
+      default:
+        _log.error("CGI: Unexpected default state encountered");
+        continueProcessing = false;
+        break;
+    }
   }
 
   return mapStateToConnectionStatus();
@@ -381,14 +409,20 @@ std::map<std::string, std::string> CGIHandler::_parseOutputHeaders(
   std::string                        line;
   while (std::getline(headerStream, line)) {
     std::size_t colonPos = line.find(':');
-    if (colonPos == std::string::npos)
+    if (colonPos == std::string::npos) {
+      _log.error("CGI: Malformed header line: " + line); // Log the problematic line
       throw ExecutorError("CGI: Invalid response: malformed header line");
+    }
     std::string key = line.substr(0, colonPos);
-    if (key.empty())
+    if (key.empty()) {
+      _log.error("CGI: Empty header key in line: " + line); // Log the problematic line
       throw ExecutorError("CGI: Invalid response: empty header key");
+    }
     std::string value = line.substr(colonPos + 2);  // +2 to skip ": "
-    if (value.empty())
+    if (value.empty()) {
+      _log.error("CGI: Empty header value in line: " + line); // Log the problematic line
       throw ExecutorError("CGI: Invalid response: empty header value");
+    }
     headers[key] = value;
   }
   return headers;

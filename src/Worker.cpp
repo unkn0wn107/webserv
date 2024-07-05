@@ -111,9 +111,9 @@ void Worker::_runEventLoop() {
                    " seconds");
     }
   }
-  _cleanUpForceResponse();
-  _cleanUpSendings();
-  _cleanUpAll();
+  // _cleanUpForceResponse();
+  // _cleanUpSendings();
+  // _cleanUpAll();
 }
 
 void Worker::_launchEventProcessing(EventData*          eventData,
@@ -179,7 +179,6 @@ void Worker::_acceptNewConnection(int fd) {
     ConnectionHandler* handler = new ConnectionHandler(
         new_socket, _epollSocket, virtualServers, listenConfig);
     EventData* eventData = new EventData(new_socket, handler, _threadId);
-    _eventsData[new_socket] = eventData;
     event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
@@ -190,6 +189,7 @@ void Worker::_acceptNewConnection(int fd) {
       delete handler;
       delete eventData;
     }
+    _eventsData[new_socket] = eventData;
   }
 }
 
@@ -234,14 +234,15 @@ void Worker::_cleanUpSendings() {
   bool hasSending = true;
   while (hasSending) {
     hasSending = false;
+    usleep(500);
     for (std::map<int, EventData*>::iterator it = _eventsData.begin();
          it != _eventsData.end(); ++it) {
       if (!it->second->handler) {
         _eventsData.erase(it);
         continue;
       }
-      if (it->second->handler->getConnectionStatus() == SENDING &&
-          !it->second->handler->isBusy()) {
+      if (!it->second->handler->isBusy() &&
+          it->second->handler->getConnectionStatus() == SENDING) {
         it->second->handler->forceSendResponse();
         hasSending = true;
       }

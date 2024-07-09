@@ -28,7 +28,7 @@ int         set_non_blocking(int sockfd);
 void        signalHandler(int signum);
 std::string generateSessionId(void);
 
-enum ConnectionStatus { READING, EXECUTING, SENDING, ERROR, CLOSED };
+enum ConnectionStatus { READING, EXECUTING, SENDING, CLOSED };
 
 enum CGIState {
   NONE,
@@ -43,6 +43,12 @@ enum CGIState {
   ADD_HEADERS,
   DONE,
   CGI_ERROR,
+};
+
+enum CacheStatus {
+  CACHE_CURRENTLY_BUILDING,
+  CACHE_FOUND,
+  CACHE_NOT_FOUND,
 };
 
 #endif

@@ -68,9 +68,7 @@ ConnectionHandler::~ConnectionHandler() {
     delete _cgiHandler;
     _cgiHandler = NULL;
   }
-  pthread_mutex_unlock(&_mutex);
   pthread_mutex_destroy(&_mutex);
-  pthread_mutex_unlock(&_statusMutex);
   pthread_mutex_destroy(&_statusMutex);
   // _requestString.clear();
   // _readn = 0;
@@ -311,8 +309,6 @@ void ConnectionHandler::_processExecutingState() {
 }
 
 int ConnectionHandler::processConnection(struct epoll_event& event) {
-  std::clock_t start = std::clock();  // Timestamp de début
-
   _step++;
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): _rcvbuf: " + Utils::to_string(_rcvbuf));
@@ -324,16 +320,14 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
             "): crrent read request: [" + _requestString +
             "]\nReadn: " + Utils::to_string(_readn));
 
-  ConnectionStatus status = _checkConnectionStatus();
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Status: " + getStatusString());
-
   try {
-    if (_checkConnectionStatus() == READING)
+    if (_connectionStatus == READING)
       _receiveRequest();
-    if (_checkConnectionStatus() == EXECUTING)
+    if (_connectionStatus == EXECUTING)
       _processExecutingState();
-    if (_checkConnectionStatus() == SENDING)
+    if (_connectionStatus == SENDING)
       _sendResponse();
   } catch (const Exception& e) {
     _setConnectionStatus(CLOSED);
@@ -341,12 +335,9 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
                            "): " + " Status: " + getStatusString() +
                            " Exception caught: " + e.what()));
   }
-
-  status = _checkConnectionStatus();
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Modifying epoll events for " + getStatusString());
-
-  switch (status) {
+  switch (_connectionStatus) {
     case READING:
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
@@ -358,13 +349,15 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       break;
 
     case EXECUTING:
-      if (_cgiState == SCRIPT_RUNNING) {
-        event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-        if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
-          _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                                 "): epoll_ctl: ") +
-                     strerror(errno));
-        }
+      if (!_cgiHandler) {
+        throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                       "): CGIHandler is NULL");
+      }
+      event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+      if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
+        _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                                "): epoll_ctl: ") +
+                    strerror(errno));
       }
       break;
 
@@ -381,26 +374,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
     case CLOSED:
       _handleClosedConnection();
       return 1;  // Done
-      break;
-
-    case ERROR:
-      _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                 "): Status: " + getStatusString() +
-                 " =!= ERROR =!= Closing connection");
-      _handleClosedConnection();
-      return 1;  // Done
-      break;
   }
-
-  std::clock_t end = std::clock();
-  double       duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;
-  if (duration > 0.005) {
-    _log.warning(
-        "CONNECTION_HANDLER: =================================Processing "
-        "time: " +
-        Utils::to_string(duration) + " seconds");
-  }
-
   return 0;
 }
 
@@ -429,24 +403,26 @@ void ConnectionHandler::_handleClosedConnection() {
 }
 
 void ConnectionHandler::closeClientSocket() {
-  if (fcntl(_clientSocket, F_GETFD) != -1 || errno != EBADF) {
-    if (epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL) == -1)
-      _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                 "): Failed to delete client socket from epoll : " +
-                 Utils::to_string(_clientSocket) + " " +
-                 std::string(strerror(errno)));
-    if (close(_clientSocket) == -1) {
-      _log.error(
-          "CONNECTION_HANDLER(" + Utils::to_string(_step) +
-          "): Error closing client socket: " + std::string(strerror(errno)));
-    } else {
-      _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                "): Client socket closed successfully");
-    }
-  } else {
-    _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-               "): Invalid client socket: " + Utils::to_string(_clientSocket));
-  }
+  // if (fcntl(_clientSocket, F_GETFD) != -1 || errno != EBADF) {
+  //   if (epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL) == -1)
+  //     _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+  //                "): Failed to delete client socket from epoll : " +
+  //                Utils::to_string(_clientSocket) + " " +
+  //                std::string(strerror(errno)));
+  //   if (close(_clientSocket) == -1) {
+  //     _log.error(
+  //         "CONNECTION_HANDLER(" + Utils::to_string(_step) +
+  //         "): Error closing client socket: " + std::string(strerror(errno)));
+  //   } else {
+  //     _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+  //               "): Client socket closed successfully");
+  //   }
+  // } else {
+  //   _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+  //              "): Invalid client socket: " + Utils::to_string(_clientSocket));
+  // }
+  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
+  close(_clientSocket);
 }
 
 void ConnectionHandler::_cleanupCGIHandler() {
@@ -468,9 +444,6 @@ std::string ConnectionHandler::getStatusString() const {
       break;
     case SENDING:
       statusStr = "SENDING";
-      break;
-    case ERROR:
-      statusStr = "ERROR";
       break;
     case CLOSED:
       statusStr = "CLOSED";

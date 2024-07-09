@@ -50,17 +50,17 @@ int CacheHandler::getResponse(const HTTPRequest& request,
       _cache.find(_generateKey(request));
   if (it != _cache.end()) {
     if (it->second.first == NULL) {  // Check if cache is currently building
-      return -1;
+      return CACHE_CURRENTLY_BUILDING;
     } else if (it->second.second + _maxAge >
                time(NULL)) {  // Check cache freshness
       response = *(it->second.first);
-      return 1;
+      return CACHE_FOUND;
     } else {
       delete it->second.first;  // Response
       _cache.erase(it->first);
     }
   }
-  return 0;
+  return CACHE_NOT_FOUND;
 }
 
 void CacheHandler::reserveCache(const HTTPRequest&  request) {

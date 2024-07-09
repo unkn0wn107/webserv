@@ -18,6 +18,7 @@
 
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "Common.hpp"
 
 class CacheHandler {
  public:

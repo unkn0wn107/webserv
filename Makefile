@@ -14,7 +14,7 @@ NAME = webserv
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
-DEBUGFLAGS = -gdwarf-3
+DEBUGFLAGS = -gdwarf-3 -fsanitize=address
 
 SRC_DIR = src
 OBJ_DIR = .obj

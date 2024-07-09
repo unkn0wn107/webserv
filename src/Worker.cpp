@@ -75,7 +75,6 @@ void* Worker::_workerRoutine(void* arg) {
 
 void Worker::_runEventLoop() {
   while (!_shouldStop) {
-    std::clock_t       start = std::clock();
     struct epoll_event event;
 
     if (!_events.try_pop(event)) {
@@ -87,30 +86,18 @@ void Worker::_runEventLoop() {
               "): Event: " + Utils::to_string(event.events));
 
     EventData* eventData = static_cast<EventData*>(event.data.ptr);
-    if (eventData->isListening && (event.events & EPOLLIN)) {
+    if (eventData && eventData->isListening && (event.events & EPOLLIN)) {
       _acceptNewConnection(eventData->fd);
-    } else if (eventData->handler) {
-      if (eventData->handler->isBusy())
-        _events.push();
-      else if (event.events) {  // (eventData->threadId == _threadId ||
-                                // eventData->threadId == -1) &&
-        // Handle own thread affiliated events and events with no thread
-        // affinity
-        eventData->handler->setBusy();
-        _launchEventProcessing(eventData, event);
-      } else {
-        _eventsData.erase(eventData->fd);
-        delete eventData->handler;
-        delete eventData;
-      }
     }
-
-    std::clock_t end = std::clock();
-    double       duration = static_cast<double>(end - start) / CLOCKS_PER_SEC;
-    if (duration > 0.005) {
+    else if (eventData && event.events)
+      _launchEventProcessing(eventData, event);
+    else {
       _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                   "): Event loop time: " + Utils::to_string(duration) +
-                   " seconds");
+                   "): Unable to handle event with no data");
+      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, NULL);
+      close(event.data.fd);
+      // delete eventData->handler;
+      // delete eventData;
     }
   }
   // _cleanUpForceResponse();
@@ -121,31 +108,24 @@ void Worker::_runEventLoop() {
 void Worker::_launchEventProcessing(EventData*          eventData,
                                     struct epoll_event& event) {
   int handlerStatus = 0;
+  if (!eventData->handler) {
+    _log.warning("WORKER (" + Utils::to_string(_threadId) +
+                 "): Handler is NULL for event fd: " + Utils::to_string(event.data.fd) +
+                 " -> " + Utils::to_string(eventData->fd));
+    return;
+  }
   try {
     handlerStatus = eventData->handler->processConnection(event);
-    eventData->handler->setNotBusy();
   } catch (std::exception& e) {
-    eventData->handler->setNotBusy();
+    _log.error("WORKER (" + Utils::to_string(_threadId) +
+               "): Exception: " + e.what());
   }
-
   if (handlerStatus == 1) {  // Done
-    _eventsData.erase(eventData->fd);
     _log.warning("WORKER (" + Utils::to_string(_threadId) +
                  "): Handler deleted with con status " +
                  eventData->handler->getStatusString());
     delete eventData->handler;
     delete eventData;
-  }
-}
-
-void Worker::_pushBackToQueue(EventData*                eventData,
-                              const struct epoll_event& event) {
-  if (eventData->fd > 0) {
-    _log.info("WORKER (" + Utils::to_string(_threadId) +
-              "): Event pushed back to Queue for other thread " +
-              Utils::to_string(eventData->threadId));
-    _events.push(event);
-    usleep(500);
   }
 }
 
@@ -156,14 +136,14 @@ void Worker::_acceptNewConnection(int fd) {
   struct epoll_event      event;
 
   memset(&address, 0, sizeof(address));
-  if (!_shouldStop) {
+  while (!_shouldStop) {
     new_socket =
         accept(fd, (struct sockaddr*)&address,
                &addrlen);  // creer un nouveau sockect d'echange d'event
     if (new_socket <= 0) {
-      _log.error("WORKER (" + Utils::to_string(_threadId) +
-                 "): Failed \"accept\" on listening socket " +
-                 Utils::to_string(fd));
+      _log.warning("WORKER (" + Utils::to_string(_threadId) +
+                   "): Failed \"accept\" on listening socket " +
+                   Utils::to_string(fd));
       return;
     }
     if (set_non_blocking(new_socket) == -1) {
@@ -191,7 +171,6 @@ void Worker::_acceptNewConnection(int fd) {
       delete handler;
       delete eventData;
     }
-    _eventsData[new_socket] = eventData;
   }
 }
 

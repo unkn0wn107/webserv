@@ -103,7 +103,7 @@ void ConnectionHandler::_receiveRequest() {
   std::string headers;
   size_t      contentLength = 0;
   bool        contentLengthFound = false;
-  bool        hitCache = false;
+  bool        noCache = false;
   size_t      headersEndPos = 0;
 
   if (_count > MAX_TRIES || (time(NULL) - _startTime) > TIMEOUT) {
@@ -135,7 +135,7 @@ void ConnectionHandler::_receiveRequest() {
     }
     size_t cachePos = _requestString.find("Cache-Control: no-cache");
     if (cachePos != std::string::npos)
-      hitCache = true;
+      noCache = true;
   }
 
   if (contentLengthFound && _readn - headersEndPos - 4 != contentLength) {
@@ -144,7 +144,7 @@ void ConnectionHandler::_receiveRequest() {
     return;
   }
   if (headersEnd) {
-    if (hitCache) {
+    if (!noCache) {
       _log.info("CONNECTION_HANDLER: Cache hit");
       CacheStatus cacheStatus = _cacheHandler.checkCache(_requestString);
       if (cacheStatus == CACHE_FOUND) {
@@ -154,6 +154,7 @@ void ConnectionHandler::_receiveRequest() {
         return;
       }
       else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
+        _log.warning("CONNECTION_HANDLER: Cache currently building");
         _response = _cacheHandler.waitResponse(_requestString);
         _setConnectionStatus(SENDING);
         return;
@@ -272,6 +273,7 @@ void ConnectionHandler::_processRequest() {
     _response->setCookie("sessionid", _request->getSessionId());
     _setConnectionStatus(SENDING);
   }
+  _cacheHandler.storeResponse(_requestString, *_response);
 }
 
 void ConnectionHandler::_processExecutingState() {

@@ -118,6 +118,7 @@ void CacheHandler::reserveCache(std::string requestString) {
 void CacheHandler::storeResponse(const HTTPRequest&  request,
                                  const HTTPResponse& response) {
   std::string key = _generateKey(request);
+  _log.warning("CACHE_HANDLER: Storing response in cache");
   pthread_mutex_lock(&_mutex);
   _cache[key].first = new HTTPResponse(response);
   _cache[key].second = time(NULL);

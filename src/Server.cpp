@@ -90,19 +90,11 @@ void Server::start() {
   }
   _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) +
             ")");
-  struct epoll_event events[MAX_EVENTS];
   while (_running) {
-    int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
-    if (nfds == 0) {
-      _log.info("SERVER: epoll_wait: 0 events");
-      continue;
+    if (_activeWorkers == 0) {
+      _log.info("SERVER: All workers finished");
+      _running = false;
     }
-    if (nfds < 0) {
-      usleep(1000);
-      continue;
-    }
-    for (int i = 0; i < nfds && _running; i++)
-      _events.push(events[i]);
   }
 }
 

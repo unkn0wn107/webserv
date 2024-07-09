@@ -51,7 +51,6 @@ CGIHandler::~CGIHandler() {
   epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
   if (_eventData)
     delete _eventData;
-  close(_outpipefd[0]);
   if (_inpipefd[0] != -1)
     close(_inpipefd[0]);
   if (_inpipefd[1] != -1)
@@ -133,11 +132,9 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     switch (_state) {
       case INIT:
         try {
-          _checkIfProcessingPossible();
           std::string cacheControl = _request.getHeader("Cache-Control");
           _log.info("CGI: cacheControl: " +
                     (cacheControl.empty() ? "Empty header = cache active" : cacheControl));
-
           if (cacheControl.empty())
             _state = CACHE_CHECK;
           else
@@ -157,26 +154,32 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           std::string uriPath = _request.getURIComponents().path;
           int cacheStatus = _cacheHandler.getResponse(_request, _response);
           _log.info("CGI: For URI path: " + uriPath + ", cacheStatus: " +
-                    (cacheStatus == -1  ? "Cache currently building"
-                    : cacheStatus == 1 ? "Cache found"
+                    (cacheStatus == CACHE_CURRENTLY_BUILDING  ? "Cache currently building"
+                    : cacheStatus == CACHE_FOUND ? "Cache found"
                                         : "Cache not found"));
-          if (cacheStatus == 1)
+          if (cacheStatus == CACHE_FOUND)
+          {
             _state = DONE;
-          else if (cacheStatus == -1) {
-            _state = CACHE_CHECK;  // Cache-building waiting, second caller wait for cache to be ready
+            break;
+  
+          if (cacheStatus == CACHE_CURRENTLY_BUILDING) {  // Cache-building waiting, second caller wait for cache to be ready
             continueProcessing = false;
+            break;
           }
-          else {
+          if (cacheStatus == CACHE_NOT_FOUND) {
             _cacheHandler.reserveCache(_request); // Cache-building waiting, first caller registers NULL
             _state = REGISTER_SCRIPT_FD;
+            break;
           }
         } catch (...) {
           _state = CGI_ERROR;
+          break;
         }
         break;
 
       case REGISTER_SCRIPT_FD:  // Set-up execution environment
         try {
+          _checkIfProcessingPossible();
           _pid = fork();
           if (_pid == -1)
             throw ForkFailure("CGI: Failed to fork process");
@@ -191,16 +194,21 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
               close(_outpipefd[0]);
               delete _eventData;
               _state = CGI_ERROR;
+              break;
             }
             close(_inpipefd[0]);
             close(_outpipefd[1]);
             _state = SCRIPT_RUNNING;
             _runStartTime = std::time(NULL);
-            continueProcessing = false;
+            break;
           } else if (_pid == 0)
+          {
             _state = RUN_SCRIPT;
+            break;
+          }
         } catch (...) {
           _state = CGI_ERROR;
+          break;
         }
         break;
 
@@ -227,7 +235,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
                 write(_inpipefd[1], postData.c_str() + totalWritten,
                       postData.size() - totalWritten);
             if (written == -1) {
-              if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (trys > 5) {
                   close(_inpipefd[1]);
                   throw ExecutorError(
@@ -239,13 +246,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
                 trys++;
                 usleep(1000 << trys);  // Attendre un peu avant de réessayer
                 continue;
-              } else {
-                close(_inpipefd[1]);
-                throw ExecutorError(
-                    "CGI: write failed: unable to write POST data to pipe, "
-                    "error: " +
-                    std::string(strerror(errno)));
-              }
             }
             trys = 0;
             totalWritten += written;
@@ -255,7 +255,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           _log.error("CGI: execve failed: unable to execute CGI script");
           exit(EXIT_FAILURE);
         } catch (...) {
-          _state = CGI_ERROR;
+          exit(EXIT_FAILURE);
         }
         break;
 
@@ -293,19 +293,15 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
             }
             _state = READ_FROM_CGI;
             break;
-          } else if (WIFSIGNALED(status)) {
-            throw ExecutorError("CGI: script killed by signal: " +
-                              Utils::to_string(WTERMSIG(status)));
-          } else if (WIFSTOPPED(status)) {
-            throw ExecutorError("CGI: script stopped by signal: " +
-                              Utils::to_string(WSTOPSIG(status)));
           }
-          _state = CGI_ERROR;
+          _state = READ_FROM_CGI;
+          continueProcessing = false;
           break;
         } catch (const Exception& e) {
           if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
             _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
           _state = CGI_ERROR;
+          break;
         }
         break;
 
@@ -315,20 +311,22 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           close(_outpipefd[1]);
           char    buffer[512];
           ssize_t count = 0;
-          while ((count = read(_outpipefd[0], buffer, sizeof(buffer))) > 0) {
-            _processOutputSize += count;
-            _processOutput.append(buffer, count);
-            _log.info("CGI: read " + Utils::to_string(count) + " bytes");
-            _log.info("CGI: processOutputSize: " +
-                      Utils::to_string(_processOutputSize));
-          }
+          count = read(_outpipefd[0], buffer, sizeof(buffer));
           if (count == -1) {
             _log.warning("CGI: read failed: " + std::string(strerror(errno)));
-            _state = CGI_ERROR;
+            _state = READ_FROM_CGI;
             continueProcessing = false;
             break;
+          } 
+          _processOutput.append(buffer, count);
+          _processOutputSize += count;
+          if (count < sizeof(buffer) || count == 0) {
+            _state = PROCESS_OUTPUT;
+            break;
           }
-          _state = PROCESS_OUTPUT;
+          _state = READ_FROM_CGI;
+          continueProcessing = false;
+          break;
         } catch (...) {
           _state = CGI_ERROR;
         }

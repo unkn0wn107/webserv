@@ -91,7 +91,7 @@ void Worker::_runEventLoop() {
       _acceptNewConnection(eventData->fd);
     } else if (eventData->handler) {
       if (eventData->handler->isBusy())
-        _pushBackToQueue(eventData, event);
+        _events.push();
       else if (event.events) {  // (eventData->threadId == _threadId ||
                                 // eventData->threadId == -1) &&
         // Handle own thread affiliated events and events with no thread
@@ -99,7 +99,9 @@ void Worker::_runEventLoop() {
         eventData->handler->setBusy();
         _launchEventProcessing(eventData, event);
       } else {
-        _pushBackToQueue(eventData, event);
+        _eventsData.erase(eventData->fd);
+        delete eventData->handler;
+        delete eventData;
       }
     }
 

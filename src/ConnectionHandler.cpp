@@ -66,9 +66,9 @@ ConnectionHandler::~ConnectionHandler() {
     delete _cgiHandler;
     _cgiHandler = NULL;
   }
-  pthread_mutex_unlock(&_mutex);
+  // pthread_mutex_unlock(&_mutex);
   pthread_mutex_destroy(&_mutex);
-  pthread_mutex_unlock(&_statusMutex);
+  // pthread_mutex_unlock(&_statusMutex);
   pthread_mutex_destroy(&_statusMutex);
   // _requestString.clear();
   // _readn = 0;
@@ -245,7 +245,7 @@ void ConnectionHandler::_processData() {
   int status = _checkConnectionStatus();
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Status: " + Utils::to_string(status));
   if (status == READING) {
-    pthread_mutex_lock(&_mutex);
+    // pthread_mutex_lock(&_mutex);
     _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Processing data in READING state");
     try {
       _receiveRequest();
@@ -254,19 +254,19 @@ void ConnectionHandler::_processData() {
       _setConnectionStatus(CLOSED);
       _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Exception caught: ") +
                  e.what());
-      pthread_mutex_unlock(&_mutex);
+      // pthread_mutex_unlock(&_mutex);
       return;
     }
-    pthread_mutex_unlock(&_mutex);
+    // pthread_mutex_unlock(&_mutex);
   }
   if (status == EXECUTING) {
-    pthread_mutex_lock(&_mutex);
-    if (_cgiHandler == NULL) {
-      _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): CGIHandler is NULL");
-      _setConnectionStatus(SENDING);
-      status = _checkConnectionStatus();
-      return;
-    }
+    // pthread_mutex_lock(&_mutex);
+    // if (_cgiHandler == NULL) {
+    //   _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): CGIHandler is NULL");
+    //   _setConnectionStatus(SENDING);
+    //   status = _checkConnectionStatus();
+    //   return;
+    // }
     _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Processing data in EXECUTING state");
     _setConnectionStatus(_cgiHandler->handleCGIRequest());
     status = _checkConnectionStatus();
@@ -276,10 +276,10 @@ void ConnectionHandler::_processData() {
       close(_cgiHandler->getCgifd());
       delete _cgiHandler;
       _cgiHandler = NULL;
-      pthread_mutex_unlock(&_mutex);
+      // pthread_mutex_unlock(&_mutex);
       return;
     }
-    pthread_mutex_unlock(&_mutex);
+    // pthread_mutex_unlock(&_mutex);
   }
   if (status == SENDING) {
     _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) + "): Processing data in SENDING state");

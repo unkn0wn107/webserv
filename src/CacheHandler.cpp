@@ -32,9 +32,12 @@ void CacheHandler::deleteInstance() {
 CacheHandler::CacheHandler() :
 _log(Logger::getInstance()),
 _cache(),
-_maxAge(MAX_AGE)
+_maxAge(MAX_AGE),
+_cacheMutex(),
+_mutex()
 {
   pthread_mutex_init(&_mutex, NULL);
+  pthread_mutex_init(&_cacheMutex, NULL);
 }
 
 CacheHandler::~CacheHandler() {
@@ -45,6 +48,7 @@ CacheHandler::~CacheHandler() {
   }
   _cache.clear();
   pthread_mutex_destroy(&_mutex);
+  pthread_mutex_destroy(&_cacheMutex);
 }
 
 CacheStatus CacheHandler::checkCache(std::string requestString) {
@@ -87,9 +91,11 @@ HTTPResponse* CacheHandler::getResponse(std::string requestString) {
 HTTPResponse* CacheHandler::waitResponse(std::string requestString) {
   std::string key = _generateKey(requestString);
   HTTPResponse* response = NULL;
-
+  pthread_mutex_lock(&_cacheMutex);
+  pthread_mutex_unlock(&_cacheMutex);
   while (true)
   {
+    pthread_mutex_lock(&_cacheMutex);
     usleep(10000);
     pthread_mutex_lock(&_mutex);
     response = _cache[key].first;
@@ -97,6 +103,7 @@ HTTPResponse* CacheHandler::waitResponse(std::string requestString) {
     if (response != NULL)
       break;
   }
+  pthread_mutex_unlock(&_cacheMutex);
   return new HTTPResponse(*response);
 }
 

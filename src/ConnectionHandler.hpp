@@ -81,8 +81,9 @@ class ConnectionHandler {
   };
 
  private:
-  Logger&                     _log;
-  bool                        _busy;
+  static CacheHandler& _cacheHandler;
+  Logger&              _log;
+  bool                _busy;
   ConnectionStatus            _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
@@ -97,8 +98,6 @@ class ConnectionHandler {
   time_t                      _startTime;
   CGIHandler*                 _cgiHandler;
   CGIState                    _cgiState;
-  pthread_mutex_t             _mutex;
-  pthread_mutex_t             _statusMutex;
   int                         _step;
 
   void             _receiveRequest();

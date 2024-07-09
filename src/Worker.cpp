@@ -208,8 +208,7 @@ void Worker::_cleanUpForceResponse() {
         continue;
       }
       ConnectionStatus status = it->second->handler->getConnectionStatus();
-      if (status != SENDING && status != CLOSED &&
-          !it->second->handler->isBusy()) {
+      if (status != SENDING && status != CLOSED) {
         it->second->handler->setInternalServerError();
         hasOtherStatus = true;
       }
@@ -228,8 +227,7 @@ void Worker::_cleanUpSendings() {
         _eventsData.erase(it);
         continue;
       }
-      if (!it->second->handler->isBusy() &&
-          it->second->handler->getConnectionStatus() == SENDING) {
+      if (it->second->handler->getConnectionStatus() == SENDING) {
         it->second->handler->forceSendResponse();
         hasSending = true;
       }

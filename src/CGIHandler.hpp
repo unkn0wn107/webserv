@@ -145,7 +145,6 @@ class CGIHandler {
   std::string           _index;
   bool                  _cgi;
   bool                  _done;
-  pthread_mutex_t       _mutex;
 
   std::vector<char*> _argv;
   std::vector<char*> _envp;

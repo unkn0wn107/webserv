@@ -29,7 +29,11 @@ void CacheHandler::deleteInstance() {
   }
 }
 
-CacheHandler::CacheHandler() : _maxAge(MAX_AGE) {
+CacheHandler::CacheHandler() :
+_log(Logger::getInstance()),
+_cache(),
+_maxAge(MAX_AGE)
+{
   pthread_mutex_init(&_mutex, NULL);
 }
 
@@ -43,53 +47,111 @@ CacheHandler::~CacheHandler() {
   pthread_mutex_destroy(&_mutex);
 }
 
-int CacheHandler::getResponse(const HTTPRequest& request,
-                              HTTPResponse&      response) {
-  LockGuard lock(_mutex);
-  std::map<std::string, std::pair<HTTPResponse*, time_t> >::const_iterator it =
-      _cache.find(_generateKey(request));
-  if (it != _cache.end()) {
-    if (it->second.first == NULL) {  // Check if cache is currently building
-      return CACHE_CURRENTLY_BUILDING;
-    } else if (it->second.second + _maxAge >
-               time(NULL)) {  // Check cache freshness
-      response = *(it->second.first);
-      return CACHE_FOUND;
-    } else {
-      delete it->second.first;  // Response
-      _cache.erase(it->first);
-    }
+CacheStatus CacheHandler::checkCache(std::string requestString) {
+  std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator found;
+  std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator end;
+  std::string key = _generateKey(requestString);
+  pthread_mutex_lock(&_mutex);
+  found = _cache.find(key);
+  end = _cache.end();
+  pthread_mutex_unlock(&_mutex);
+  if (found == end)
+  {
+    _log.info("CACHE_HANDLER: Cache not found, reserving");
+    this->reserveCache(requestString);
+    return CACHE_NOT_FOUND;
   }
-  return CACHE_NOT_FOUND;
+  if (found->second.first == NULL)
+  {
+    _log.info("CACHE_HANDLER: Cache currently building");
+    return CACHE_CURRENTLY_BUILDING;
+  }
+  if (found->second.second + _maxAge <= time(NULL) &&
+      found->second.first != NULL) // Check cache freshness
+  {
+    _log.info("CACHE_HANDLER: Cache expired, deleting");
+    this->deleteCache(requestString, found->second.first);
+  }
+  return CACHE_FOUND;
 }
 
-void CacheHandler::reserveCache(const HTTPRequest&  request) {
-  std::string key = _generateKey(request);
-  LockGuard   lock(_mutex);
-  if (_cache.find(key) == _cache.end())
-    _cache[key] = std::pair<HTTPResponse*, time_t>(NULL, time(NULL));
+HTTPResponse* CacheHandler::getResponse(std::string requestString) {
+  std::string key = _generateKey(requestString);
+  HTTPResponse* response = NULL;
+  pthread_mutex_lock(&_mutex);
+  response = new HTTPResponse(*(_cache[key].first));
+  pthread_mutex_unlock(&_mutex);
+  return response;
+}
+
+HTTPResponse* CacheHandler::waitResponse(std::string requestString) {
+  std::string key = _generateKey(requestString);
+  HTTPResponse* response = NULL;
+
+  while (true)
+  {
+    usleep(10000);
+    pthread_mutex_lock(&_mutex);
+    response = _cache[key].first;
+    pthread_mutex_unlock(&_mutex);
+    if (response != NULL)
+      break;
+  }
+  return new HTTPResponse(*response);
+}
+
+void CacheHandler::reserveCache(std::string requestString) {
+  std::string key = _generateKey(requestString);
+  pthread_mutex_lock(&_mutex);
+  _cache[key].first = NULL;
+  _cache[key].second = time(NULL);
+  pthread_mutex_unlock(&_mutex);
 }
 
 void CacheHandler::storeResponse(const HTTPRequest&  request,
                                  const HTTPResponse& response) {
   std::string key = _generateKey(request);
-  LockGuard   lock(_mutex);
-  if (_cache[key].first == NULL)
-    _cache.erase(key);
-  if (_cache.find(key) == _cache.end())
-    _cache[key] = std::make_pair(new HTTPResponse(response), time(NULL));
+  pthread_mutex_lock(&_mutex);
+  _cache[key].first = new HTTPResponse(response);
+  _cache[key].second = time(NULL);
+  pthread_mutex_unlock(&_mutex);
 }
 
-void CacheHandler::deleteCache(const HTTPRequest&  request) {
+void CacheHandler::deleteCache(std::string requestString,
+                               HTTPResponse* response) {
+  std::string key = _generateKey(requestString);
+  pthread_mutex_lock(&_mutex);
+  delete response;
+  _cache.erase(key);
+  pthread_mutex_unlock(&_mutex);
+}
+
+void CacheHandler::deleteCache(const HTTPRequest& request) {
   std::string key = _generateKey(request);
-  LockGuard   lock(_mutex);
-  if (_cache.find(key) != _cache.end())
-    _cache.erase(key);
+  std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator found;
+  std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator end;
+  pthread_mutex_lock(&_mutex);
+  found = _cache.find(key);
+  end = _cache.end();
+  if (found == end)
+  {
+    pthread_mutex_unlock(&_mutex);
+    return;
+  }
+  delete found->second.first;
+  _cache.erase(found);
+  pthread_mutex_unlock(&_mutex);
 }
 
 std::string CacheHandler::_generateKey(const HTTPRequest& request) const {
   std::ostringstream oss;
   oss << _hash(request.getRawRequest());
+  return oss.str();
+}
+
+std::string CacheHandler::_generateKey(std::string requestString) const {
+  std::ostringstream oss;
+  oss << _hash(requestString);
   return oss.str();
 }
 

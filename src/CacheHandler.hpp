@@ -27,20 +27,25 @@ class CacheHandler {
   static CacheHandler& getInstance();
   static void          deleteInstance();
 
-  void reserveCache(const HTTPRequest& request);
+  void reserveCache(std::string requestString);
   void storeResponse(const HTTPRequest& request, const HTTPResponse& response);
-  int  getResponse(const HTTPRequest& request, HTTPResponse& response);
+  HTTPResponse* getResponse(std::string requestString);
+  HTTPResponse* waitResponse(std::string requestString);
+  void deleteCache(std::string requestString, HTTPResponse* response);
   void deleteCache(const HTTPRequest& request);
+  CacheStatus checkCache(std::string requestString);
 
  private:
   CacheHandler();
   ~CacheHandler();
 
+  Logger&                                                  _log;
   static CacheHandler*                                     _instance;
   std::map<std::string, std::pair<HTTPResponse*, time_t> > _cache;
   time_t                                                   _maxAge;
 
   std::string             _generateKey(const HTTPRequest& request) const;
+  std::string             _generateKey(std::string requestString) const;
   unsigned long           _hash(const std::string& str) const;
   mutable pthread_mutex_t _mutex;
 };

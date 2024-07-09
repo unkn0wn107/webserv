@@ -13,7 +13,7 @@
 #include "CGIHandler.hpp"
 
 Logger&       CGIHandler::_log = Logger::getInstance();
-CacheHandler& CGIHandler::_cacheHandler = CacheHandler::getInstance();
+CacheHandler&  CGIHandler::_cacheHandler = CacheHandler::getInstance();
 
 CGIHandler::CGIHandler(HTTPRequest&          request,
                        HTTPResponse&         response,
@@ -42,8 +42,6 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
     throw PipeFailure("CGI: Failed to create pipe");
   if (pipe(_outpipefd) == -1)
     throw PipeFailure("CGI: Failed to create pipe");
-  if (pthread_mutex_init(&_mutex, NULL) != 0)
-    throw MutexFailure("CGI: Failed to create mutex");
 }
 
 CGIHandler::~CGIHandler() {
@@ -61,7 +59,6 @@ CGIHandler::~CGIHandler() {
     close(_outpipefd[1]);
   Utils::freeCharVector(_argv);
   Utils::freeCharVector(_envp);
-  pthread_mutex_destroy(&_mutex);
 }
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
@@ -155,14 +152,14 @@ void CGIHandler::_runScript() {
 
 ConnectionStatus CGIHandler::handleCGIRequest() {
   if (_state == INIT){
-    std::string cacheControl;
+    // std::string cacheControl;
     try {
-      cacheControl = _request.getHeader("Cache-Control");
-      _log.info("CGI: cacheControl: " +
-                (cacheControl.empty() ? "Empty header = cache active" : cacheControl));
-      if (cacheControl.empty())
-        _state = CACHE_CHECK;
-      else
+      // cacheControl = _request.getHeader("Cache-Control");
+      // _log.info("CGI: cacheControl: " +
+      //           (cacheControl.empty() ? "Empty header = cache active" : cacheControl));
+      // if (cacheControl.empty())
+      //   _state = CACHE_CHECK;
+      // else
         _state = REGISTER_SCRIPT_FD;
     } catch (const Exception& e) {
       if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e) || dynamic_cast<const CGIHandler::CGINotExecutable*>(&e) || dynamic_cast<const CGIHandler::ScriptNotExecutable*>(&e))
@@ -172,28 +169,28 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       _state = CGI_ERROR;
     }
   }
-  if (_state == CACHE_CHECK){
-    std::string uriPath;
-    int cacheStatus;
-    try {
-      uriPath = _request.getURIComponents().path;
-      cacheStatus = _cacheHandler.getResponse(_request, _response);
-      _log.info("CGI: For URI path: " + uriPath + ", cacheStatus: " +
-                (cacheStatus == CACHE_CURRENTLY_BUILDING  ? "Cache currently building"
-                : cacheStatus == CACHE_FOUND ? "Cache found"
-                                    : "Cache not found"));
-      if (cacheStatus == CACHE_FOUND)
-        return SENDING;
-      if (cacheStatus == CACHE_CURRENTLY_BUILDING)
-        return EXECUTING;
-      if (cacheStatus == CACHE_NOT_FOUND) {
-        _cacheHandler.reserveCache(_request); // Cache-building waiting, first caller registers NULL
-        _state = REGISTER_SCRIPT_FD;
-      }
-    } catch (...) {
-      _state = CGI_ERROR;
-    }
-  }
+  // if (_state == CACHE_CHECK){
+  //   std::string uriPath;
+  //   int cacheStatus;
+  //   try {
+  //     uriPath = _request.getURIComponents().path;
+  //     cacheStatus = _cacheHandler.getResponse(_request, _response);
+  //     _log.info("CGI: For URI path: " + uriPath + ", cacheStatus: " +
+  //               (cacheStatus == CACHE_CURRENTLY_BUILDING  ? "Cache currently building"
+  //               : cacheStatus == CACHE_FOUND ? "Cache found"
+  //                                   : "Cache not found"));
+  //     if (cacheStatus == CACHE_FOUND)
+  //       return SENDING;
+  //     if (cacheStatus == CACHE_CURRENTLY_BUILDING)
+  //       return EXECUTING;
+  //     if (cacheStatus == CACHE_NOT_FOUND) {
+  //       _cacheHandler.reserveCache(_request); // Cache-building waiting, first caller registers NULL
+  //       _state = REGISTER_SCRIPT_FD;
+  //     }
+  //   } catch (...) {
+  //     _state = CGI_ERROR;
+  //   }
+  // }
   if (_state == REGISTER_SCRIPT_FD){  // Set-up execution environment
     try {
       _checkIfProcessingPossible();
@@ -321,6 +318,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
         _response.addHeader(
             "Cache-Control",
             "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
+        _log.info("CGI: storing response in cache");
         _cacheHandler.storeResponse(_request, _response);
       }
       return SENDING;

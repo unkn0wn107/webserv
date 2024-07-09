@@ -22,6 +22,8 @@
 const int    ConnectionHandler::MAX_TRIES = 10;
 const time_t ConnectionHandler::TIMEOUT = 10;
 
+CacheHandler& ConnectionHandler::_cacheHandler = CacheHandler::getInstance();
+
 ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
@@ -44,10 +46,6 @@ ConnectionHandler::ConnectionHandler(
       _cgiHandler(NULL),
       _cgiState(NONE),
       _step(0) {
-  if (pthread_mutex_init(&_mutex, NULL) != 0)
-    _log.error("CONNECTION_HANDLER: Failed to create mutex");
-  if (pthread_mutex_init(&_statusMutex, NULL) != 0)
-    _log.error("CONNECTION_HANDLER: Failed to create mutex");
 }
 
 ConnectionHandler::~ConnectionHandler() {
@@ -68,8 +66,6 @@ ConnectionHandler::~ConnectionHandler() {
     delete _cgiHandler;
     _cgiHandler = NULL;
   }
-  pthread_mutex_destroy(&_mutex);
-  pthread_mutex_destroy(&_statusMutex);
   // _requestString.clear();
   // _readn = 0;
 }
@@ -90,39 +86,6 @@ void ConnectionHandler::forceSendResponse() {
   _sendResponse();
 }
 
-// void ConnectionHandler::_markForDeletion() {
-//   pthread_mutex_lock(&_mutex);
-//   _markedForDeletion = true;
-//   pthread_mutex_unlock(&_mutex);
-//   _log.info("CONNECTION_HANDLER: Marked for deletion");
-// }
-
-// bool ConnectionHandler::isMarkedForDeletion() {
-//   pthread_mutex_lock(&_mutex);
-//   bool marked = _markedForDeletion;
-//   pthread_mutex_unlock(&_mutex);
-//   return marked;
-// }
-
-bool ConnectionHandler::isBusy() {
-  pthread_mutex_lock(&_mutex);
-  bool busy = _busy;
-  pthread_mutex_unlock(&_mutex);
-  return busy;
-}
-
-void ConnectionHandler::setBusy() {
-  pthread_mutex_lock(&_mutex);
-  _busy = true;
-  pthread_mutex_unlock(&_mutex);
-}
-
-void ConnectionHandler::setNotBusy() {
-  pthread_mutex_lock(&_mutex);
-  _busy = false;
-  pthread_mutex_unlock(&_mutex);
-}
-
 ConnectionStatus ConnectionHandler::_checkConnectionStatus() {
   ConnectionStatus status = _connectionStatus;
   return status;
@@ -140,6 +103,7 @@ void ConnectionHandler::_receiveRequest() {
   std::string headers;
   size_t      contentLength = 0;
   bool        contentLengthFound = false;
+  bool        hitCache = false;
   size_t      headersEndPos = 0;
 
   if (_count > MAX_TRIES || (time(NULL) - _startTime) > TIMEOUT) {
@@ -169,6 +133,9 @@ void ConnectionHandler::_receiveRequest() {
       contentLength = Utils::stoi<size_t>(clValue);
       contentLengthFound = true;
     }
+    size_t cachePos = _requestString.find("Cache-Control: no-cache");
+    if (cachePos != std::string::npos)
+      hitCache = true;
   }
 
   if (contentLengthFound && _readn - headersEndPos - 4 != contentLength) {
@@ -177,8 +144,21 @@ void ConnectionHandler::_receiveRequest() {
     return;
   }
   if (headersEnd) {
-    _log.info(
-        "CONNECTION_HANDLER: Request valid: no more to read but headers ended");
+    if (hitCache) {
+      _log.info("CONNECTION_HANDLER: Cache hit");
+      CacheStatus cacheStatus = _cacheHandler.checkCache(_requestString);
+      if (cacheStatus == CACHE_FOUND) {
+        _log.error("CONNECTION_HANDLER: Cache found");
+        _response = _cacheHandler.getResponse(_requestString);
+        _setConnectionStatus(SENDING);
+        return;
+      }
+      else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
+        _response = _cacheHandler.waitResponse(_requestString);
+        _setConnectionStatus(SENDING);
+        return;
+      }
+    }
     _processRequest();
   } else if (bytes == 0)
     throw RequestException(

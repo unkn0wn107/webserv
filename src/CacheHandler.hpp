@@ -43,12 +43,11 @@ class CacheHandler {
   static CacheHandler*                                     _instance;
   std::map<std::string, std::pair<HTTPResponse*, time_t> > _cache;
   time_t                                                   _maxAge;
-  pthread_mutex_t                                          _cacheMutex;
-  pthread_mutex_t                                          _mutex;
 
   std::string             _generateKey(const HTTPRequest& request) const;
   std::string             _generateKey(std::string requestString) const;
   unsigned long           _hash(const std::string& str) const;
+  mutable pthread_mutex_t _mutex;
 };
 
 #endif

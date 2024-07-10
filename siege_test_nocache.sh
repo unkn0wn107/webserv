@@ -34,6 +34,18 @@ else
 fi
 printf "\n"
 
+echo "Running siege with caching enabled"
+echo "Running siege with caching enabled" >> $SIEGE_LOG_FILE
+siege -t 10s -c 25 -b -f $SIEGE_URLS_FILE >> $SIEGE_LOG_FILE
+
+if grep -q '"failed_transactions": *[1-9]' $SIEGE_LOG_FILE; then
+    echo "!!!KO!!!: Siege test failed with caching enabled. Check $SIEGE_LOG_FILE for details."
+    TEST_FAILED=1
+else
+    echo "OK: Siege test passed with caching enabled."
+fi
+printf "\n"
+
 if [ "$TEST_FAILED" -ne 0 ]; then
     printf "\n!!!KO!!!: One or more tests failed.\n\n"
     exit 1

@@ -75,35 +75,29 @@ void* Worker::_workerRoutine(void* arg) {
 
 void Worker::_runEventLoop() {
   while (!_shouldStop) {
-    struct epoll_event events[MAX_EVENTS];
-    int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
-    if (nfds == 0) {
-      _log.info("SERVER: epoll_wait: 0 events");
-      continue;
-    }
-    if (nfds < 0) {
+    struct epoll_event event;
+
+    if (!_events.try_pop(event)) {
       usleep(1000);
       continue;
     }
-    for (int i = 0; i < nfds && !_shouldStop; i++) {
-      struct epoll_event event = events[i];
-      _log.info("WORKER (" + Utils::to_string(_threadId) +
-                "): Event: " + Utils::to_string(event.events));
 
-      EventData* eventData = (EventData*)event.data.ptr;
-      if (eventData && eventData->isListening && (event.events & EPOLLIN)) {
-        _acceptNewConnection(eventData->fd);
-      }
-      else if (eventData && event.events)
-        _launchEventProcessing(eventData, event);
-      else {
-        _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                    "): Unable to handle event with no data");
-        epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, NULL);
-        close(event.data.fd);
-        // delete eventData->handler;
-        // delete eventData;
-      }
+    _log.info("WORKER (" + Utils::to_string(_threadId) +
+              "): Event: " + Utils::to_string(event.events));
+
+    EventData* eventData = static_cast<EventData*>(event.data.ptr);
+    if (eventData && eventData->isListening && (event.events & EPOLLIN)) {
+      _acceptNewConnection(eventData->fd);
+    }
+    else if (eventData && event.events)
+      _launchEventProcessing(eventData, event);
+    else {
+      _log.warning("WORKER (" + Utils::to_string(_threadId) +
+                   "): Unable to handle event with no data");
+      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, NULL);
+      close(event.data.fd);
+      // delete eventData->handler;
+      // delete eventData;
     }
   }
   // _cleanUpForceResponse();

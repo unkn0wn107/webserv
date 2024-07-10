@@ -318,8 +318,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
         _response.addHeader(
             "Cache-Control",
             "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
-        _log.info("CGI: storing response in cache");
-        _cacheHandler.storeResponse(_request, _response);
       }
       return SENDING;
     } catch (...) {

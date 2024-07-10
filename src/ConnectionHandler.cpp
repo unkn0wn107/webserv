@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 15:28:16 by agaley           ###   ########.fr       */
+/*   Updated: 2024/07/10 13:29:04 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -254,6 +254,7 @@ void ConnectionHandler::_processRequest() {
   }
   if ((_response = vserv->checkRequest(*_request)) != NULL) {
     _log.error("CONNECTION_HANDLER: Request failed");
+    _cacheHandler.storeResponse(_requestString, *_response);
     _setConnectionStatus(SENDING);
     return;
   }

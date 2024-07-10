@@ -52,6 +52,9 @@ VPATH = $(SRC_DIR)
 
 all: $(NAME) setup
 
+fix:
+	dos2unix *.sh && chmod +x *.sh
+
 setup:
 	NUM=1; \
 	for dir in /var/www/html/static_templates/* ; do \

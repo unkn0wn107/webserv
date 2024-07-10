@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 15:00:37 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/10 13:27:04 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -272,6 +272,7 @@ void HTTPResponse::_errorResponse() {
                   ? Utils::to_string(_body.length())
                   : Utils::to_string(FileManager::getFileSize(_file)));
   }
+  _statusMessage = getStatusMessage(_statusCode);
 }
 
 void HTTPResponse::buildResponse() {

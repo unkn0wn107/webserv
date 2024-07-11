@@ -103,7 +103,6 @@ void ConnectionHandler::_receiveRequest() {
   std::string headers;
   size_t      contentLength = 0;
   bool        contentLengthFound = false;
-  bool        hitCache = false;
   size_t      headersEndPos = 0;
 
   if (_count > MAX_TRIES || (time(NULL) - _startTime) > TIMEOUT) {
@@ -133,9 +132,6 @@ void ConnectionHandler::_receiveRequest() {
       contentLength = Utils::stoi<size_t>(clValue);
       contentLengthFound = true;
     }
-    size_t cachePos = _requestString.find("Cache-Control: no-cache");
-    if (cachePos != std::string::npos)
-      hitCache = true;
   }
 
   if (contentLengthFound && _readn - headersEndPos - 4 != contentLength) {
@@ -144,21 +140,6 @@ void ConnectionHandler::_receiveRequest() {
     return;
   }
   if (headersEnd) {
-    if (hitCache) {
-      _log.info("CONNECTION_HANDLER: Cache hit");
-      CacheStatus cacheStatus = _cacheHandler.checkCache(_requestString);
-      if (cacheStatus == CACHE_FOUND) {
-        _log.error("CONNECTION_HANDLER: Cache found");
-        _response = _cacheHandler.getResponse(_requestString);
-        _setConnectionStatus(SENDING);
-        return;
-      }
-      else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
-        _response = _cacheHandler.waitResponse(_requestString);
-        _setConnectionStatus(SENDING);
-        return;
-      }
-    }
     _processRequest();
   } else if (bytes == 0)
     throw RequestException(
@@ -260,7 +241,25 @@ void ConnectionHandler::_processRequest() {
   const LocationConfig& location = vserv->getLocationConfig(uriPath);
   if (location.cgi && CGIHandler::isScript(*_request, location) &&
       _cgiState == NONE) {
+    bool hitCache = _request->getHeader("Cache-Control") != "no-cache";
     _log.info("CONNECTION_HANDLER: CGI request detected");
+    hitCache = false; // TODO: remove this line after testing cache
+    if (hitCache) {
+      _log.info("CONNECTION_HANDLER: Cache hit");
+      CacheStatus cacheStatus = _cacheHandler.checkCache(_requestString);
+      if (cacheStatus == CACHE_FOUND) {
+        _log.error("CONNECTION_HANDLER: Cache found");
+        _response = _cacheHandler.getResponse(_requestString);
+        _setConnectionStatus(SENDING);
+        return;
+      }
+      else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
+        _log.info("CONNECTION_HANDLER: Cache currently building");
+        _response = _cacheHandler.waitResponse(_requestString);
+        _setConnectionStatus(SENDING);
+        return;
+      }
+    } 
     _response = new HTTPResponse(HTTPResponse::OK, location);
     _cgiHandler =
         new CGIHandler(*_request, *_response, _epollSocket, location, this);
@@ -270,6 +269,7 @@ void ConnectionHandler::_processRequest() {
     _log.info("CONNECTION_HANDLER: NO CGI in request detected");
     _response = vserv->handleRequest(*_request);
     _response->setCookie("sessionid", _request->getSessionId());
+    // _cacheHandler.storeResponse(*_request, *_response);
     _setConnectionStatus(SENDING);
   }
 }
@@ -333,6 +333,8 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
         throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                        "): CGIHandler is NULL");
       }
+      _log.warning("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                "): CGIHandler is executing, go back in event loop");
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
         _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +

@@ -35,6 +35,7 @@ _cache(),
 _maxAge(MAX_AGE)
 {
   pthread_mutex_init(&_mutex, NULL);
+  pthread_mutex_init(&_cacheMutex, NULL);
 }
 
 CacheHandler::~CacheHandler() {
@@ -45,6 +46,7 @@ CacheHandler::~CacheHandler() {
   }
   _cache.clear();
   pthread_mutex_destroy(&_mutex);
+  pthread_mutex_destroy(&_cacheMutex);
 }
 
 CacheStatus CacheHandler::checkCache(std::string requestString) {
@@ -54,30 +56,36 @@ CacheStatus CacheHandler::checkCache(std::string requestString) {
   pthread_mutex_lock(&_mutex);
   found = _cache.find(key);
   end = _cache.end();
-  pthread_mutex_unlock(&_mutex);
   if (found == end)
   {
-    _log.info("CACHE_HANDLER: Cache not found, reserving");
+    _log.warning("CACHE_HANDLER: Cache not found, reserving");
     this->reserveCache(requestString);
+    pthread_mutex_unlock(&_mutex);
     return CACHE_NOT_FOUND;
   }
   if (found->second.first == NULL)
   {
-    _log.info("CACHE_HANDLER: Cache currently building");
+    _log.warning("CACHE_HANDLER: Cache currently building");
+    pthread_mutex_unlock(&_mutex);
     return CACHE_CURRENTLY_BUILDING;
   }
   if (found->second.second + _maxAge <= time(NULL) &&
       found->second.first != NULL) // Check cache freshness
   {
-    _log.info("CACHE_HANDLER: Cache expired, deleting");
+    _log.warning("CACHE_HANDLER: Cache expired, deleting");
     this->deleteCache(requestString, found->second.first);
+    pthread_mutex_unlock(&_mutex);
+    return CACHE_NOT_FOUND;
   }
+  _log.warning("CACHE_HANDLER: Cache found");
+  pthread_mutex_unlock(&_mutex);
   return CACHE_FOUND;
 }
 
 HTTPResponse* CacheHandler::getResponse(std::string requestString) {
   std::string key = _generateKey(requestString);
   HTTPResponse* response = NULL;
+  _log.info("CACHE_HANDLER: Getting response");
   pthread_mutex_lock(&_mutex);
   response = new HTTPResponse(*(_cache[key].first));
   pthread_mutex_unlock(&_mutex);
@@ -88,6 +96,9 @@ HTTPResponse* CacheHandler::waitResponse(std::string requestString) {
   std::string key = _generateKey(requestString);
   HTTPResponse* response = NULL;
 
+  _log.error("CACHE_HANDLER: Waiting for response");
+  pthread_mutex_lock(&_cacheMutex);
+  _log.error("CACHE_HANDLER: Waiting in cache mutex");
   while (true)
   {
     usleep(10000);
@@ -95,17 +106,21 @@ HTTPResponse* CacheHandler::waitResponse(std::string requestString) {
     response = _cache[key].first;
     pthread_mutex_unlock(&_mutex);
     if (response != NULL)
+    {
+      _log.error("CACHE_HANDLER: Response found");
       break;
+    }
   }
+  pthread_mutex_unlock(&_cacheMutex);
   return new HTTPResponse(*response);
 }
 
 void CacheHandler::reserveCache(std::string requestString) {
   std::string key = _generateKey(requestString);
-  pthread_mutex_lock(&_mutex);
+  if (_cache[key].first != NULL)
+    return;
   _cache[key].first = NULL;
   _cache[key].second = time(NULL);
-  pthread_mutex_unlock(&_mutex);
 }
 
 void CacheHandler::storeResponse(const HTTPRequest&  request,
@@ -120,10 +135,8 @@ void CacheHandler::storeResponse(const HTTPRequest&  request,
 void CacheHandler::deleteCache(std::string requestString,
                                HTTPResponse* response) {
   std::string key = _generateKey(requestString);
-  pthread_mutex_lock(&_mutex);
   delete response;
   _cache.erase(key);
-  pthread_mutex_unlock(&_mutex);
 }
 
 void CacheHandler::deleteCache(const HTTPRequest& request) {

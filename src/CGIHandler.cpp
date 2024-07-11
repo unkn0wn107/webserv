@@ -160,7 +160,19 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       // if (cacheControl.empty())
       //   _state = CACHE_CHECK;
       // else
+      struct epoll_event event;
+      memset(&event, 0, sizeof(event));
+      _eventData = new EventData(_outpipefd[0], _connectionHandler);
+      event.data.ptr = _eventData;
+      event.events = EPOLLIN | EPOLLET;
+      if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
+        close(_outpipefd[0]);
+        delete _eventData;
+        _state = CGI_ERROR;
+        
+      }else {
         _state = REGISTER_SCRIPT_FD;
+      }
     } catch (const Exception& e) {
       if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e) || dynamic_cast<const CGIHandler::CGINotExecutable*>(&e) || dynamic_cast<const CGIHandler::ScriptNotExecutable*>(&e))
         _response.setStatusCode(HTTPResponse::FORBIDDEN);
@@ -198,22 +210,10 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       if (_pid == -1)
         throw ForkFailure("CGI: Failed to fork process");
       if (_pid > 0) {
-        struct epoll_event event;
-        memset(&event, 0, sizeof(event));
-        _eventData = new EventData(_outpipefd[0], _connectionHandler);
-        event.data.ptr = _eventData;
-        event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-        if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
-          close(_outpipefd[0]);
-          delete _eventData;
-          _state = CGI_ERROR;
-          
-        } else {
-          close(_inpipefd[0]);
-          close(_outpipefd[1]);
-          _state = SCRIPT_RUNNING;
-          _runStartTime = std::time(NULL);
-        }
+        close(_inpipefd[0]);
+        close(_outpipefd[1]);
+        _state = SCRIPT_RUNNING;
+        _runStartTime = std::time(NULL);
       } else if (_pid == 0)
         _state = RUN_SCRIPT;
     } catch (...) {
@@ -243,6 +243,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           throw TimeoutException("CGI: script timedout after " +
                                 Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
         }
+        _log.warning("CGI: script is still running, return EXECUTING");
         return EXECUTING;
       }
       if (WIFEXITED(status)) {

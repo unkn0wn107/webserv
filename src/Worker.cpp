@@ -157,7 +157,7 @@ void Worker::_acceptNewConnection(int fd) {
     std::vector<VirtualServer*> virtualServers =
         _setupAssociatedVirtualServers(listenConfig);
     ConnectionHandler* handler = new ConnectionHandler(
-        new_socket, _epollSocket, virtualServers, listenConfig);
+        new_socket, _epollSocket, virtualServers, listenConfig, _events);
     EventData* eventData = new EventData(new_socket, handler, _threadId);
     event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;

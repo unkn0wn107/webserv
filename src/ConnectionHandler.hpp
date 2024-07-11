@@ -26,6 +26,7 @@
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
+#include "EventQueue.hpp"
 
 #define BUFFER_SIZE 16384
 
@@ -50,7 +51,8 @@ class ConnectionHandler {
   ConnectionHandler(int                          clientSocket,
                     int                          epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
-                    ListenConfig&                listenConfig);
+                    ListenConfig&                listenConfig,
+                    EventQueue&                  events);
   ~ConnectionHandler();
 
   class ConnectionException : public Exception {
@@ -82,8 +84,8 @@ class ConnectionHandler {
 
  private:
   static CacheHandler& _cacheHandler;
-  Logger&              _log;
-  bool                _busy;
+  Logger&                     _log;
+  EventQueue&                 _events;
   ConnectionStatus            _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;

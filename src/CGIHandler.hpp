@@ -32,6 +32,7 @@
 #include "EventData.hpp"
 
 #define CGI_TIMEOUT_SEC 10
+#define MAX_PROC 100
 // enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
 
 class ConnectionHandler;
@@ -128,6 +129,7 @@ class CGIHandler {
  private:
   static Logger&       _log;
   static CacheHandler& _cacheHandler;
+  static int           _activeProc;
 
   CGIState _state;
 
@@ -145,6 +147,8 @@ class CGIHandler {
   std::string           _index;
   bool                  _cgi;
   bool                  _done;
+  pthread_mutex_t        _mutex;
+  pthread_mutex_t        _activeProcMutex;
 
   std::vector<char*> _argv;
   std::vector<char*> _envp;
@@ -155,6 +159,10 @@ class CGIHandler {
 
   static const std::pair<std::string, std::string> _AVAILABLE_CGIS[];
   static const int                                 _NUM_AVAILABLE_CGIS;
+
+  int _getActiveProc();
+  void _incrementActiveProc();
+  void _decrementActiveProc();
 
   /**
    * Identifies the runtime environment based on the script file extension.

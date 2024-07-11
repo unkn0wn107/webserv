@@ -28,9 +28,10 @@ ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
     std::vector<VirtualServer*>& virtualServers,
-    ListenConfig&                listenConfig)
+    ListenConfig&                listenConfig,
+    EventQueue&                  events)
     : _log(Logger::getInstance()),
-      _busy(false),
+      _events(events),
       _connectionStatus(READING),
       _clientSocket(clientSocket),
       _epollSocket(epollSocket),
@@ -283,8 +284,14 @@ void ConnectionHandler::_processExecutingState() {
   }
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): " + " Status: " + getStatusString() + " Processing data");
-  ConnectionStatus returnStatus = _cgiHandler->handleCGIRequest();
-  _setConnectionStatus(returnStatus);
+  try {
+    ConnectionStatus returnStatus = _cgiHandler->handleCGIRequest();
+    _setConnectionStatus(returnStatus);
+  } catch (const Exception& e) {
+    _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+               "): Exception caught: " + e.what());
+    _setConnectionStatus(SENDING);
+  }
   _cgiState = _cgiHandler->getCgiState();
 }
 
@@ -336,11 +343,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       _log.warning("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                 "): CGIHandler is executing, go back in event loop");
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-      if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
-        _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                                "): epoll_ctl: ") +
-                    strerror(errno));
-      }
+      _events.push(event);
       break;
 
     case SENDING:

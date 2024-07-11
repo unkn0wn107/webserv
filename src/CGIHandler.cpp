@@ -32,8 +32,8 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
       _processOutputSize(0),
       _runtime(_identifyRuntime(_request, _location)),
       _done(false),
-      _argv(CGIHandler::_buildScriptArguments(_request, _location)),
-      _envp(CGIHandler::_buildScriptEnvironment(_request, _location)),
+      _argv(_buildScriptArguments(_request, _location)),
+      _envp(_buildScriptEnvironment(_request, _location)),
       _pid(-2) {
   _root = _location.root;
   _index = _location.index;
@@ -57,8 +57,6 @@ CGIHandler::~CGIHandler() {
     close(_outpipefd[0]);
   if (_outpipefd[1] != -1)
     close(_outpipefd[1]);
-  Utils::freeCharVector(_argv);
-  Utils::freeCharVector(_envp);
 }
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
@@ -145,9 +143,24 @@ void CGIHandler::_runScript() {
     totalWritten += written;
   }
   close(_inpipefd[1]);
-  execve(_argv[0], &_argv[0], &_envp[0]);
-  _log.error("CGI: execve failed: unable to execute CGI script");
-  exit(EXIT_FAILURE);
+
+  char** argv_ptrs = new char*[_argv.size() + 1];
+  char** envp_ptrs = new char*[_envp.size() + 1];
+
+  for (size_t i = 0; i < _argv.size(); ++i)
+      argv_ptrs[i] = const_cast<char*>(_argv[i].data());
+  argv_ptrs[_argv.size()] = NULL;
+
+  for (size_t i = 0; i < _envp.size(); ++i)
+      envp_ptrs[i] = const_cast<char*>(_envp[i].data());
+  envp_ptrs[_envp.size()] = NULL;
+
+  if (execve(argv_ptrs[0], argv_ptrs, envp_ptrs) == -1) {
+    _log.error("CGI: execve failed: unable to execute CGI script");
+    delete[] argv_ptrs;
+    delete[] envp_ptrs;
+    exit(EXIT_FAILURE);
+  }
 }
 
 ConnectionStatus CGIHandler::handleCGIRequest() {
@@ -359,70 +372,66 @@ std::map<std::string, std::string> CGIHandler::_parseOutputHeaders(
   return headers;
 }
 
-std::vector<char*> CGIHandler::_buildScriptArguments(
+std::vector<std::string> CGIHandler::_buildScriptArguments(
     const HTTPRequest&    request,
     const LocationConfig& location) {
-  std::vector<char*> argv;
+    std::vector<std::string> argv;
 
-  std::string scriptPath = location.root + request.getURIComponents().path;
-  if (FileManager::isDirectory(scriptPath)) {
-    if (scriptPath[scriptPath.length() - 1] != '/')
-      scriptPath += "/";
-    scriptPath += location.index;
-  }
+    std::string scriptPath = location.root + request.getURIComponents().path;
+    if (FileManager::isDirectory(scriptPath)) {
+        if (scriptPath[scriptPath.length() - 1] != '/')
+            scriptPath += "/";
+        scriptPath += location.index;
+    }
 
-  argv.reserve(3);
-  argv.push_back(Utils::cstr(_identifyRuntime(request, location)));
-  argv.push_back(Utils::cstr(scriptPath));
-  argv.push_back(NULL);
+    argv.reserve(2);
+    argv.push_back(_identifyRuntime(request, location));
+    argv.push_back(scriptPath);
 
-  return argv;
+    return argv;
 }
 
-std::vector<char*> CGIHandler::_buildScriptEnvironment(
+std::vector<std::string> CGIHandler::_buildScriptEnvironment(
     const HTTPRequest&    request,
     const LocationConfig& location) {
-  std::vector<char*> envp;
+    std::vector<std::string> envp;
 
-  const std::map<std::string, std::string> headers = request.getHeaders();
-  const URI::Components uriComponents = request.getURIComponents();
+    const std::map<std::string, std::string>& headers = request.getHeaders();
+    const URI::Components& uriComponents = request.getURIComponents();
 
-  std::string scriptName = uriComponents.scriptName;
-  std::string scriptPath = location.root + uriComponents.path;
-  if (FileManager::isDirectory(scriptPath)) {
-    if (scriptPath[scriptPath.length() - 1] != '/')
-      scriptPath += "/";
-    scriptPath += location.index;
-    if (scriptName[scriptName.length() - 1] != '/')
-      scriptName += "/";
-    scriptName += location.index;
-  }
+    std::string scriptName = uriComponents.scriptName;
+    std::string scriptPath = location.root + uriComponents.path;
+    if (FileManager::isDirectory(scriptPath)) {
+        if (scriptPath[scriptPath.length() - 1] != '/')
+            scriptPath += "/";
+        scriptPath += location.index;
+        if (scriptName[scriptName.length() - 1] != '/')
+            scriptName += "/";
+        scriptName += location.index;
+    }
 
-  envp.reserve(headers.size() + 10 + 1);  // 10 env variables + NULL
+    envp.reserve(headers.size() + 10);  // 10 env variables
 
-  envp.push_back(Utils::cstr("REDIRECT_STATUS=200"));  // For php-cgi at least
-  envp.push_back(Utils::cstr("DOCUMENT_ROOT=" + location.root));
-  envp.push_back(Utils::cstr("REQUEST_URI=" + request.getURI()));
-  envp.push_back(Utils::cstr("SCRIPT_FILENAME=" + scriptPath));
-  envp.push_back(Utils::cstr("SCRIPT_NAME=" + scriptName));
-  envp.push_back(Utils::cstr("PATH_INFO=" + uriComponents.pathInfo));
-  envp.push_back(Utils::cstr("REQUEST_METHOD=" + request.getMethod()));
-  envp.push_back(Utils::cstr("QUERY_STRING=" + uriComponents.query));
-  envp.push_back(Utils::cstr("REMOTE_HOST=localhost"));
-  envp.push_back(Utils::cstr("CONTENT_LENGTH=" +
-                             Utils::to_string(request.getBody().length())));
+    envp.push_back("REDIRECT_STATUS=200");  // For php-cgi at least
+    envp.push_back("DOCUMENT_ROOT=" + location.root);
+    envp.push_back("REQUEST_URI=" + request.getURI());
+    envp.push_back("SCRIPT_FILENAME=" + scriptPath);
+    envp.push_back("SCRIPT_NAME=" + scriptName);
+    envp.push_back("PATH_INFO=" + uriComponents.pathInfo);
+    envp.push_back("REQUEST_METHOD=" + request.getMethod());
+    envp.push_back("QUERY_STRING=" + uriComponents.query);
+    envp.push_back("REMOTE_HOST=localhost");
+    envp.push_back("CONTENT_LENGTH=" + Utils::to_string(request.getBody().length()));
 
-  for (std::map<std::string, std::string>::const_iterator hd = headers.begin();
-       hd != headers.end(); ++hd) {
-    std::string envName = "HTTP_" + hd->first;
-    std::replace(envName.begin(), envName.end(), '-', '_');
-    std::transform(envName.begin(), envName.end(), envName.begin(), ::toupper);
-    std::string envLine = envName + "=" + hd->second;
-    envp.push_back(Utils::cstr(envLine));
-  }
-  envp.push_back(NULL);
+    for (std::map<std::string, std::string>::const_iterator hd = headers.begin();
+          hd != headers.end(); ++hd) {
+        std::string envName = "HTTP_" + hd->first;
+        std::replace(envName.begin(), envName.end(), '-', '_');
+        std::transform(envName.begin(), envName.end(), envName.begin(), ::toupper);
+        envp.push_back(envName + "=" + hd->second);
+    }
 
-  return envp;
+    return envp;
 }
 
 const std::string CGIHandler::_identifyRuntime(const HTTPRequest&    request,

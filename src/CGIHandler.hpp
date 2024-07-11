@@ -63,8 +63,6 @@ class CGIHandler {
    */
   ConnectionStatus handleCGIRequest();
 
-  ConnectionStatus mapStateToConnectionStatus() const;
-
   class NoRuntimeError : public Exception {
    public:
     NoRuntimeError(const std::string& message) : Exception(message) {}
@@ -146,8 +144,8 @@ class CGIHandler {
   bool                  _cgi;
   bool                  _done;
 
-  std::vector<char*> _argv;
-  std::vector<char*> _envp;
+  std::vector<std::string> _argv;
+  std::vector<std::string> _envp;
 
   int   _inpipefd[2];
   int   _outpipefd[2];
@@ -178,7 +176,7 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return Array of environment variable strings.
    */
-  static std::vector<char*> _buildScriptEnvironment(
+  static std::vector<std::string> _buildScriptEnvironment(
       const HTTPRequest&    request,
       const LocationConfig& location);
 
@@ -188,7 +186,7 @@ class CGIHandler {
    * @return A vector of strings, each representing an argument for the CGI
    * script.
    */
-  static std::vector<char*> _buildScriptArguments(
+  static std::vector<std::string> _buildScriptArguments(
       const HTTPRequest&    request,
       const LocationConfig& location);
 

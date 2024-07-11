@@ -22,8 +22,6 @@
 const int    ConnectionHandler::MAX_TRIES = 10;
 const time_t ConnectionHandler::TIMEOUT = 10;
 
-CacheHandler& ConnectionHandler::_cacheHandler = CacheHandler::getInstance();
-
 ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
@@ -242,23 +240,6 @@ void ConnectionHandler::_processRequest() {
   if (location.cgi && CGIHandler::isScript(*_request, location) &&
       _cgiState == NONE) {
     _log.info("CONNECTION_HANDLER: CGI request detected");
-    if (_request->getHeader("Cache-Control") == "") {
-      CacheStatus cacheStatus = _cacheHandler.checkCache(_request->getRawRequest());
-      if (cacheStatus == CACHE_FOUND) {
-        _log.info("CONNECTION_HANDLER: Cache found");
-        _response = _cacheHandler.getResponse(_requestString);
-        _response->setCookie("sessionid", _request->getSessionId());
-        _setConnectionStatus(SENDING);
-        return;
-      }
-      else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
-        _log.error("CONNECTION_HANDLER: Cache currently building");
-        _response = _cacheHandler.waitResponse(_requestString);
-        _response->setCookie("sessionid", _request->getSessionId());
-        _setConnectionStatus(SENDING);
-        return;
-      }
-    }
     _response = new HTTPResponse(HTTPResponse::OK, location);
     _cgiHandler =
         new CGIHandler(*_request, *_response, _epollSocket, location, this);
@@ -305,11 +286,6 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       _receiveRequest();
     if (_connectionStatus == EXECUTING) {
       _processExecutingState();
-      if (_connectionStatus == SENDING) {
-        if (_request->getHeader("Cache-Control") == "")
-          _cacheHandler.storeResponse(_requestString, *_response);
-        _response->setCookie("sessionid", _request->getSessionId());
-      }
     }
     if (_connectionStatus == SENDING)
       _sendResponse();

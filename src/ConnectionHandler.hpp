@@ -81,9 +81,9 @@ class ConnectionHandler {
   };
 
  private:
-  static CacheHandler& _cacheHandler;
-  Logger&              _log;
-  bool                _busy;
+  static CacheHandler&        _cacheHandler;
+  Logger&                     _log;
+  bool                        _busy;
   ConnectionStatus            _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;

@@ -165,45 +165,58 @@ void CGIHandler::_runScript() {
 
 ConnectionStatus CGIHandler::handleCGIRequest() {
   if (_state == INIT){
-    // std::string cacheControl;
+    std::string cacheControl;
     try {
-      // cacheControl = _request.getHeader("Cache-Control");
-      // _log.info("CGI: cacheControl: " +
-      //           (cacheControl.empty() ? "Empty header = cache active" : cacheControl));
-      // if (cacheControl.empty())
-      //   _state = CACHE_CHECK;
-      // else
+      cacheControl = _request.getHeader("Cache-Control");
+      _log.info("CGI: cacheControl: " +
+                (cacheControl == "" ? "Empty header = cache active" : cacheControl));
+      if (cacheControl == "")
+        _state = CACHE_CHECK;
+      else
         _state = REGISTER_SCRIPT_FD;
     } catch (const Exception& e) {
-      if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e) || dynamic_cast<const CGIHandler::CGINotExecutable*>(&e) || dynamic_cast<const CGIHandler::ScriptNotExecutable*>(&e))
-        _response.setStatusCode(HTTPResponse::FORBIDDEN);
-      else if (dynamic_cast<const CGIHandler::NoRuntimeError*>(&e) || dynamic_cast<const CGIHandler::CGINotFound*>(&e) || dynamic_cast<const CGIHandler::ScriptNotFound*>(&e))
-          _response.setStatusCode(HTTPResponse::NOT_FOUND);
       _state = CGI_ERROR;
     }
   }
-  // if (_state == CACHE_CHECK){
-  //   std::string uriPath;
-  //   int cacheStatus;
-  //   try {
-  //     uriPath = _request.getURIComponents().path;
-  //     cacheStatus = _cacheHandler.getResponse(_request, _response);
-  //     _log.info("CGI: For URI path: " + uriPath + ", cacheStatus: " +
-  //               (cacheStatus == CACHE_CURRENTLY_BUILDING  ? "Cache currently building"
-  //               : cacheStatus == CACHE_FOUND ? "Cache found"
-  //                                   : "Cache not found"));
-  //     if (cacheStatus == CACHE_FOUND)
-  //       return SENDING;
-  //     if (cacheStatus == CACHE_CURRENTLY_BUILDING)
-  //       return EXECUTING;
-  //     if (cacheStatus == CACHE_NOT_FOUND) {
-  //       _cacheHandler.reserveCache(_request); // Cache-building waiting, first caller registers NULL
-  //       _state = REGISTER_SCRIPT_FD;
-  //     }
-  //   } catch (...) {
-  //     _state = CGI_ERROR;
-  //   }
-  // }
+
+  if (_state == CACHE_CHECK){
+    std::string uriPath;
+    CacheHandler::CacheEntry cacheEntry;
+    try {
+      uriPath = _request.getURIComponents().path;
+      cacheEntry = _cacheHandler.getCacheEntry(_request.getRawRequest());
+      _log.info("CGI: For URI path: " + uriPath + ", cacheStatus: " +
+                (cacheEntry.status == CACHE_CURRENTLY_BUILDING  ? "Cache currently building"
+                : cacheEntry.status == CACHE_FOUND ? "Cache found"
+                                    : "Cache not found"));
+      if (cacheEntry.status == CACHE_FOUND)
+      {
+        _response = *cacheEntry.response;
+        _state = FINALIZE_RESPONSE;
+      }
+
+      if (cacheEntry.status == CACHE_CURRENTLY_BUILDING) {
+          time_t start = time(NULL);
+          time_t timeout = CGI_TIMEOUT_SEC + 1;
+          do {
+            cacheEntry = _cacheHandler.getCacheEntry(_request.getRawRequest());
+            if (cacheEntry.status != CACHE_CURRENTLY_BUILDING)
+              break;
+            usleep(10000);
+          } while (time(NULL) - start < timeout);
+          if (cacheEntry.status != CACHE_FOUND)
+            _state = REGISTER_SCRIPT_FD;
+          else
+            _state = FINALIZE_RESPONSE;
+      }
+
+      if (cacheEntry.status == CACHE_NOT_FOUND)
+        _state = REGISTER_SCRIPT_FD;
+    } catch (...) {
+      _state = CGI_ERROR;
+    }
+  }
+
   if (_state == REGISTER_SCRIPT_FD){  // Set-up execution environment
     try {
       _checkIfProcessingPossible();
@@ -229,10 +242,15 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
         }
       } else if (_pid == 0)
         _state = RUN_SCRIPT;
-    } catch (...) {
+    } catch (const Exception& e) {
+      if (dynamic_cast<const CGIHandler::CGIDisabled*>(&e) || dynamic_cast<const CGIHandler::CGINotExecutable*>(&e) || dynamic_cast<const CGIHandler::ScriptNotExecutable*>(&e))
+        _response.setStatusCode(HTTPResponse::FORBIDDEN);
+      else if (dynamic_cast<const CGIHandler::NoRuntimeError*>(&e) || dynamic_cast<const CGIHandler::CGINotFound*>(&e) || dynamic_cast<const CGIHandler::ScriptNotFound*>(&e))
+          _response.setStatusCode(HTTPResponse::NOT_FOUND);
       _state = CGI_ERROR;
     }
   }
+
   if (_state == RUN_SCRIPT){
     try {
       _runScript();
@@ -240,38 +258,66 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       exit(EXIT_FAILURE);
     }
   }
-  if (_state == SCRIPT_RUNNING){
-    try {
-      pid_t   pidReturn = 0;
-      int     status = -1;
 
-      if ((pidReturn = waitpid(_pid, &status, WNOHANG)) == -1)
-        throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
-      if (pidReturn == 0) {
-        _log.info("CGI: script is still running");
-        if (std::time(NULL) - _runStartTime > CGI_TIMEOUT_SEC) {
-          kill(_pid, SIGKILL);
-          int statusClean;
-          waitpid(_pid, &statusClean, 0); // To stop child process in Zombie state
-          throw TimeoutException("CGI: script timedout after " +
-                                Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
-        }
-        return EXECUTING;
+if (_state == SCRIPT_RUNNING) {
+  try {
+    pid_t pidReturn = 0;
+    int status = -1;
+
+    if ((pidReturn = waitpid(_pid, &status, WNOHANG | WUNTRACED)) == -1)
+      throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
+    
+    if (pidReturn == 0) {
+      if (std::time(NULL) - _runStartTime > CGI_TIMEOUT_SEC) {
+        kill(_pid, SIGKILL);
+        usleep(10000);
+
+        int statusClean;
+        pid_t result;
+        int maxTries = 10;
+        int tries = 0;
+        do {
+            result = waitpid(_pid, &statusClean, WNOHANG);
+            if (result == 0) {
+                usleep(1000 << tries);
+                tries++;
+            }
+        } while (result == 0 && tries < maxTries);
+
+        if (result == -1)
+          _log.error("CGI: Error waiting for process to terminte: " + std::string(strerror(errno)));
+
+        throw TimeoutException("CGI: script timed out after " +
+                              Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
       }
-      if (WIFEXITED(status)) {
-        int exitStatus = WEXITSTATUS(status);
-        _log.info("CGI: script exited, status=" + Utils::to_string(exitStatus));
-        if (exitStatus != 0)
-          throw ExecutorError("CGI: script finished with errors, exit status: " + Utils::to_string(exitStatus));
-        _state = READ_FROM_CGI;
-      }
+      _log.info("CGI: script is still running");
       return EXECUTING;
-    } catch (const Exception& e) {
-      if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
-        _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
-      _state = CGI_ERROR;
     }
+    
+    if (WIFEXITED(status)) {
+      int exitStatus = WEXITSTATUS(status);
+      _log.info("CGI: script exited, status=" + Utils::to_string(exitStatus));
+      if (exitStatus != 0)
+        _log.error("CGI: script finished with errors, exit status: " + Utils::to_string(exitStatus));
+    } else if (WIFCONTINUED(status)) {
+      _log.warning("CGI: script continued");
+      return EXECUTING;
+    } else if (WIFSIGNALED(status)) {
+      std::string coreDump = WCOREDUMP(status) ? " (core dumped)" : "";
+      _log.error("CGI: script terminated by signal: " + Utils::to_string(WTERMSIG(status)) + coreDump);
+    } else if (WIFSTOPPED(status)) {
+      _log.error("CGI: script stopped by signal: " + Utils::to_string(WSTOPSIG(status)));
+    } else {
+      _log.error("CGI: script exited abnormally with unknown status");
+    }
+    _state = READ_FROM_CGI;
+  } catch (const Exception& e) {
+    if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
+      _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
+    _state = CGI_ERROR;
   }
+}
+
   if (_state == READ_FROM_CGI){
     try {
       close(_outpipefd[1]);
@@ -292,6 +338,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       _state = CGI_ERROR;
     }
   }
+
   if (_state == PROCESS_OUTPUT){
     try {
       std::string normalizedOutput = _processOutput;
@@ -318,11 +365,16 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       headers["Content-Length"] = Utils::to_string(bodyContent.size());
       _response.setHeaders(headers);
       _response.setBody(bodyContent);
+
+      if (_request.getHeader("Cache-Control") == "")
+        _cacheHandler.storeResponse(_request.getRawRequest(), _response);
+
       _state = FINALIZE_RESPONSE;
     } catch (...) {
       _state = CGI_ERROR;
     }
   }
+
   if (_state == FINALIZE_RESPONSE){
     try {
       if (_request.getHeader("Cache-Control") == "no-cache")
@@ -332,17 +384,20 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
             "Cache-Control",
             "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
       }
+      _response.setCookie("sessionid", _request.getSessionId());
       return SENDING;
     } catch (...) {
       _state = CGI_ERROR;
     }
   }
+
   if (_state == CGI_ERROR){
     if (_response.getStatusCode() == HTTPResponse::OK)
           _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
-    _cacheHandler.deleteCache(_request);
+    _cacheHandler.deleteCache(_request.getRawRequest());
     return SENDING;
   }
+
   return EXECUTING;
 }
 

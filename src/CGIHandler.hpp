@@ -24,14 +24,14 @@
 #include "CacheHandler.hpp"
 #include "Common.hpp"
 #include "ConnectionHandler.hpp"
+#include "EventData.hpp"
 #include "Exception.hpp"
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
-#include "EventData.hpp"
 
-#define CGI_TIMEOUT_SEC 10
+#define CGI_TIMEOUT_SEC 15
 // enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
 
 class ConnectionHandler;

@@ -70,7 +70,8 @@ Server& Server::getInstance() {
 }
 
 void Server::workerFinished() {
-  LockGuard lock(_mutex);
+  // LockGuard lock(_mutex);
+  pthread_mutex_lock(&_mutex);
   _activeWorkers--;
   _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) +
             ")");
@@ -78,6 +79,7 @@ void Server::workerFinished() {
     _running = false;
     _log.info("SERVER: All workers finished");
   }
+  pthread_mutex_unlock(&_mutex);
 }
 
 void Server::start() {
@@ -93,10 +95,6 @@ void Server::start() {
   struct epoll_event events[MAX_EVENTS];
   while (_running) {
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
-    if (nfds == 0) {
-      _log.info("SERVER: epoll_wait: 0 events");
-      continue;
-    }
     for (int i = 0; i < nfds; i++) {
       _events.push(events[i]);
     }

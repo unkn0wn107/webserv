@@ -79,25 +79,28 @@ class Worker {
   void                        _runEventLoop();
   void                        _acceptNewConnection(int fd);
   void                        _handleIncomingConnection(epoll_event& event);
+  void                        _handleCacheWaiting();
   std::vector<VirtualServer*> _setupAssociatedVirtualServers(
       const ListenConfig& listenConfig);
-  void _launchEventProcessing(EventData* eventData, struct epoll_event& event);
+  void _launchEventProcessing(EventData* eventData);
   void _pushBackToQueue(EventData* eventData, const struct epoll_event& event);
 
   void _cleanUpForceResponse();
   void _cleanUpSendings();
   void _cleanUpAll();
 
-  Server&                      _server;
-  EventQueue&                  _events;
-  Thread                       _thread;
-  std::map<int, EventData*>    _eventsData;
-  const Config&                _config;
-  Logger&                      _log;
-  int                          _epollSocket;
-  std::map<int, ListenConfig>& _listenSockets;
-  int                          _load;
-  bool                         _shouldStop;
+  Server&                                         _server;
+  EventQueue&                                     _events;
+  Thread                                          _thread;
+  std::map<int, EventData*>                       _eventsData;
+  const Config&                                   _config;
+  Logger&                                         _log;
+  // CacheHandler&                                   _cacheHandler;
+  int                                             _epollSocket;
+  std::map<int, ListenConfig>&                    _listenSockets;
+  int                                             _load;
+  bool                                            _shouldStop;
+  std::map<std::string, std::set<EventData *> >   _cacheWaiting;
   // Mutex                        _mutex;
   pid_t _threadId;
 

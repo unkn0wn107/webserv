@@ -26,11 +26,20 @@ Worker::Worker(Server&                      server,
       _epollSocket(epollSocket),
       _listenSockets(listenSockets),
       _load(0),
-      _shouldStop(false) {
+      _shouldStop(false),
+      _cacheWaiting() {
   _log.info("Worker constructor called");
 }
 
-Worker::~Worker() {}
+Worker::~Worker() {
+  _handleCacheWaiting();
+  for (std::map<std::string, std::set<EventData *> >::iterator it = _cacheWaiting.begin(); it != _cacheWaiting.end(); ++it) {
+    for (std::set<EventData *>::iterator sit = it->second.begin(); sit != it->second.end(); ++sit) {
+      delete *sit;
+    }
+  }
+  _cacheWaiting.clear();
+}
 
 Worker::Thread::Thread() : _thread(0) {}
 
@@ -74,9 +83,12 @@ void* Worker::_workerRoutine(void* arg) {
 }
 
 void Worker::_runEventLoop() {
+  size_t loops = 0;
   while (!_shouldStop) {
-    struct epoll_event event;
+    if (++loops % 100 == 0)
+      _handleCacheWaiting();
 
+    struct epoll_event event;
     if (!_events.try_pop(event)) {
       usleep(1000);
       continue;
@@ -90,7 +102,7 @@ void Worker::_runEventLoop() {
       _acceptNewConnection(eventData->fd);
     }
     else if (eventData && event.events)
-      _launchEventProcessing(eventData, event);
+      _launchEventProcessing(eventData);
     else {
       _log.warning("WORKER (" + Utils::to_string(_threadId) +
                    "): Unable to handle event with no data");
@@ -105,17 +117,15 @@ void Worker::_runEventLoop() {
   // _cleanUpAll();
 }
 
-void Worker::_launchEventProcessing(EventData*          eventData,
-                                    struct epoll_event& event) {
+void Worker::_launchEventProcessing(EventData* eventData) {
   int handlerStatus = 0;
   if (!eventData->handler) {
     _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                 "): Handler is NULL for event fd: " + Utils::to_string(event.data.fd) +
-                 " -> " + Utils::to_string(eventData->fd));
+                 "): Handler is NULL for event fd: " + Utils::to_string(eventData->fd));
     return;
   }
   try {
-    handlerStatus = eventData->handler->processConnection(event);
+    handlerStatus = eventData->handler->processConnection(eventData);
   } catch (std::exception& e) {
     _log.error("WORKER (" + Utils::to_string(_threadId) +
                "): Exception: " + e.what());
@@ -126,6 +136,11 @@ void Worker::_launchEventProcessing(EventData*          eventData,
                  eventData->handler->getStatusString());
     delete eventData->handler;
     delete eventData;
+  } else if (handlerStatus == -1) { // Cache waiting
+    _log.warning("WORKER (" + Utils::to_string(_threadId) +
+                 "): Inserting in cache waiting with con status " +
+                 eventData->handler->getStatusString());
+    _cacheWaiting[eventData->handler->getCacheKey()].insert(eventData);
   }
 }
 
@@ -173,6 +188,34 @@ void Worker::_acceptNewConnection(int fd) {
     }
   }
 }
+
+void Worker::_handleCacheWaiting() {
+  for (std::map<std::string, std::set<EventData *> >::iterator it = _cacheWaiting.begin(); it != _cacheWaiting.end(); ++it) {
+    for (std::set<EventData *>::iterator sit = it->second.begin(); sit != it->second.end(); ++sit) {
+      _launchEventProcessing(*sit);
+    }
+  }
+}
+
+// void Worker::_handleCacheWaiting() {
+//   std::vector<std::string> keysToErase;
+//   for (std::map<std::string, std::set<EventData *> >::iterator it = _cacheWaiting.begin(); it != _cacheWaiting.end(); ++it) {
+//     CacheHandler::CacheEntry cacheEntry = _cacheHandler.getCacheEntry(it->first);
+//     if (cacheEntry.status == CACHE_FOUND) {
+//       std::set<EventData *> tempSet = it->second;
+//       for (std::set<EventData *>::iterator sit = tempSet.begin(); sit != tempSet.end(); ++sit) {
+//         it->second.erase(sit);
+//         _launchEventProcessing(*sit);
+//       }
+//       if (it->second.empty())
+//         keysToErase.push_back(it->first);
+//     }
+//   }
+  
+//   for (std::vector<std::string>::iterator it = keysToErase.begin(); it != keysToErase.end(); ++it)
+//     _cacheWaiting.erase(*it);
+// }
+
 
 std::vector<VirtualServer*> Worker::_setupAssociatedVirtualServers(
     const ListenConfig& listenConfig) {

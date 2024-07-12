@@ -59,9 +59,7 @@ CacheHandler::~CacheHandler() {
   pthread_mutex_destroy(&_mutex);
 }
 
-CacheHandler::CacheEntry CacheHandler::getCacheEntry(
-    const std::string& requestString) {
-  std::string key = _generateKey(requestString);
+CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key) {
   pthread_mutex_lock(&_mutex);
   CacheMap::iterator it = _cache.find(key);
 
@@ -100,21 +98,20 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(
   return entry;
 }
 
-void CacheHandler::storeResponse(const HTTPRequest&  request,
+void CacheHandler::storeResponse(const std::string& key,
                                  const HTTPResponse& response) {
-  std::string key = _generateKey(request);
   _log.warning("CACHE_HANDLER: Storing response in cache");
   pthread_mutex_lock(&_mutex);
   CacheEntry& entry = _cache[key];
-  delete entry.response;
+  if (entry.response)
+    delete entry.response;
   entry.response = new HTTPResponse(response);
   entry.timestamp = time(NULL);
   entry.status = CACHE_FOUND;
   pthread_mutex_unlock(&_mutex);
 }
 
-void CacheHandler::deleteCache(const std::string& requestString) {
-  std::string key = _generateKey(requestString);
+void CacheHandler::deleteCache(const std::string& key) {
   pthread_mutex_lock(&_mutex);
   CacheMap::iterator it = _cache.find(key);
 
@@ -127,11 +124,11 @@ void CacheHandler::deleteCache(const std::string& requestString) {
   pthread_mutex_unlock(&_mutex);
 }
 
-std::string CacheHandler::_generateKey(const HTTPRequest& request) const {
-  return _generateKey(request.getRawRequest());
+std::string CacheHandler::generateKey(const HTTPRequest& request) const {
+  return generateKey(request.getRawRequest());
 }
 
-std::string CacheHandler::_generateKey(const std::string& requestString) const {
+std::string CacheHandler::generateKey(const std::string& requestString) const {
   std::ostringstream oss;
   oss << _hash(requestString);
   return oss.str();

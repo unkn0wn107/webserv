@@ -48,6 +48,7 @@ class CGIHandler {
 
   int      getCgifd();
   CGIState getCgiState();
+  std::string getCacheKey() const;
 
   /**
    * Check if url has an executable file extension.
@@ -143,6 +144,7 @@ class CGIHandler {
   std::string           _index;
   bool                  _cgi;
   bool                  _done;
+  std::string           _cacheKey;
 
   std::vector<std::string> _argv;
   std::vector<std::string> _envp;

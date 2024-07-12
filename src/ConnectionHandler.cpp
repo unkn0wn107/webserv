@@ -72,6 +72,12 @@ ConnectionStatus ConnectionHandler::getConnectionStatus() const {
   return _connectionStatus;
 }
 
+std::string ConnectionHandler::getCacheKey() const {
+  if (_cgiHandler)
+    return _cgiHandler->getCacheKey();
+  return "";
+}
+
 void ConnectionHandler::setInternalServerError() {
   VirtualServer*        vserv = _selectVirtualServer(_request->getHost());
   std::string           uriPath = _request->getURIComponents().path;
@@ -267,7 +273,7 @@ void ConnectionHandler::_processExecutingState() {
   _cgiState = _cgiHandler->getCgiState();
 }
 
-int ConnectionHandler::processConnection(struct epoll_event& event) {
+int ConnectionHandler::processConnection(EventData* eventData) {
   _step++;
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): _rcvbuf: " + Utils::to_string(_rcvbuf));
@@ -284,7 +290,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
   try {
     if (_connectionStatus == READING)
       _receiveRequest();
-    if (_connectionStatus == EXECUTING) {
+    if (_connectionStatus == EXECUTING || _connectionStatus == CACHE_WAITING) {
       _processExecutingState();
     }
     if (_connectionStatus == SENDING)
@@ -297,8 +303,14 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
   }
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Modifying epoll events for " + getStatusString());
+
+  if (_connectionStatus == CACHE_WAITING)
+    return -1;
+
+  struct epoll_event event;
   switch (_connectionStatus) {
     case READING:
+      event.data.ptr = eventData;
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
         _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
@@ -308,11 +320,15 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       }
       break;
 
+    case CACHE_WAITING:
+      break;
+
     case EXECUTING:
       if (!_cgiHandler) {
         throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                        "): CGIHandler is NULL");
       }
+      event.data.ptr = eventData;
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
         _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
@@ -322,6 +338,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       break;
 
     case SENDING:
+      event.data.ptr = eventData;
       event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
         _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
@@ -401,6 +418,9 @@ std::string ConnectionHandler::getStatusString() const {
       break;
     case EXECUTING:
       statusStr = "EXECUTING";
+      break;
+    case CACHE_WAITING:
+      statusStr = "CACHE_WAITING";
       break;
     case SENDING:
       statusStr = "SENDING";

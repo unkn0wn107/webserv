@@ -47,6 +47,8 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
 CGIHandler::~CGIHandler() {
   _log.info("CGI: Destroying handler");
   epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
+  if (_pid > 0)
+    kill(_pid, SIGKILL);
   if (_eventData)
     delete _eventData;
   if (_inpipefd[0] != -1)
@@ -82,6 +84,10 @@ int CGIHandler::getCgifd() {
 
 CGIState CGIHandler::getCgiState() {
   return _state;
+}
+
+std::string CGIHandler::getCacheKey() const {
+  return _cacheKey;
 }
 
 void CGIHandler::_checkIfProcessingPossible() {
@@ -170,8 +176,10 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       cacheControl = _request.getHeader("Cache-Control");
       _log.info("CGI: cacheControl: " +
                 (cacheControl == "" ? "Empty header = cache active" : cacheControl));
-      if (cacheControl == "")
+      if (cacheControl == "") {
+        _cacheKey = _cacheHandler.generateKey(_request);
         _state = CACHE_CHECK;
+      }
       else
         _state = REGISTER_SCRIPT_FD;
     } catch (const Exception& e) {
@@ -184,34 +192,20 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     CacheHandler::CacheEntry cacheEntry;
     try {
       uriPath = _request.getURIComponents().path;
-      cacheEntry = _cacheHandler.getCacheEntry(_request.getRawRequest());
+      cacheEntry = _cacheHandler.getCacheEntry(_cacheKey);
       _log.info("CGI: For URI path: " + uriPath + ", cacheStatus: " +
                 (cacheEntry.status == CACHE_CURRENTLY_BUILDING  ? "Cache currently building"
                 : cacheEntry.status == CACHE_FOUND ? "Cache found"
                                     : "Cache not found"));
-      if (cacheEntry.status == CACHE_FOUND)
+      if (cacheEntry.status == CACHE_CURRENTLY_BUILDING)
+        return CACHE_WAITING;
+      else if (cacheEntry.status == CACHE_NOT_FOUND)
+        _state = REGISTER_SCRIPT_FD;
+      else if (cacheEntry.status == CACHE_FOUND)
       {
         _response = *cacheEntry.response;
         _state = FINALIZE_RESPONSE;
       }
-
-      if (cacheEntry.status == CACHE_CURRENTLY_BUILDING) {
-          time_t start = time(NULL);
-          time_t timeout = CGI_TIMEOUT_SEC + 1;
-          do {
-            cacheEntry = _cacheHandler.getCacheEntry(_request.getRawRequest());
-            if (cacheEntry.status != CACHE_CURRENTLY_BUILDING)
-              break;
-            usleep(10000);
-          } while (time(NULL) - start < timeout);
-          if (cacheEntry.status != CACHE_FOUND)
-            _state = REGISTER_SCRIPT_FD;
-          else
-            _state = FINALIZE_RESPONSE;
-      }
-
-      if (cacheEntry.status == CACHE_NOT_FOUND)
-        _state = REGISTER_SCRIPT_FD;
     } catch (...) {
       _state = CGI_ERROR;
     }
@@ -233,7 +227,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           close(_outpipefd[0]);
           delete _eventData;
           _state = CGI_ERROR;
-          
         } else {
           close(_inpipefd[0]);
           close(_outpipefd[1]);
@@ -279,6 +272,7 @@ if (_state == SCRIPT_RUNNING) {
         do {
             result = waitpid(_pid, &statusClean, WNOHANG);
             if (result == 0) {
+                kill(_pid, SIGKILL);
                 usleep(1000 << tries);
                 tries++;
             }
@@ -323,14 +317,25 @@ if (_state == SCRIPT_RUNNING) {
       close(_outpipefd[1]);
       char    buffer[512];
       ssize_t count = 0;
-      count = read(_outpipefd[0], buffer, sizeof(buffer));
+      int maxTries = 5;
+      int tries = 0;
+      do {
+        count = read(_outpipefd[0], buffer, sizeof(buffer));
+        if (count == -1) {
+          usleep(1000 << tries);
+          tries++;
+          continue;
+        }
+        tries = 0;
+        if (count == 0)
+          break;
+        _processOutput.append(buffer, count);
+        _processOutputSize += count;
+      } while (count == -1 && tries < maxTries);
       if (count == -1) {
         _log.warning("CGI: read failed: " + std::string(strerror(errno)));
-        return EXECUTING;
-      } 
-      _processOutput.append(buffer, count);
-      _processOutputSize += count;
-      if (count < (ssize_t)sizeof(buffer) || count == 0)
+        _state = CGI_ERROR;
+      } else if (count < (ssize_t)sizeof(buffer) || count == 0)
         _state = PROCESS_OUTPUT;
       else
         return EXECUTING;
@@ -367,7 +372,7 @@ if (_state == SCRIPT_RUNNING) {
       _response.setBody(bodyContent);
 
       if (_request.getHeader("Cache-Control") == "")
-        _cacheHandler.storeResponse(_request.getRawRequest(), _response);
+        _cacheHandler.storeResponse(_cacheKey, _response);
 
       _state = FINALIZE_RESPONSE;
     } catch (...) {
@@ -394,7 +399,7 @@ if (_state == SCRIPT_RUNNING) {
   if (_state == CGI_ERROR){
     if (_response.getStatusCode() == HTTPResponse::OK)
           _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
-    _cacheHandler.deleteCache(_request.getRawRequest());
+    _cacheHandler.deleteCache(_cacheKey);
     return SENDING;
   }
 

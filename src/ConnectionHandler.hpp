@@ -31,12 +31,14 @@
 
 class VirtualServer;
 class CGIHandler;
+struct EventData;
 
 class ConnectionHandler {
  public:
   ConnectionStatus    getConnectionStatus() const;
   std::string         getStatusString() const;
-  int                 processConnection(struct epoll_event& event);
+  std::string         getCacheKey() const;
+  int                 processConnection(EventData* eventData);
   void                setInternalServerError();
   void                forceSendResponse();
   void                closeClientSocket();

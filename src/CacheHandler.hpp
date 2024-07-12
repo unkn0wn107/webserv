@@ -40,9 +40,11 @@ class CacheHandler {
     ~CacheEntry();
   };
 
-  CacheEntry getCacheEntry(const std::string& requestString);
-  void storeResponse(const HTTPRequest& request, const HTTPResponse& response);
-  void deleteCache(const std::string& requestString);
+  std::string   generateKey(const HTTPRequest& request) const;
+  std::string   generateKey(const std::string& requestString) const;
+  CacheEntry getCacheEntry(const std::string& key);
+  void storeResponse(const std::string& key, const HTTPResponse& response);
+  void deleteCache(const std::string& key);
 
  private:
   CacheHandler();
@@ -58,8 +60,6 @@ class CacheHandler {
   time_t               _maxAge;
   pthread_mutex_t      _mutex;
 
-  std::string   _generateKey(const HTTPRequest& request) const;
-  std::string   _generateKey(const std::string& requestString) const;
   unsigned long _hash(const std::string& str) const;
 };
 

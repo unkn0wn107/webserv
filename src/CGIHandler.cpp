@@ -32,21 +32,22 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
       _processOutputSize(0),
       _runtime(_identifyRuntime(_request, _location)),
       _done(false),
+      _cacheKey(""),
       _argv(_buildScriptArguments(_request, _location)),
       _envp(_buildScriptEnvironment(_request, _location)),
+      _inpipefd(),
+      _outpipefd(),
       _pid(-2) {
-  _root = _location.root;
-  _index = _location.index;
-  _cgi = _location.cgi;
-  if (pipe(_inpipefd) == -1)
-    throw PipeFailure("CGI: Failed to create pipe");
-  if (pipe(_outpipefd) == -1)
-    throw PipeFailure("CGI: Failed to create pipe");
+    _inpipefd[0] = -1;
+    _inpipefd[1] = -1;
+    _outpipefd[0] = -1;
+    _outpipefd[1] = -1;
 }
 
 CGIHandler::~CGIHandler() {
   _log.info("CGI: Destroying handler");
-  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
+  if (_outpipefd[0] != -1)
+    epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
   if (_pid > 0)
     kill(_pid, SIGKILL);
   if (_eventData)
@@ -90,8 +91,12 @@ std::string CGIHandler::getCacheKey() const {
   return _cacheKey;
 }
 
+void CGIHandler::setEventData(EventData* eventData) {
+  _eventData = eventData;
+}
+
 void CGIHandler::_checkIfProcessingPossible() {
-  if (!_cgi)
+  if (!_location.cgi)
     throw CGIDisabled("Execution forbidden by config: " + _request.getURI());
   if (_runtime.empty())
     throw NoRuntimeError("No suitable runtime found for script: " +
@@ -101,7 +106,7 @@ void CGIHandler::_checkIfProcessingPossible() {
   if (!FileManager::isFileExecutable(_runtime))
     throw CGINotExecutable("CGI not executable: " + _runtime);
 
-  std::string scriptPath = _root + _request.getURIComponents().path;
+  std::string scriptPath = _location.root + _request.getURIComponents().path;
   if (FileManager::isDirectory(scriptPath)) {
     if (scriptPath[scriptPath.length() - 1] != '/')
       scriptPath += "/";
@@ -192,7 +197,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     CacheHandler::CacheEntry cacheEntry;
     try {
       uriPath = _request.getURIComponents().path;
-      cacheEntry = _cacheHandler.getCacheEntry(_cacheKey);
+      cacheEntry = _cacheHandler.getCacheEntry(_cacheKey, _eventData);
       _log.info("CGI: For URI path: " + uriPath + ", cacheStatus: " +
                 (cacheEntry.status == CACHE_CURRENTLY_BUILDING  ? "Cache currently building"
                 : cacheEntry.status == CACHE_FOUND ? "Cache found"
@@ -214,6 +219,10 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   if (_state == REGISTER_SCRIPT_FD){  // Set-up execution environment
     try {
       _checkIfProcessingPossible();
+      if (pipe(_inpipefd) == -1)
+        throw PipeFailure("CGI: Failed to create pipe");
+      if (pipe(_outpipefd) == -1)
+        throw PipeFailure("CGI: Failed to create pipe");
       _pid = fork();
       if (_pid == -1)
         throw ForkFailure("CGI: Failed to fork process");
@@ -371,8 +380,13 @@ if (_state == SCRIPT_RUNNING) {
       _response.setHeaders(headers);
       _response.setBody(bodyContent);
 
-      if (_request.getHeader("Cache-Control") == "")
+      if (_request.getHeader("Cache-Control") == "") {
         _cacheHandler.storeResponse(_cacheKey, _response);
+        CacheHandler::CacheEntry cacheEntry = _cacheHandler.getCacheEntry(_cacheKey, NULL);
+        _log.info("CGI: cacheEntry.waitingEventsData.size(): " + Utils::to_string(cacheEntry.waitingEventsData.size()));
+        for (std::deque<EventData*>::iterator it = cacheEntry.waitingEventsData.begin(); it != cacheEntry.waitingEventsData.end(); ++it)
+          (*it)->handler->processConnection(*it);
+      }
 
       _state = FINALIZE_RESPONSE;
     } catch (...) {

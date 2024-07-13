@@ -27,18 +27,19 @@ Worker::Worker(Server&                      server,
       _listenSockets(listenSockets),
       _load(0),
       _shouldStop(false),
+      _cacheHandler(CacheHandler::getInstance()),
       _cacheWaiting() {
   _log.info("Worker constructor called");
 }
 
 Worker::~Worker() {
-  _handleCacheWaiting();
-  for (std::map<std::string, std::set<EventData *> >::iterator it = _cacheWaiting.begin(); it != _cacheWaiting.end(); ++it) {
-    for (std::set<EventData *>::iterator sit = it->second.begin(); sit != it->second.end(); ++sit) {
-      delete *sit;
-    }
-  }
-  _cacheWaiting.clear();
+  // _handleCacheWaiting();
+  // for (std::map<std::string, std::set<EventData *> >::iterator it = _cacheWaiting.begin(); it != _cacheWaiting.end(); ++it) {
+  //   for (std::set<EventData *>::iterator sit = it->second.begin(); sit != it->second.end(); ++sit) {
+  //     delete *sit;
+  //   }
+  // }
+  // _cacheWaiting.clear();
 }
 
 Worker::Thread::Thread() : _thread(0) {}
@@ -83,10 +84,10 @@ void* Worker::_workerRoutine(void* arg) {
 }
 
 void Worker::_runEventLoop() {
-  size_t loops = 0;
+  // size_t loops = 0;
   while (!_shouldStop) {
-    if (++loops % 100 == 0)
-      _handleCacheWaiting();
+    // if (++loops % 100 == 0)
+    //   _handleCacheWaiting();
 
     struct epoll_event event;
     if (!_events.try_pop(event)) {
@@ -135,13 +136,13 @@ void Worker::_launchEventProcessing(EventData* eventData) {
                  "): Handler deleted with con status " +
                  eventData->handler->getStatusString());
     delete eventData->handler;
-    delete eventData;
-  } else if (handlerStatus == -1) { // Cache waiting
-    _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                 "): Inserting in cache waiting with con status " +
-                 eventData->handler->getStatusString());
-    _cacheWaiting[eventData->handler->getCacheKey()].insert(eventData);
   }
+  // else if (handlerStatus == -1) { // Cache waiting
+  //   _log.warning("WORKER (" + Utils::to_string(_threadId) +
+  //                "): Inserting in cache waiting with con status " +
+  //                eventData->handler->getStatusString());
+  //   _cacheWaiting[eventData->handler->getCacheKey()].insert(eventData);
+  // }
 }
 
 void Worker::_acceptNewConnection(int fd) {
@@ -190,11 +191,19 @@ void Worker::_acceptNewConnection(int fd) {
 }
 
 void Worker::_handleCacheWaiting() {
+  std::vector<std::string> keysToErase;
+  
   for (std::map<std::string, std::set<EventData *> >::iterator it = _cacheWaiting.begin(); it != _cacheWaiting.end(); ++it) {
-    for (std::set<EventData *>::iterator sit = it->second.begin(); sit != it->second.end(); ++sit) {
-      _launchEventProcessing(*sit);
+    CacheHandler::CacheEntry cacheEntry = _cacheHandler.getCacheEntry(it->first, NULL);
+    if (cacheEntry.status == CACHE_FOUND) {
+      for (std::set<EventData *>::iterator sit = it->second.begin(); sit != it->second.end(); ++sit)
+        _launchEventProcessing(*sit);
+      keysToErase.push_back(it->first);
     }
   }
+  
+  for (std::vector<std::string>::iterator it = keysToErase.begin(); it != keysToErase.end(); ++it)
+    _cacheWaiting.erase(*it);
 }
 
 // void Worker::_handleCacheWaiting() {

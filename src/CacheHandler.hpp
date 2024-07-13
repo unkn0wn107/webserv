@@ -16,11 +16,15 @@
 #include <pthread.h>
 #include <ctime>
 #include <map>
+#include <deque>
 #include <string>
 
 #include "Common.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "EventData.hpp"
+
+struct EventData;
 
 class CacheHandler {
  public:
@@ -30,9 +34,10 @@ class CacheHandler {
   static void          deleteInstance();
 
   struct CacheEntry {
-    HTTPResponse* response;
-    time_t        timestamp;
-    CacheStatus   status;
+    HTTPResponse*          response;
+    time_t                 timestamp;
+    CacheStatus            status;
+    std::deque<EventData*> waitingEventsData;
 
     CacheEntry();
     CacheEntry(const CacheEntry& other);
@@ -42,7 +47,7 @@ class CacheHandler {
 
   std::string   generateKey(const HTTPRequest& request) const;
   std::string   generateKey(const std::string& requestString) const;
-  CacheEntry getCacheEntry(const std::string& key);
+  CacheEntry getCacheEntry(const std::string& key, EventData *eventData);
   void storeResponse(const std::string& key, const HTTPResponse& response);
   void deleteCache(const std::string& key);
 

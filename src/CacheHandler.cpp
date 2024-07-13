@@ -16,12 +16,13 @@ const time_t  CacheHandler::MAX_AGE = 3600;
 CacheHandler* CacheHandler::_instance = NULL;
 
 CacheHandler::CacheEntry::CacheEntry()
-    : response(NULL), timestamp(0), status(CACHE_NOT_FOUND) {}
+    : response(NULL), timestamp(0), status(CACHE_NOT_FOUND), waitingEventsData() {}
 
 CacheHandler::CacheEntry::CacheEntry(const CacheEntry& other)
     : response(other.response ? new HTTPResponse(*other.response) : NULL),
       timestamp(other.timestamp),
-      status(other.status) {}
+      status(other.status),
+      waitingEventsData(other.waitingEventsData) {}
 
 CacheHandler::CacheEntry& CacheHandler::CacheEntry::operator=(
     const CacheEntry& other) {
@@ -30,6 +31,7 @@ CacheHandler::CacheEntry& CacheHandler::CacheEntry::operator=(
     response = other.response ? new HTTPResponse(*other.response) : NULL;
     timestamp = other.timestamp;
     status = other.status;
+    waitingEventsData = other.waitingEventsData;
   }
   return *this;
 }
@@ -59,7 +61,7 @@ CacheHandler::~CacheHandler() {
   pthread_mutex_destroy(&_mutex);
 }
 
-CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key) {
+CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key, EventData *eventData) {
   pthread_mutex_lock(&_mutex);
   CacheMap::iterator it = _cache.find(key);
 
@@ -77,9 +79,10 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key) {
 
   if (entry.status == CACHE_CURRENTLY_BUILDING) {
     _log.warning("CACHE_HANDLER: Cache currently building");
-    CacheEntry cacheEntry(entry);
+    if (eventData)
+      it->second.waitingEventsData.push_back(eventData);
     pthread_mutex_unlock(&_mutex);
-    return cacheEntry;
+    return entry;
   }
 
   if (entry.timestamp + _maxAge <= time(NULL)) {
@@ -93,6 +96,9 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key) {
     cacheEntry.status = CACHE_NOT_FOUND;
     return cacheEntry;
   }
+
+  if (!eventData)
+    it->second.waitingEventsData.clear();
 
   pthread_mutex_unlock(&_mutex);
   return entry;

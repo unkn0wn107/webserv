@@ -35,6 +35,7 @@
 // enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
 
 class ConnectionHandler;
+class CacheHandler;
 struct EventData;
 
 class CGIHandler {
@@ -49,6 +50,8 @@ class CGIHandler {
   int      getCgifd();
   CGIState getCgiState();
   std::string getCacheKey() const;
+
+  void setEventData(EventData* eventData);
 
   /**
    * Check if url has an executable file extension.
@@ -140,9 +143,6 @@ class CGIHandler {
   std::string           _processOutput;
   size_t                _processOutputSize;
   std::string           _runtime;
-  std::string           _root;
-  std::string           _index;
-  bool                  _cgi;
   bool                  _done;
   std::string           _cacheKey;
 

@@ -31,6 +31,7 @@
 
 class VirtualServer;
 class CGIHandler;
+class CacheHandler;
 struct EventData;
 
 class ConnectionHandler {

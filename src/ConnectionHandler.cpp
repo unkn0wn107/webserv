@@ -291,6 +291,7 @@ int ConnectionHandler::processConnection(EventData* eventData) {
     if (_connectionStatus == READING)
       _receiveRequest();
     if (_connectionStatus == EXECUTING || _connectionStatus == CACHE_WAITING) {
+      _cgiHandler->setEventData(eventData);
       _processExecutingState();
     }
     if (_connectionStatus == SENDING)

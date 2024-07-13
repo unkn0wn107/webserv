@@ -100,6 +100,7 @@ class Worker {
   std::map<int, ListenConfig>&                    _listenSockets;
   int                                             _load;
   bool                                            _shouldStop;
+  CacheHandler&                                   _cacheHandler;
   std::map<std::string, std::set<EventData *> >   _cacheWaiting;
   // Mutex                        _mutex;
   pid_t _threadId;

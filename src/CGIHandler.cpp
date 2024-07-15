@@ -252,65 +252,65 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     }
   }
 
-if (_state == SCRIPT_RUNNING) {
-  try {
-    pid_t pidReturn = 0;
-    int status = -1;
+  if (_state == SCRIPT_RUNNING) {
+    try {
+      pid_t pidReturn = 0;
+      int status = -1;
 
-    if ((pidReturn = waitpid(_pid, &status, WNOHANG | WUNTRACED)) == -1)
-      throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
-    
-    if (pidReturn == 0) {
-      if (std::time(NULL) - _runStartTime > CGI_TIMEOUT_SEC) {
-        kill(_pid, SIGKILL);
-        usleep(10000);
+      if ((pidReturn = waitpid(_pid, &status, WNOHANG | WUNTRACED)) == -1)
+        throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
+      
+      if (pidReturn == 0) {
+        if (std::time(NULL) - _runStartTime > CGI_TIMEOUT_SEC) {
+          kill(_pid, SIGKILL);
+          usleep(10000);
 
-        int statusClean;
-        pid_t result;
-        int maxTries = 10;
-        int tries = 0;
-        do {
-            result = waitpid(_pid, &statusClean, WNOHANG);
-            if (result == 0) {
-                kill(_pid, SIGKILL);
-                usleep(1000 << tries);
-                tries++;
-            }
-        } while (result == 0 && tries < maxTries);
+          int statusClean;
+          pid_t result;
+          int maxTries = 10;
+          int tries = 0;
+          do {
+              result = waitpid(_pid, &statusClean, WNOHANG);
+              if (result == 0) {
+                  kill(_pid, SIGKILL);
+                  usleep(1000 << tries);
+                  tries++;
+              }
+          } while (result == 0 && tries < maxTries);
 
-        if (result == -1)
-          _log.error("CGI: Error waiting for process to terminte: " + std::string(strerror(errno)));
+          if (result == -1)
+            _log.error("CGI: Error waiting for process to terminte: " + std::string(strerror(errno)));
 
-        throw TimeoutException("CGI: script timed out after " +
-                              Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
+          throw TimeoutException("CGI: script timed out after " +
+                                Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
+        }
+        _log.info("CGI: script is still running");
+        return EXECUTING;
       }
-      _log.info("CGI: script is still running");
-      return EXECUTING;
+      
+      if (WIFEXITED(status)) {
+        int exitStatus = WEXITSTATUS(status);
+        _log.info("CGI: script exited, status=" + Utils::to_string(exitStatus));
+        if (exitStatus != 0)
+          _log.error("CGI: script finished with errors, exit status: " + Utils::to_string(exitStatus));
+      } else if (WIFCONTINUED(status)) {
+        _log.warning("CGI: script continued");
+        return EXECUTING;
+      } else if (WIFSIGNALED(status)) {
+        std::string coreDump = WCOREDUMP(status) ? " (core dumped)" : "";
+        _log.error("CGI: script terminated by signal: " + Utils::to_string(WTERMSIG(status)) + coreDump);
+      } else if (WIFSTOPPED(status)) {
+        _log.error("CGI: script stopped by signal: " + Utils::to_string(WSTOPSIG(status)));
+      } else {
+        _log.error("CGI: script exited abnormally with unknown status");
+      }
+      _state = READ_FROM_CGI;
+    } catch (const Exception& e) {
+      if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
+        _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
+      _state = CGI_ERROR;
     }
-    
-    if (WIFEXITED(status)) {
-      int exitStatus = WEXITSTATUS(status);
-      _log.info("CGI: script exited, status=" + Utils::to_string(exitStatus));
-      if (exitStatus != 0)
-        _log.error("CGI: script finished with errors, exit status: " + Utils::to_string(exitStatus));
-    } else if (WIFCONTINUED(status)) {
-      _log.warning("CGI: script continued");
-      return EXECUTING;
-    } else if (WIFSIGNALED(status)) {
-      std::string coreDump = WCOREDUMP(status) ? " (core dumped)" : "";
-      _log.error("CGI: script terminated by signal: " + Utils::to_string(WTERMSIG(status)) + coreDump);
-    } else if (WIFSTOPPED(status)) {
-      _log.error("CGI: script stopped by signal: " + Utils::to_string(WSTOPSIG(status)));
-    } else {
-      _log.error("CGI: script exited abnormally with unknown status");
-    }
-    _state = READ_FROM_CGI;
-  } catch (const Exception& e) {
-    if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
-      _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
-    _state = CGI_ERROR;
   }
-}
 
   if (_state == READ_FROM_CGI){
     try {

@@ -112,12 +112,16 @@ void CGIHandler::_runScript() {
   std::string postData = _request.getBody();
   if (!postData.empty())
   {
+    if (pipe(_inpipefd) == -1)
+    {
+        std::cerr << "CHILD: Failed to create pipe"<< std::endl;
+        exit(EXIT_FAILURE);
+    }
     if (dup2(_inpipefd[0], STDIN_FILENO) == -1){
       std::cerr << "CHILD: dup2 failed: unable to redirect stdin to pipe"<< std::endl;
       exit(EXIT_FAILURE);
     }
     close(_inpipefd[0]);
-    close(_inpipefd[1]);
     std::size_t totalWritten = 0; 
     int         trys = 0;  // Ajout d'un compteur de tentatives
 
@@ -125,6 +129,7 @@ void CGIHandler::_runScript() {
       ssize_t written =
           write(_inpipefd[1], postData.c_str() + totalWritten,
                 postData.size() - totalWritten);
+      
       if (written == -1) {
           if (trys > 5) {
             close(_inpipefd[1]);
@@ -141,6 +146,7 @@ void CGIHandler::_runScript() {
       trys = 0;
       totalWritten += written;
     }
+    close(_inpipefd[1]);
   } else {
     close(_inpipefd[0]);
     close(_inpipefd[1]);
@@ -170,8 +176,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     _log.warning("CGI: REGISTER_SCRIPT_FD");
     try {
       _checkIfProcessingPossible();
-      if (pipe(_inpipefd) == -1)
-        throw PipeFailure("CGI: Failed to create pipe");
       if (pipe(_outpipefd) == -1)
         throw PipeFailure("CGI: Failed to create pipe");
       _pid = fork();

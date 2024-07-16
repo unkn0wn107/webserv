@@ -36,7 +36,7 @@ class CGIHandler;
 class ConnectionHandler {
  public:
   ConnectionStatus    getConnectionStatus() const;
-  std::string         getStatusString() const;
+  std::string         getStatusString();
   int                 processConnection(struct epoll_event& event);
   void                setInternalServerError();
   void                forceSendResponse();
@@ -101,6 +101,7 @@ class ConnectionHandler {
   CGIHandler*                 _cgiHandler;
   CGIState                    _cgiState;
   int                         _step;
+  pthread_mutex_t             _mutex;
 
   void             _receiveRequest();
   void             _processRequest();

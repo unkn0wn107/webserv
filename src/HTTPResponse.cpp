@@ -307,7 +307,7 @@ std::string HTTPResponse::defaultErrorPage(int status) {
 
 ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   ssize_t bytesSent;
-  size_t  remaining = _responseBuffer.size() - _responseBufferPos;
+  size_t  remaining = _responseBufferSize - _responseBufferPos;
 
   if (sndbuf > remaining) {
     sndbuf = remaining;

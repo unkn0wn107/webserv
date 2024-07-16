@@ -47,6 +47,7 @@ ConnectionHandler::ConnectionHandler(
       _cgiHandler(NULL),
       _cgiState(NONE),
       _step(0) {
+  pthread_mutex_init(&_mutex, NULL);
 }
 
 ConnectionHandler::~ConnectionHandler() {
@@ -69,10 +70,7 @@ ConnectionHandler::~ConnectionHandler() {
   }
   // _requestString.clear();
   // _readn = 0;
-}
-
-ConnectionStatus ConnectionHandler::getConnectionStatus() const {
-  return _connectionStatus;
+  pthread_mutex_destroy(&_mutex);
 }
 
 void ConnectionHandler::setInternalServerError() {
@@ -88,14 +86,19 @@ void ConnectionHandler::forceSendResponse() {
 }
 
 ConnectionStatus ConnectionHandler::_checkConnectionStatus() {
+  pthread_mutex_lock(&_mutex);
   ConnectionStatus status = _connectionStatus;
+  pthread_mutex_unlock(&_mutex);
   return status;
 }
 
 void ConnectionHandler::_setConnectionStatus(ConnectionStatus status) {
   _log.info("CONNECTION_HANDLER: Setting connection status to: " +
             getStatusString());
+  pthread_mutex_lock(&_mutex);
   _connectionStatus = status;
+  pthread_mutex_unlock(&_mutex);
+
 }
 
 void ConnectionHandler::_receiveRequest() {
@@ -286,6 +289,7 @@ void ConnectionHandler::_processExecutingState() {
             "): " + " Status: " + getStatusString() + " Processing data");
   try {
     ConnectionStatus returnStatus = _cgiHandler->handleCGIRequest();
+    _log.warning("Conn status after handleCgiReq : " + Utils::to_string((int)returnStatus));
     _setConnectionStatus(returnStatus);
   } catch (const Exception& e) {
     _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
@@ -310,11 +314,11 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Status: " + getStatusString());
   try {
-    if (_connectionStatus == READING)
+    if (_checkConnectionStatus() == READING)
       _receiveRequest();
-    if (_connectionStatus == EXECUTING)
+    if (_checkConnectionStatus() == EXECUTING)
       _processExecutingState();
-    if (_connectionStatus == SENDING)
+    if (_checkConnectionStatus() == SENDING)
       _sendResponse();
   } catch (const Exception& e) {
     _setConnectionStatus(CLOSED);
@@ -324,7 +328,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
   }
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Modifying epoll events for " + getStatusString());
-  switch (_connectionStatus) {
+  switch (_checkConnectionStatus()) {
     case READING:
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
@@ -336,14 +340,14 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       break;
 
     case EXECUTING:
-      if (!_cgiHandler) {
-        throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                       "): CGIHandler is NULL");
-      }
-      _log.warning("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                "): CGIHandler is executing, go back in event loop");
-      event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-      _events.push(event);
+      // if (!_cgiHandler) {
+      //   throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+      //                  "): CGIHandler is NULL");
+      // }
+      // _log.warning("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+      //           "): CGIHandler is executing, go back in event loop");
+      // event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+      // _events.push(event);
       break;
 
     case SENDING:
@@ -418,9 +422,11 @@ void ConnectionHandler::_cleanupCGIHandler() {
   }
 }
 
-std::string ConnectionHandler::getStatusString() const {
+std::string ConnectionHandler::getStatusString() {
   std::string statusStr;
-  switch (_connectionStatus) {
+  ConnectionStatus status = _checkConnectionStatus();
+  pthread_mutex_unlock(&_mutex);
+  switch (status) {
     case READING:
       statusStr = "READING";
       break;

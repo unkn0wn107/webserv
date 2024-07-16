@@ -38,10 +38,6 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
   _root = _location.root;
   _index = _location.index;
   _cgi = _location.cgi;
-  if (pipe(_inpipefd) == -1)
-    throw PipeFailure("CGI: Failed to create pipe");
-  if (pipe(_outpipefd) == -1)
-    throw PipeFailure("CGI: Failed to create pipe");
 }
 
 CGIHandler::~CGIHandler() {
@@ -109,40 +105,48 @@ void CGIHandler::_checkIfProcessingPossible() {
 }
 
 void CGIHandler::_runScript() {
-  _log.info("CGI: executing: " + _request.getURIComponents().scriptName +
-            " with runtime: " + _runtime);
-  close(_outpipefd[0]);
-  if (dup2(_outpipefd[1], STDOUT_FILENO) == -1)
-    throw ExecutorError("CGI: dup2 failed: unable to redirect stdout to pipe");
-  close(_outpipefd[1]);
-  if (dup2(_inpipefd[0], STDIN_FILENO) == -1)
-    throw ExecutorError("CGI: dup2 failed: unable to redirect stdin to pipe");
-  close(_inpipefd[0]);
-  std::string postData = _request.getBody();
-  std::size_t totalWritten = 0; 
-  int         trys = 0;  // Ajout d'un compteur de tentatives
-
-  while (totalWritten < postData.size()) {
-    ssize_t written =
-        write(_inpipefd[1], postData.c_str() + totalWritten,
-              postData.size() - totalWritten);
-    if (written == -1) {
-        if (trys > 5) {
-          close(_inpipefd[1]);
-          throw ExecutorError(
-              "CGI: write failed: unable to write POST data to pipe "
-              "after "
-              "multiple "
-              "retries");
-        }
-        trys++;
-        usleep(1000 << trys);  // Attendre un peu avant de réessayer
-        continue;
-    }
-    trys = 0;
-    totalWritten += written;
+  if (dup2(_outpipefd[1], STDOUT_FILENO) == -1){
+    std::cerr << "CHILD: dup2 failed: unable to redirect stdout to pipe"<< std::endl;
+    exit(EXIT_FAILURE);
   }
-  close(_inpipefd[1]);
+  close(_outpipefd[0]);
+  close(_outpipefd[1]);
+  std::string postData = _request.getBody();
+  if (!postData.empty())
+  {
+    if (dup2(_inpipefd[0], STDIN_FILENO) == -1){
+      std::cerr << "CHILD: dup2 failed: unable to redirect stdin to pipe"<< std::endl;
+      exit(EXIT_FAILURE);
+    }
+    close(_inpipefd[0]);
+    close(_inpipefd[1]);
+    std::size_t totalWritten = 0; 
+    int         trys = 0;  // Ajout d'un compteur de tentatives
+
+    while (totalWritten < postData.size()) {
+      ssize_t written =
+          write(_inpipefd[1], postData.c_str() + totalWritten,
+                postData.size() - totalWritten);
+      if (written == -1) {
+          if (trys > 5) {
+            close(_inpipefd[1]);
+            std::cerr << "CHILD: write failed: unable to write POST data to pipe "
+                "after "
+                "multiple "
+                "retries"<< std::endl;
+            exit(EXIT_FAILURE);
+          }
+          trys++;
+          usleep(1000 << trys);  // Attendre un peu avant de réessayer
+          continue;
+      }
+      trys = 0;
+      totalWritten += written;
+    }
+  } else {
+    close(_inpipefd[0]);
+    close(_inpipefd[1]);
+  }
 
   char** argv_ptrs = new char*[_argv.size() + 1];
   char** envp_ptrs = new char*[_envp.size() + 1];
@@ -156,7 +160,7 @@ void CGIHandler::_runScript() {
   envp_ptrs[_envp.size()] = NULL;
 
   if (execve(argv_ptrs[0], argv_ptrs, envp_ptrs) == -1) {
-    _log.error("CGI: execve failed: unable to execute CGI script");
+    std::cerr << "CHILD: execve failed: unable to execute CGI script" << std::endl;
     delete[] argv_ptrs;
     delete[] envp_ptrs;
     exit(EXIT_FAILURE);
@@ -207,6 +211,10 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   if (_state == REGISTER_SCRIPT_FD){  // Set-up execution environment
     try {
       _checkIfProcessingPossible();
+      if (pipe(_inpipefd) == -1)
+        throw PipeFailure("CGI: Failed to create pipe");
+      if (pipe(_outpipefd) == -1)
+        throw PipeFailure("CGI: Failed to create pipe");
       _pid = fork();
       if (_pid == -1)
         throw ForkFailure("CGI: Failed to fork process");
@@ -218,12 +226,21 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
         event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
         if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
           close(_outpipefd[0]);
+          _outpipefd[0] = -1;
+          close(_outpipefd[1]);
+          _outpipefd[1] = -1;
+          close(_inpipefd[0]);
+          _inpipefd[0] = -1;
+          close(_inpipefd[1]);
+          _inpipefd[1] = -1;
           delete _eventData;
           _state = CGI_ERROR;
           
         } else {
           close(_inpipefd[0]);
+          _inpipefd[0] = -1;
           close(_outpipefd[1]);
+          _outpipefd[1] = -1;
           _state = SCRIPT_RUNNING;
           _runStartTime = std::time(NULL);
         }
@@ -274,7 +291,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   }
   if (_state == READ_FROM_CGI){
     try {
-      close(_outpipefd[1]);
       char    buffer[512];
       ssize_t count = 0;
       count = read(_outpipefd[0], buffer, sizeof(buffer));
@@ -285,7 +301,13 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       _processOutput.append(buffer, count);
       _processOutputSize += count;
       if (count < (ssize_t)sizeof(buffer) || count == 0)
+      {
+          close(_outpipefd[0]);
+          _outpipefd[0] = -1;
+          close(_inpipefd[1]);
+          _inpipefd[1] = -1;
         _state = PROCESS_OUTPUT;
+      }
       else
         return EXECUTING;
     } catch (...) {

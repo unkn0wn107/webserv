@@ -308,11 +308,6 @@ std::string HTTPResponse::defaultErrorPage(int status) {
 
 ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   ssize_t bytesSent;
-  size_t  remaining = _responseBuffer.size() - _responseBufferPos;
-
-  if (sndbuf > remaining) {
-    sndbuf = remaining;
-  }
 
   bytesSent =
       send(socket, _responseBuffer.c_str() + _responseBufferPos, sndbuf, 0);
@@ -322,7 +317,6 @@ ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   }
   _responseBufferPos += bytesSent;
   _log.info("HTTPResponse: _send bytesSent: " + Utils::to_string(bytesSent) +
-            " remaining: " + Utils::to_string(remaining) +
             " _responseBufferPos: " + Utils::to_string(_responseBufferPos) +
             " _responseBufferSize: " + Utils::to_string(_responseBufferSize));
   return _responseBufferPos;
@@ -340,8 +334,12 @@ void HTTPResponse::_sendfile(int clientSocket, FILE* file, size_t sndbuf) {
 
 int HTTPResponse::sendResponse(int clientSocket, size_t sndbuf) {
   buildResponse();
-  if (_send(clientSocket, sndbuf) == -1)
+  if (_send(clientSocket, sndbuf) == -1) {
+    usleep(1000);
     return -1;
+  }
+  _log.warning("HTTPResponse: sendResponse _responseBufferPos: " + Utils::to_string(_responseBufferPos) +
+               " _responseBufferSize: " + Utils::to_string(_responseBufferSize));
   if (_responseBufferPos == _responseBufferSize && _file.empty())
     return 1;
   if (_file.empty())
@@ -367,6 +365,7 @@ int HTTPResponse::sendResponse(int statusCode, int clientSocket) {
   headers += "Content-Length: " + Utils::to_string(body.length()) + "\r\n\r\n";
   std::string response = statusLine + headers + body;
   if (send(clientSocket, response.c_str(), response.length(), 0) == -1) {
+    usleep(1000);
     return -1;
   }
   return 0;

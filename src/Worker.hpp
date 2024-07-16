@@ -82,7 +82,7 @@ class Worker {
   void                        _handleCacheWaiting();
   std::vector<VirtualServer*> _setupAssociatedVirtualServers(
       const ListenConfig& listenConfig);
-  void _launchEventProcessing(EventData* eventData);
+  void _launchEventProcessing(struct epoll_event event);
   void _pushBackToQueue(EventData* eventData, const struct epoll_event& event);
 
   void _cleanUpForceResponse();

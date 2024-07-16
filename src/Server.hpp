@@ -29,7 +29,9 @@
 #include "Logger.hpp"
 #include "Worker.hpp"
 
-#define SHUTDOWN_DELAY 200000
+#define SHUTDOWN_DELAY_MS 1000
+#define SHUTDOWN_DELAY (SHUTDOWN_DELAY_MS * 1000)
+
 
 class Worker;
 

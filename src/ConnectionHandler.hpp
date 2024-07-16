@@ -24,6 +24,7 @@
 #include "Config.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "EventQueue.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
 
@@ -38,21 +39,21 @@ class ConnectionHandler {
   ConnectionStatus    getConnectionStatus() const;
   std::string         getStatusString() const;
   std::string         getCacheKey() const;
-  int                 processConnection(EventData* eventData);
+  int                 processConnection(struct epoll_event event);
   void                setInternalServerError();
   void                forceSendResponse();
   void                closeClientSocket();
   static const int    MAX_TRIES;
   static const time_t TIMEOUT;
 
-  bool isBusy();
-  void setBusy();
-  void setNotBusy();
+  void lock();
+  void unlock();
 
   ConnectionHandler(int                          clientSocket,
                     int                          epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
-                    ListenConfig&                listenConfig);
+                    ListenConfig&                listenConfig,
+                    EventQueue&                  events);
   ~ConnectionHandler();
 
   class ConnectionException : public Exception {
@@ -101,6 +102,8 @@ class ConnectionHandler {
   CGIHandler*                 _cgiHandler;
   CGIState                    _cgiState;
   int                         _step;
+  pthread_mutex_t             _mutex;
+  EventQueue&                 _events;
 
   void             _receiveRequest();
   void             _processRequest();

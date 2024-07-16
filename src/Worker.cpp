@@ -98,45 +98,39 @@ void Worker::_runEventLoop() {
               "): Event: " + Utils::to_string(event.events));
 
     EventData* eventData = static_cast<EventData*>(event.data.ptr);
-    if (eventData && eventData->isListening && (event.events & EPOLLIN)) {
+    if (eventData && eventData->isListening && (event.events & EPOLLIN))
       _acceptNewConnection(eventData->fd);
-    }
     else if (eventData && event.events)
-      _launchEventProcessing(eventData);
-    else {
-      _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                   "): Unable to handle event with no data");
-      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, NULL);
-      close(event.data.fd);
-      // delete eventData->handler;
-      // delete eventData;
-    }
+      _launchEventProcessing(event);
+    // else {
+    //   _log.error("WORKER (" + Utils::to_string(_threadId) +
+    //                "): Unable to handle event with no data");
+    //   epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, NULL);
+    //   close(event.data.fd);
+    //   // delete eventData->handler;
+    //   // delete eventData;
+    // }
   }
   // _cleanUpForceResponse();
   // _cleanUpSendings();
   // _cleanUpAll();
 }
 
-void Worker::_launchEventProcessing(EventData* eventData) {
+void Worker::_launchEventProcessing(struct epoll_event event) {
+  EventData* eventData = static_cast<EventData*>(event.data.ptr);
   int handlerStatus = 0;
-  if (!eventData->handler) {
+  if (!eventData || !eventData->handler) {
     _log.warning("WORKER (" + Utils::to_string(_threadId) +
                  "): Handler is NULL for event fd: " + Utils::to_string(eventData->fd));
     return;
   }
   try {
-    handlerStatus = eventData->handler->processConnection(eventData);
+    handlerStatus = eventData->handler->processConnection(event);
   } catch (std::exception& e) {
     _log.error("WORKER (" + Utils::to_string(_threadId) +
                "): Exception: " + e.what());
   }
-  if (handlerStatus == 1) {  // Done
-    _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                 "): Handler deleted with con status " +
-                 eventData->handler->getStatusString());
-    delete eventData->handler;
-    delete eventData;
-  } else if (handlerStatus == -1) { // Cache waiting
+  if (handlerStatus == -1) { // Cache waiting
     _log.warning("WORKER (" + Utils::to_string(_threadId) +
                  "): Inserting in cache waiting with con status " +
                  eventData->handler->getStatusString());
@@ -168,31 +162,34 @@ void Worker::_acceptNewConnection(int fd) {
       close(new_socket);
       return;
     }
-    _log.info("WORKER (" + Utils::to_string(_threadId) +
-              "): Accepted new connection: " + Utils::to_string(new_socket));
     ListenConfig                listenConfig = _listenSockets[fd];
     std::vector<VirtualServer*> virtualServers =
         _setupAssociatedVirtualServers(listenConfig);
     ConnectionHandler* handler = new ConnectionHandler(
-        new_socket, _epollSocket, virtualServers, listenConfig);
+        new_socket, _epollSocket, virtualServers, listenConfig, _events);
     EventData* eventData = new EventData(new_socket, handler, _threadId);
     event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
       _log.error("WORKER (" + Utils::to_string(_threadId) +
-                 "): Failed \"epoll_ctl\" on new socket " +
+                 "): (accept) Failed \"epoll_ctl\" on new socket " +
                  Utils::to_string(new_socket));
       close(new_socket);
       delete handler;
       delete eventData;
+      throw std::runtime_error("WORKER (" + Utils::to_string(_threadId) +
+                               "): Failed \"epoll_ctl\" on new socket " +
+                               Utils::to_string(new_socket));
     }
+    _log.info("WORKER (" + Utils::to_string(_threadId) +
+              "): Accepted new connection: " + Utils::to_string(new_socket));
   }
 }
 
 void Worker::_handleCacheWaiting() {
   for (std::map<std::string, std::set<EventData *> >::iterator it = _cacheWaiting.begin(); it != _cacheWaiting.end(); ++it) {
     for (std::set<EventData *>::iterator sit = it->second.begin(); sit != it->second.end(); ++sit) {
-      _launchEventProcessing(*sit);
+      // _launchEventProcessing(*sit);
     }
   }
 }

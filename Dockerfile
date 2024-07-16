@@ -18,3 +18,5 @@ HEALTHCHECK --interval=1s --timeout=60s \
 
 ENTRYPOINT [ "./run.sh" ]
 CMD ["./webserv"]
+# CMD ["/bin/sh", "-c", "ulimit -n 2048 && ./webserv"]
+

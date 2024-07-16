@@ -46,7 +46,7 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
 
 CGIHandler::~CGIHandler() {
   _log.info("CGI: Destroying handler");
-  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
+  // epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
   if (_pid > 0)
     kill(_pid, SIGKILL);
   if (_eventData)
@@ -115,8 +115,8 @@ void CGIHandler::_checkIfProcessingPossible() {
 }
 
 void CGIHandler::_runScript() {
-  _log.info("CGI: executing: " + _request.getURIComponents().scriptName +
-            " with runtime: " + _runtime);
+  // _log.info("CGI: executing: " + _request.getURIComponents().scriptName +
+  //           " with runtime: " + _runtime);
   close(_outpipefd[0]);
   if (dup2(_outpipefd[1], STDOUT_FILENO) == -1)
     throw ExecutorError("CGI: dup2 failed: unable to redirect stdout to pipe");
@@ -162,7 +162,7 @@ void CGIHandler::_runScript() {
   envp_ptrs[_envp.size()] = NULL;
 
   if (execve(argv_ptrs[0], argv_ptrs, envp_ptrs) == -1) {
-    _log.error("CGI: execve failed: unable to execute CGI script");
+    // _log.error("CGI: execve failed: unable to execute CGI script");
     delete[] argv_ptrs;
     delete[] envp_ptrs;
     exit(EXIT_FAILURE);
@@ -218,21 +218,21 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       if (_pid == -1)
         throw ForkFailure("CGI: Failed to fork process");
       if (_pid > 0) {
-        struct epoll_event event;
-        memset(&event, 0, sizeof(event));
-        _eventData = new EventData(_outpipefd[0], _connectionHandler);
-        event.data.ptr = _eventData;
-        event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-        if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
-          close(_outpipefd[0]);
-          delete _eventData;
-          _state = CGI_ERROR;
-        } else {
+        // struct epoll_event event;
+        // memset(&event, 0, sizeof(event));
+        // _eventData = new EventData(_outpipefd[0], _connectionHandler);
+        // event.data.ptr = _eventData;
+        // event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+        // if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
+        //   close(_outpipefd[0]);
+        //   delete _eventData;
+        //   _state = CGI_ERROR;
+        // } else {
           close(_inpipefd[0]);
           close(_outpipefd[1]);
           _state = SCRIPT_RUNNING;
           _runStartTime = std::time(NULL);
-        }
+        // }
       } else if (_pid == 0)
         _state = RUN_SCRIPT;
     } catch (const Exception& e) {
@@ -257,7 +257,10 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       pid_t pidReturn = 0;
       int status = -1;
 
-      if ((pidReturn = waitpid(_pid, &status, WNOHANG | WUNTRACED)) == -1)
+      if (_pid < 0)
+        throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
+
+      if ((pidReturn = waitpid(_pid, &status, WNOHANG | WUNTRACED)) <= -1)
         throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
       
       if (pidReturn == 0) {
@@ -288,23 +291,27 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
         return EXECUTING;
       }
       
-      if (WIFEXITED(status)) {
+      if (_pid > 0 && WIFEXITED(status)) {
         int exitStatus = WEXITSTATUS(status);
         _log.info("CGI: script exited, status=" + Utils::to_string(exitStatus));
         if (exitStatus != 0)
           _log.error("CGI: script finished with errors, exit status: " + Utils::to_string(exitStatus));
+        waitpid(_pid, &status, 0);
+        _state = READ_FROM_CGI;
       } else if (WIFCONTINUED(status)) {
         _log.warning("CGI: script continued");
         return EXECUTING;
       } else if (WIFSIGNALED(status)) {
         std::string coreDump = WCOREDUMP(status) ? " (core dumped)" : "";
         _log.error("CGI: script terminated by signal: " + Utils::to_string(WTERMSIG(status)) + coreDump);
+        _state = CGI_ERROR;
       } else if (WIFSTOPPED(status)) {
         _log.error("CGI: script stopped by signal: " + Utils::to_string(WSTOPSIG(status)));
+        _state = CGI_ERROR;
       } else {
         _log.error("CGI: script exited abnormally with unknown status");
+        _state = CGI_ERROR;
       }
-      _state = READ_FROM_CGI;
     } catch (const Exception& e) {
       if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
         _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
@@ -327,11 +334,9 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           continue;
         }
         tries = 0;
-        if (count == 0)
-          break;
         _processOutput.append(buffer, count);
         _processOutputSize += count;
-      } while (count == -1 && tries < maxTries);
+      } while (count != 0 && tries < maxTries);
       if (count == -1) {
         _log.warning("CGI: read failed: " + std::string(strerror(errno)));
         _state = CGI_ERROR;
@@ -403,6 +408,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     return SENDING;
   }
 
+  _log.error("CGI: state is Undefined : " + Utils::to_string(static_cast<int>(_state)));
   return EXECUTING;
 }
 

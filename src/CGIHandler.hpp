@@ -42,8 +42,8 @@ class CGIHandler {
   CGIHandler(HTTPRequest&          request,
              HTTPResponse&         response,
              int                   epollSocket,
-             const LocationConfig& location,
-             ConnectionHandler*    connectionHandler);
+             const LocationConfig& location/*,
+             ConnectionHandler*    connectionHandler*/);
   ~CGIHandler();
 
   int      getCgifd();
@@ -130,7 +130,7 @@ class CGIHandler {
   CGIState _state;
 
   int                   _epollSocket;
-  ConnectionHandler*    _connectionHandler;
+  /*ConnectionHandler*    _connectionHandler;*/
   EventData*            _eventData;
   HTTPRequest&          _request;
   HTTPResponse&         _response;

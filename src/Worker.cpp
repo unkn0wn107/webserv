@@ -159,7 +159,7 @@ void Worker::_acceptNewConnection(int fd) {
     std::vector<VirtualServer*> virtualServers =
         _setupAssociatedVirtualServers(listenConfig);
     ConnectionHandler* handler = new ConnectionHandler(
-        new_socket, _epollSocket, virtualServers, listenConfig);
+        new_socket, _epollSocket, virtualServers, listenConfig, _events);
     EventData* eventData = new EventData(new_socket, handler, _threadId);
     event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
@@ -189,54 +189,4 @@ std::vector<VirtualServer*> Worker::_setupAssociatedVirtualServers(
     }
   }
   return virtualServers;
-}
-
-void Worker::_cleanUpForceResponse() {
-  bool hasOtherStatus = true;
-  while (hasOtherStatus) {
-    hasOtherStatus = false;
-    for (std::map<int, EventData*>::iterator it = _eventsData.begin();
-         it != _eventsData.end(); ++it) {
-      if (!it->second->handler) {
-        _eventsData.erase(it);
-        continue;
-      }
-      ConnectionStatus status = it->second->handler->getConnectionStatus();
-      if (status != SENDING && status != CLOSED) {
-        it->second->handler->setInternalServerError();
-        hasOtherStatus = true;
-      }
-    }
-  }
-}
-
-void Worker::_cleanUpSendings() {
-  bool hasSending = true;
-  while (hasSending) {
-    hasSending = false;
-    usleep(500);
-    for (std::map<int, EventData*>::iterator it = _eventsData.begin();
-         it != _eventsData.end(); ++it) {
-      if (!it->second->handler) {
-        _eventsData.erase(it);
-        continue;
-      }
-      if (it->second->handler->getConnectionStatus() == SENDING) {
-        it->second->handler->forceSendResponse();
-        hasSending = true;
-      }
-    }
-  }
-}
-
-void Worker::_cleanUpAll() {
-  for (std::map<int, EventData*>::iterator it = _eventsData.begin();
-       it != _eventsData.end(); ++it) {
-    if (!it->second->handler)
-      continue;
-    it->second->handler->closeClientSocket();
-    delete it->second->handler;
-    delete it->second;
-    _eventsData.erase(it);
-  }
 }

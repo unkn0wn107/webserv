@@ -26,6 +26,7 @@
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
+#include "EventQueue.hpp"
 
 #define BUFFER_SIZE 16384
 
@@ -38,7 +39,6 @@ class ConnectionHandler {
   std::string         getStatusString() const;
   int                 processConnection(struct epoll_event& event);
   void                setInternalServerError();
-  void                forceSendResponse();
   void                closeClientSocket();
   static const int    MAX_TRIES;
   static const time_t TIMEOUT;
@@ -50,7 +50,8 @@ class ConnectionHandler {
   ConnectionHandler(int                          clientSocket,
                     int                          epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
-                    ListenConfig&                listenConfig);
+                    ListenConfig&                listenConfig,
+                    EventQueue&                   events);
   ~ConnectionHandler();
 
   class ConnectionException : public Exception {
@@ -99,6 +100,7 @@ class ConnectionHandler {
   CGIHandler*                 _cgiHandler;
   CGIState                    _cgiState;
   int                         _step;
+  EventQueue&                 _events;
 
   void             _receiveRequest();
   void             _processRequest();

@@ -28,7 +28,8 @@ ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
     std::vector<VirtualServer*>& virtualServers,
-    ListenConfig&                listenConfig)
+    ListenConfig&                listenConfig,
+    EventQueue&                   events)
     : _log(Logger::getInstance()),
       _busy(false),
       _connectionStatus(READING),
@@ -45,7 +46,9 @@ ConnectionHandler::ConnectionHandler(
       _startTime(time(NULL)),
       _cgiHandler(NULL),
       _cgiState(NONE),
-      _step(0) {
+      _step(0),
+      _events(events)
+{
 }
 
 ConnectionHandler::~ConnectionHandler() {
@@ -80,10 +83,6 @@ void ConnectionHandler::setInternalServerError() {
   const LocationConfig& location = vserv->getLocationConfig(uriPath);
   _response = new HTTPResponse(HTTPResponse::INTERNAL_SERVER_ERROR, location);
   _setConnectionStatus(SENDING);
-}
-
-void ConnectionHandler::forceSendResponse() {
-  _sendResponse();
 }
 
 ConnectionStatus ConnectionHandler::_checkConnectionStatus() {
@@ -261,8 +260,8 @@ void ConnectionHandler::_processRequest() {
     }
     _response = new HTTPResponse(HTTPResponse::OK, location);
     _cgiHandler =
-        new CGIHandler(*_request, *_response, _epollSocket, location, this);
-    _cgiState = INIT;
+        new CGIHandler(*_request, *_response, _epollSocket, location);
+    _cgiState = REGISTER_SCRIPT_FD;
     _setConnectionStatus(EXECUTING);
   } else {
     _log.info("CONNECTION_HANDLER: NO CGI in request detected");
@@ -303,14 +302,8 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
   try {
     if (_connectionStatus == READING)
       _receiveRequest();
-    if (_connectionStatus == EXECUTING) {
+    if (_connectionStatus == EXECUTING)
       _processExecutingState();
-      if (_connectionStatus == SENDING) {
-        if (_request->getHeader("Cache-Control") == "")
-          _cacheHandler.storeResponse(_requestString, *_response);
-        _response->setCookie("sessionid", _request->getSessionId());
-      }
-    }
     if (_connectionStatus == SENDING)
       _sendResponse();
   } catch (const Exception& e) {
@@ -337,12 +330,13 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
         throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                        "): CGIHandler is NULL");
       }
-      event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-      if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
-        _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                                "): epoll_ctl: ") +
-                    strerror(errno));
-      }
+        _events.push(event);
+        // event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+        // if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
+        //   _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+        //                           "): epoll_ctl: ") +
+        //               strerror(errno));
+        // }
       break;
 
     case SENDING:

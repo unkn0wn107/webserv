@@ -22,7 +22,6 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
                        ConnectionHandler*    connectionHandler*/)
     : _state(REGISTER_SCRIPT_FD),
       _epollSocket(epollSocket),
-      /**/
       _eventData(NULL),
       _request(request),
       _response(response),
@@ -38,11 +37,14 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
   _root = _location.root;
   _index = _location.index;
   _cgi = _location.cgi;
+  _outpipefd[0] = -1;
+  _outpipefd[1] = -1;
+  _inpipefd[0] = -1;
+  _inpipefd[1] = -1;
 }
 
 CGIHandler::~CGIHandler() {
   _log.info("CGI: Destroying handler");
-  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
   if (_inpipefd[0] != -1)
     close(_inpipefd[0]);
   if (_inpipefd[1] != -1)

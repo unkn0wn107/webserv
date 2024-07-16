@@ -309,8 +309,10 @@ std::string HTTPResponse::defaultErrorPage(int status) {
 ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   ssize_t bytesSent;
 
+  if (_responseBufferSize - _responseBufferPos < sndbuf)
+    sndbuf = _responseBufferSize - _responseBufferPos;
   bytesSent =
-      send(socket, _responseBuffer.c_str() + _responseBufferPos, sndbuf, 0);
+      send(socket, _responseBuffer.data() + _responseBufferPos, sndbuf, 0);
   if (bytesSent == -1) {
     usleep(1000);
     return -1;

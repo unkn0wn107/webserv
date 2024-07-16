@@ -104,6 +104,7 @@ class ConnectionHandler {
   int                         _step;
   pthread_mutex_t             _mutex;
   EventQueue&                 _events;
+  std::vector<std::string>    _stateHistory;
 
   void             _receiveRequest();
   void             _processRequest();

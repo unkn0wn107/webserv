@@ -19,8 +19,9 @@
 #include <sys/wait.h>
 #include <algorithm>
 #include <cctype>
-
+#include <deque>
 #include <sys/epoll.h>
+
 #include "CacheHandler.hpp"
 #include "Common.hpp"
 #include "ConnectionHandler.hpp"
@@ -145,6 +146,7 @@ class CGIHandler {
   bool                  _cgi;
   bool                  _done;
   std::string           _cacheKey;
+  std::deque<std::string> _stateHistory;
 
   std::vector<std::string> _argv;
   std::vector<std::string> _envp;

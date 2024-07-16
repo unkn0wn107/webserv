@@ -45,7 +45,9 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
 }
 
 CGIHandler::~CGIHandler() {
-  _log.info("CGI: Destroying handler");
+  for (std::deque<std::string>::const_iterator it = _stateHistory.begin(); it != _stateHistory.end(); ++it) {
+    _log.info("CGI: Destroying handler, history: " + *it);
+  }
   // epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL);
   if (_pid > 0)
     kill(_pid, SIGKILL);
@@ -171,6 +173,7 @@ void CGIHandler::_runScript() {
 
 ConnectionStatus CGIHandler::handleCGIRequest() {
   if (_state == INIT){
+    _stateHistory.push_back("INIT");
     std::string cacheControl;
     try {
       cacheControl = _request.getHeader("Cache-Control");
@@ -188,6 +191,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   }
 
   if (_state == CACHE_CHECK){
+    _stateHistory.push_back("CACHE_CHECK");
     std::string uriPath;
     CacheHandler::CacheEntry cacheEntry;
     try {
@@ -212,6 +216,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   }
 
   if (_state == REGISTER_SCRIPT_FD){  // Set-up execution environment
+    _stateHistory.push_back("REGISTER_SCRIPT_FD");
     try {
       _checkIfProcessingPossible();
       _pid = fork();
@@ -245,6 +250,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   }
 
   if (_state == RUN_SCRIPT){
+    _stateHistory.push_back("RUN_SCRIPT");
     try {
       _runScript();
     } catch (...) {
@@ -253,6 +259,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   }
 
   if (_state == SCRIPT_RUNNING) {
+    _stateHistory.push_back("SCRIPT_RUNNING");
     try {
       pid_t pidReturn = 0;
       int status = -1;
@@ -260,7 +267,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       if (_pid < 0)
         throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
 
-      if ((pidReturn = waitpid(_pid, &status, WNOHANG | WUNTRACED)) <= -1)
+      if ((pidReturn = waitpid(_pid, &status, 0)) <= -1)
         throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
       
       if (pidReturn == 0) {
@@ -320,6 +327,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   }
 
   if (_state == READ_FROM_CGI){
+    _stateHistory.push_back("READ_FROM_CGI");
     try {
       close(_outpipefd[1]);
       char    buffer[512];
@@ -345,12 +353,15 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       else
         return EXECUTING;
     } catch (...) {
+      _log.error("CGI: caught read failed: " + std::string(strerror(errno)));
       _state = CGI_ERROR;
     }
   }
 
   if (_state == PROCESS_OUTPUT){
+    _stateHistory.push_back("PROCESS_OUTPUT");
     try {
+      _log.info("CGI: _processOutput: " + _processOutput);
       std::string normalizedOutput = _processOutput;
       std::string::size_type pos = 0;
       while ((pos = normalizedOutput.find('\n', pos)) != std::string::npos) {
@@ -361,7 +372,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
             ++pos; // Already \r\n, move to the next character
         }
       }
-      _log.info("CGI: processOutput: " + normalizedOutput);
+      _log.info("CGI: normalizedOutput: " + normalizedOutput);
       std::size_t headerEndPos = normalizedOutput.find("\r\n\r\n");
       if (headerEndPos == std::string::npos)
         throw ExecutorError(
@@ -386,6 +397,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   }
 
   if (_state == FINALIZE_RESPONSE){
+    _stateHistory.push_back("FINALIZE_RESPONSE");
     try {
       if (_request.getHeader("Cache-Control") == "no-cache")
         _response.addHeader("Cache-Control", "no-cache");
@@ -402,6 +414,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   }
 
   if (_state == CGI_ERROR){
+    _stateHistory.push_back("CGI_ERROR");
     if (_response.getStatusCode() == HTTPResponse::OK)
           _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
     _cacheHandler.deleteCache(_cacheKey);

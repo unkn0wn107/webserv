@@ -49,6 +49,9 @@ ConnectionHandler::ConnectionHandler(
 
 ConnectionHandler::~ConnectionHandler() {
   _log.info("CONNECTION_HANDLER: Destroying connection handler");
+  for (std::vector<std::string>::const_iterator it = _stateHistory.begin(); it != _stateHistory.end(); ++it) {
+    _log.info("CONNECTION_HANDLER: State history: " + *it);
+  }
   for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
        it != _vservPool.end(); ++it) {
     delete *it;
@@ -290,11 +293,14 @@ int ConnectionHandler::processConnection(struct epoll_event event) {
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Status: " + getStatusString());
   try {
+    _stateHistory.push_back(getStatusString());
     if (_connectionStatus == READING)
       _receiveRequest();
+    _stateHistory.push_back(getStatusString());
     if (_connectionStatus == EXECUTING || _connectionStatus == CACHE_WAITING) {
       _processExecutingState();
     }
+    _stateHistory.push_back(getStatusString());
     if (_connectionStatus == SENDING)
       _sendResponse();
   } catch (const Exception& e) {
@@ -305,7 +311,7 @@ int ConnectionHandler::processConnection(struct epoll_event event) {
   }
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Modifying epoll events for " + getStatusString());
-
+  _stateHistory.push_back(getStatusString());
   if (_connectionStatus == CACHE_WAITING)
     return -1;
 

@@ -1,4 +1,5 @@
 - TIMEOUT: alex
+- cache: a & mat
 - errno on accept: mat
 - You can use every macro and define like FD_SET, FD_CLR, FD_ISSET, FD_ZERO (understanding what and how they do it is very useful).
 - test cross sieges (multiple socket): mat

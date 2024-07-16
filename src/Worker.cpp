@@ -80,10 +80,11 @@ void Worker::_runEventLoop() {
       usleep(1000);
       continue;
     }
+
     _log.info("WORKER (" + Utils::to_string(_threadId) +
               "): Event: " + Utils::to_string(event.events));
 
-    EventData* eventData = (EventData*)event.data.ptr;
+    EventData* eventData = static_cast<EventData*>(event.data.ptr);
     if (eventData && eventData->isListening && (event.events & EPOLLIN)) {
       _acceptNewConnection(eventData->fd);
     }
@@ -91,7 +92,7 @@ void Worker::_runEventLoop() {
       _launchEventProcessing(eventData, event);
     else {
       _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                  "): Unable to handle event with no data");
+                   "): Unable to handle event with no data");
       epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, NULL);
       close(event.data.fd);
       // delete eventData->handler;

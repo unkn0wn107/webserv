@@ -33,14 +33,12 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
       _processOutputSize(0),
       _runtime(_identifyRuntime(_request, _location)),
       _done(false),
-      _argv(CGIHandler::_buildScriptArguments(_request, _location)),
-      _envp(CGIHandler::_buildScriptEnvironment(_request, _location)),
+      _argv(_buildScriptArguments(_request, _location)),
+      _envp(_buildScriptEnvironment(_request, _location)),
       _pid(-2) {
   _root = _location.root;
   _index = _location.index;
   _cgi = _location.cgi;
-  pthread_mutex_init(&_mutex, NULL);
-  pthread_mutex_init(&_activeProcMutex, NULL);
 }
 
 CGIHandler::~CGIHandler() {
@@ -54,10 +52,6 @@ CGIHandler::~CGIHandler() {
     close(_outpipefd[0]);
   if (_outpipefd[1] != -1)
     close(_outpipefd[1]);
-  Utils::freeCharVector(_argv);
-  Utils::freeCharVector(_envp);
-  pthread_mutex_destroy(&_mutex);
-  pthread_mutex_destroy(&_activeProcMutex);
 }
 
 const std::pair<std::string, std::string> CGIHandler::_AVAILABLE_CGIS[] = {
@@ -85,24 +79,24 @@ CGIState CGIHandler::getCgiState() {
   return _state;
 }
 
-int CGIHandler::_getActiveProc() {
-  pthread_mutex_lock(&_activeProcMutex);
-  int activeProc = _activeProc;
-  pthread_mutex_unlock(&_activeProcMutex);
-  return activeProc;
-}
+// int CGIHandler::_getActiveProc() {
+//   pthread_mutex_lock(&_activeProcMutex);
+//   int activeProc = _activeProc;
+//   pthread_mutex_unlock(&_activeProcMutex);
+//   return activeProc;
+// }
 
-void CGIHandler::_incrementActiveProc() {
-  pthread_mutex_lock(&_activeProcMutex);
-  _activeProc++;
-  pthread_mutex_unlock(&_activeProcMutex);
-}
+// void CGIHandler::_incrementActiveProc() {
+//   pthread_mutex_lock(&_activeProcMutex);
+//   _activeProc++;
+//   pthread_mutex_unlock(&_activeProcMutex);
+// }
 
-void CGIHandler::_decrementActiveProc() {
-  pthread_mutex_lock(&_activeProcMutex);
-  _activeProc--;
-  pthread_mutex_unlock(&_activeProcMutex);
-}
+// void CGIHandler::_decrementActiveProc() {
+//   pthread_mutex_lock(&_activeProcMutex);
+//   _activeProc--;
+//   pthread_mutex_unlock(&_activeProcMutex);
+// }
 
 void CGIHandler::_checkIfProcessingPossible() {
   if (!_cgi)
@@ -129,19 +123,19 @@ void CGIHandler::_checkIfProcessingPossible() {
 }
 
 void CGIHandler::_runScript() {
-  std::cerr << "CGI: executing: " + _request.getURIComponents().scriptName +
+  std::cerr << "CHILD: executing: " + _request.getURIComponents().scriptName +
             " with runtime: " + _runtime << std::endl;
   if (dup2(_outpipefd[1], STDOUT_FILENO) == -1){
-    std::cerr << "CGI: dup2 failed: unable to redirect stdout to pipe"<< std::endl;
+    std::cerr << "CHILD: dup2 failed: unable to redirect stdout to pipe"<< std::endl;
     exit(EXIT_FAILURE);
   }
   close(_outpipefd[0]);
   close(_outpipefd[1]);
   std::string postData = _request.getBody();
-  if (postData != "")
+  if (!postData.empty())
   {
     if (dup2(_inpipefd[0], STDIN_FILENO) == -1){
-      std::cerr << "CGI: dup2 failed: unable to redirect stdin to pipe"<< std::endl;
+      std::cerr << "CHILD: dup2 failed: unable to redirect stdin to pipe"<< std::endl;
       exit(EXIT_FAILURE);
     }
     close(_inpipefd[0]);
@@ -155,7 +149,7 @@ void CGIHandler::_runScript() {
       if (written == -1) {
           if (trys > 5) {
             close(_inpipefd[1]);
-            std::cerr << "CGI: write failed: unable to write POST data to pipe "
+            std::cerr << "CHILD: write failed: unable to write POST data to pipe "
                 "after "
                 "multiple "
                 "retries"<< std::endl;
@@ -169,9 +163,28 @@ void CGIHandler::_runScript() {
       totalWritten += written;
     }
     close(_inpipefd[1]);
+  } else {
+    close(_inpipefd[0]);
+    close(_inpipefd[1]);
   }
-  execve(_argv[0], &_argv[0], &_envp[0]);
-  exit(EXIT_FAILURE);
+
+  char** argv_ptrs = new char*[_argv.size() + 1];
+  char** envp_ptrs = new char*[_envp.size() + 1];
+
+  for (size_t i = 0; i < _argv.size(); ++i)
+      argv_ptrs[i] = const_cast<char*>(_argv[i].data());
+  argv_ptrs[_argv.size()] = NULL;
+
+  for (size_t i = 0; i < _envp.size(); ++i)
+      envp_ptrs[i] = const_cast<char*>(_envp[i].data());
+  envp_ptrs[_envp.size()] = NULL;
+
+  if (execve(argv_ptrs[0], argv_ptrs, envp_ptrs) == -1) {
+    std::cerr << "CHILD: execve failed: unable to execute CGI script" << std::endl;
+    delete[] argv_ptrs;
+    delete[] envp_ptrs;
+    exit(EXIT_FAILURE);
+  }
 }
 
 ConnectionStatus CGIHandler::handleCGIRequest() {
@@ -217,8 +230,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   // }
   if (_state == REGISTER_SCRIPT_FD){  // Set-up execution environment
     try {
-      // _checkIfProcessingPossible();
-      _log.warning("CGI: Proccess possible forking...");
+      _checkIfProcessingPossible();
       if (pipe(_inpipefd) == -1)
         throw PipeFailure("CGI: Failed to create pipe");
       if (pipe(_outpipefd) == -1)
@@ -238,12 +250,22 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
         if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
           _log.error("CGIHandler: REGISTER_SCRIPT_FD: EPOLL_CTL_ADD failed.");
           close(_outpipefd[0]);
+          _outpipefd[0] = -1;
+          close(_outpipefd[1]);
+          _outpipefd[1] = -1;
+          close(_inpipefd[0]);
+          _inpipefd[0] = -1;
+          close(_inpipefd[1]);
+          _inpipefd[1] = -1;
           delete _eventData;
           _state = CGI_ERROR;
         } else {
           close(_inpipefd[0]);
+          _inpipefd[0] = -1;
           close(_outpipefd[1]);
-          _state = READ_FROM_CGI;
+          _outpipefd[1] = -1;
+          // _state = READ_FROM_CGI;
+          _state = SCRIPT_RUNNING;
           _runStartTime = std::time(NULL);
           usleep(10000);
           return EXECUTING;
@@ -262,76 +284,81 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   if (_state == RUN_SCRIPT){
     _runScript();
   }
-  // if (_state == SCRIPT_RUNNING){
-  //   try{
-  //     pid_t pidReturn = 0;
-  //     int status = -1;
+  if (_state == SCRIPT_RUNNING){
+    try{
+      pid_t pidReturn = 0;
+      int status = -1;
 
-  //     if (!_done && (pidReturn = waitpid(_pid, &status, WNOHANG)) == -1) {
-  //         throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
-  //     }
-  //     if (!_done && pidReturn > 0) {
-  //       _log.info("CGI: script finished");
-  //       _done = true;
-  //     }
-  //     if (!_done && pidReturn == 0) {
-  //       _log.info("CGI: script is still running");
-  //       if (std::time(NULL) - _runStartTime > CGI_TIMEOUT_SEC) {
-  //         kill(_pid, SIGKILL);
-  //         int statusClean;
-  //         waitpid(_pid, &statusClean, 0); // To stop child process in Zombie state
-  //         throw TimeoutException("CGI: script timed out after " +
-  //                               Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
-  //       }
-  //       _log.warning("CGI: script is still running, return EXECUTING");
-  //       usleep(1000);
-  //       return EXECUTING;
-  //     }
+      if ((pidReturn = waitpid(_pid, &status, WNOHANG)) == -1) {
+          throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
+      }
+      if (pidReturn > 0) {
+        _log.info("CGI: script finished");
+      }
+      if (pidReturn == 0) {
+        _log.info("CGI: script is still running");
+        if (std::time(NULL) - _runStartTime > CGI_TIMEOUT_SEC) {
+          kill(_pid, SIGKILL);
+          int statusClean;
+          waitpid(_pid, &statusClean, 0); // To stop child process in Zombie state
+          throw TimeoutException("CGI: script timed out after " +
+                                Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
+        }
+        _log.warning("CGI: script is still running, return EXECUTING");
+        usleep(1000);
+        return EXECUTING;
+      }
 
-  //     if (WIFEXITED(status)) {
-  //       int exitStatus = WEXITSTATUS(status);
-  //       _log.info("CGI: script exited, status=" + Utils::to_string(exitStatus));
-  //       if (exitStatus != 0) {
-  //         throw ExecutorError("CGI: script finished with errors, exit status: " + Utils::to_string(exitStatus));
-  //       }
-  //       _state = READ_FROM_CGI;
-  //     } else if (WIFSIGNALED(status)) {
-  //       int termSignal = WTERMSIG(status);
-  //       _log.error("CGI: script terminated by signal: " + Utils::to_string(termSignal));
-  //       throw ExecutorError("CGI: script terminated by signal: " + Utils::to_string(termSignal));
-  //     } else if (WIFSTOPPED(status)) {
-  //       int stopSignal = WSTOPSIG(status);
-  //       _log.error("CGI: script stopped by signal: " + Utils::to_string(stopSignal));
-  //       throw ExecutorError("CGI: script stopped by signal: " + Utils::to_string(stopSignal));
-  //     } else {
-  //       _log.error("CGI: script finished with unknown status");
-  //       throw ExecutorError("CGI: script finished with unknown status");
-  //     }
+      if (WIFEXITED(status)) {
+        int exitStatus = WEXITSTATUS(status);
+        _log.info("CGI: script exited, status=" + Utils::to_string(exitStatus));
+        if (exitStatus != 0) {
+          throw ExecutorError("CGI: script finished with errors, exit status: " + Utils::to_string(exitStatus));
+        }
+        _state = READ_FROM_CGI;
+      } else if (WIFSIGNALED(status)) {
+        int termSignal = WTERMSIG(status);
+        _log.error("CGI: script terminated by signal: " + Utils::to_string(termSignal));
+        throw ExecutorError("CGI: script terminated by signal: " + Utils::to_string(termSignal));
+      } else if (WIFSTOPPED(status)) {
+        int stopSignal = WSTOPSIG(status);
+        _log.error("CGI: script stopped by signal: " + Utils::to_string(stopSignal));
+        throw ExecutorError("CGI: script stopped by signal: " + Utils::to_string(stopSignal));
+      } else {
+        _log.error("CGI: script finished with unknown status");
+        throw ExecutorError("CGI: script finished with unknown status");
+      }
 
-  //     return EXECUTING;
-  //   } catch (const Exception& e) {
-  //     if (dynamic_cast<const CGIHandler::TimeoutException*>(&e)) {
-  //       _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
-  //     }
-  //     _state = CGI_ERROR;
-  //   }
-  // }
+      return EXECUTING;
+    } catch (const Exception& e) {
+      if (dynamic_cast<const CGIHandler::TimeoutException*>(&e)) {
+        _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
+      }
+      _state = CGI_ERROR;
+    }
+  }
   if (_state == READ_FROM_CGI){
     try {
-      int status;
-      close(_outpipefd[1]);
-      char    buffer[512];
+      char    buffer[BUFFER_SIZE];
       ssize_t count = 0;
-      while ((count = read(_outpipefd[0], buffer, sizeof(buffer))) > 0)
+      count = read(_outpipefd[0], buffer, sizeof(buffer));
+      if (count == -1) {
+        _log.warning("CGI: read failed: " + std::string(strerror(errno)));
+        usleep(1000);
+        return EXECUTING;
+      } 
+      _processOutput.append(buffer, count);
+      _processOutputSize += count;
+      if (count < (ssize_t)sizeof(buffer) || count == 0)
       {
-        _processOutput.append(buffer, count);
-        _processOutputSize += count;
+        close(_outpipefd[0]);
+        _outpipefd[0] = -1;
+        close(_inpipefd[1]);
+        _inpipefd[1] = -1;
+        _state = PROCESS_OUTPUT;
       }
-      _log.error("waiting for pid");
-      close(_outpipefd[0]);
-      waitpid(_pid, &status, 0);
-      _log.error("waiting for pid");
-      _state = PROCESS_OUTPUT;
+      else
+        return EXECUTING;
     } catch (...) {
       _state = CGI_ERROR;
     }
@@ -375,8 +402,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
         _response.addHeader(
             "Cache-Control",
             "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
-        _log.info("CGI: storing response in cache");
-        _cacheHandler.storeResponse(_request, _response);
       }
       return SENDING;
     } catch (...) {
@@ -421,70 +446,66 @@ std::map<std::string, std::string> CGIHandler::_parseOutputHeaders(
   return headers;
 }
 
-std::vector<char*> CGIHandler::_buildScriptArguments(
+std::vector<std::string> CGIHandler::_buildScriptArguments(
     const HTTPRequest&    request,
     const LocationConfig& location) {
-  std::vector<char*> argv;
+    std::vector<std::string> argv;
 
-  std::string scriptPath = location.root + request.getURIComponents().path;
-  if (FileManager::isDirectory(scriptPath)) {
-    if (scriptPath[scriptPath.length() - 1] != '/')
-      scriptPath += "/";
-    scriptPath += location.index;
-  }
+    std::string scriptPath = location.root + request.getURIComponents().path;
+    if (FileManager::isDirectory(scriptPath)) {
+        if (scriptPath[scriptPath.length() - 1] != '/')
+            scriptPath += "/";
+        scriptPath += location.index;
+    }
 
-  argv.reserve(3);
-  argv.push_back(Utils::cstr(_identifyRuntime(request, location)));
-  argv.push_back(Utils::cstr(scriptPath));
-  argv.push_back(NULL);
+    argv.reserve(2);
+    argv.push_back(_identifyRuntime(request, location));
+    argv.push_back(scriptPath);
 
-  return argv;
+    return argv;
 }
 
-std::vector<char*> CGIHandler::_buildScriptEnvironment(
+std::vector<std::string> CGIHandler::_buildScriptEnvironment(
     const HTTPRequest&    request,
     const LocationConfig& location) {
-  std::vector<char*> envp;
+    std::vector<std::string> envp;
 
-  const std::map<std::string, std::string> headers = request.getHeaders();
-  const URI::Components uriComponents = request.getURIComponents();
+    const std::map<std::string, std::string>& headers = request.getHeaders();
+    const URI::Components& uriComponents = request.getURIComponents();
 
-  std::string scriptName = uriComponents.scriptName;
-  std::string scriptPath = location.root + uriComponents.path;
-  if (FileManager::isDirectory(scriptPath)) {
-    if (scriptPath[scriptPath.length() - 1] != '/')
-      scriptPath += "/";
-    scriptPath += location.index;
-    if (scriptName[scriptName.length() - 1] != '/')
-      scriptName += "/";
-    scriptName += location.index;
-  }
+    std::string scriptName = uriComponents.scriptName;
+    std::string scriptPath = location.root + uriComponents.path;
+    if (FileManager::isDirectory(scriptPath)) {
+        if (scriptPath[scriptPath.length() - 1] != '/')
+            scriptPath += "/";
+        scriptPath += location.index;
+        if (scriptName[scriptName.length() - 1] != '/')
+            scriptName += "/";
+        scriptName += location.index;
+    }
 
-  envp.reserve(headers.size() + 10 + 1);  // 10 env variables + NULL
+    envp.reserve(headers.size() + 10);  // 10 env variables
 
-  envp.push_back(Utils::cstr("REDIRECT_STATUS=200"));  // For php-cgi at least
-  envp.push_back(Utils::cstr("DOCUMENT_ROOT=" + location.root));
-  envp.push_back(Utils::cstr("REQUEST_URI=" + request.getURI()));
-  envp.push_back(Utils::cstr("SCRIPT_FILENAME=" + scriptPath));
-  envp.push_back(Utils::cstr("SCRIPT_NAME=" + scriptName));
-  envp.push_back(Utils::cstr("PATH_INFO=" + uriComponents.pathInfo));
-  envp.push_back(Utils::cstr("REQUEST_METHOD=" + request.getMethod()));
-  envp.push_back(Utils::cstr("QUERY_STRING=" + uriComponents.query));
-  envp.push_back(Utils::cstr("REMOTE_HOST=localhost"));
-  envp.push_back(Utils::cstr("CONTENT_LENGTH=" +
-                             Utils::to_string(request.getBody().length())));
+    envp.push_back("REDIRECT_STATUS=200");  // For php-cgi at least
+    envp.push_back("DOCUMENT_ROOT=" + location.root);
+    envp.push_back("REQUEST_URI=" + request.getURI());
+    envp.push_back("SCRIPT_FILENAME=" + scriptPath);
+    envp.push_back("SCRIPT_NAME=" + scriptName);
+    envp.push_back("PATH_INFO=" + uriComponents.pathInfo);
+    envp.push_back("REQUEST_METHOD=" + request.getMethod());
+    envp.push_back("QUERY_STRING=" + uriComponents.query);
+    envp.push_back("REMOTE_HOST=localhost");
+    envp.push_back("CONTENT_LENGTH=" + Utils::to_string(request.getBody().length()));
 
-  for (std::map<std::string, std::string>::const_iterator hd = headers.begin();
-       hd != headers.end(); ++hd) {
-    std::string envName = "HTTP_" + hd->first;
-    std::replace(envName.begin(), envName.end(), '-', '_');
-    std::transform(envName.begin(), envName.end(), envName.begin(), ::toupper);
-    std::string envLine = envName + "=" + hd->second;
-    envp.push_back(Utils::cstr(envLine));
-  }
-  envp.push_back(NULL);
+    for (std::map<std::string, std::string>::const_iterator hd = headers.begin();
+          hd != headers.end(); ++hd) {
+        std::string envName = "HTTP_" + hd->first;
+        std::replace(envName.begin(), envName.end(), '-', '_');
+        std::transform(envName.begin(), envName.end(), envName.begin(), ::toupper);
+        envp.push_back(envName + "=" + hd->second);
+    }
 
-  return envp;
+    return envp;
 }
 
 const std::string CGIHandler::_identifyRuntime(const HTTPRequest&    request,

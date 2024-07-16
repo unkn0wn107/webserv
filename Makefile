@@ -14,7 +14,7 @@ NAME = webserv
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
-DEBUGFLAGS = -gdwarf-3 -fsanitize=address
+DEBUGFLAGS = -gdwarf-3
 
 SRC_DIR = src
 OBJ_DIR = .obj
@@ -51,6 +51,9 @@ DEBUG_DEPS = $(patsubst $(SRC_DIR)/%.cpp, $(DEBUG_OBJ_DIR)/%.d, $(SRC))
 VPATH = $(SRC_DIR)
 
 all: $(NAME) setup
+
+fix:
+	dos2unix *.sh && chmod +x *.sh
 
 setup:
 	NUM=1; \

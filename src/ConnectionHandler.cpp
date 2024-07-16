@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 15:28:16 by agaley           ###   ########.fr       */
+/*   Updated: 2024/07/10 13:29:04 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -245,10 +245,10 @@ void ConnectionHandler::_processRequest() {
   const LocationConfig& location = vserv->getLocationConfig(uriPath);
   if (location.cgi && CGIHandler::isScript(*_request, location) &&
       _cgiState == NONE) {
-    bool hitCache = _request->getHeader("Cache-Control") != "no-cache";
+    bool doCache = _request->getHeader("Cache-Control") != "no-cache";
     _log.info("CONNECTION_HANDLER: CGI request detected");
-    hitCache = false; // TODO: remove this line after testing cache
-    if (hitCache) {
+    doCache = false; // TODO: remove this line after testing cache
+    if (doCache) {
       _log.info("CONNECTION_HANDLER: Cache hit");
       CacheStatus cacheStatus = _cacheHandler.checkCache(_requestString);
       if (cacheStatus == CACHE_FOUND) {
@@ -258,12 +258,13 @@ void ConnectionHandler::_processRequest() {
         return;
       }
       else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
-        _log.info("CONNECTION_HANDLER: Cache currently building");
+        _log.error("CONNECTION_HANDLER: Cache currently building");
         _response = _cacheHandler.waitResponse(_requestString);
+        _response->setCookie("sessionid", _request->getSessionId());
         _setConnectionStatus(SENDING);
         return;
       }
-    } 
+    }
     _response = new HTTPResponse(HTTPResponse::OK, location);
     _cgiHandler =
         new CGIHandler(*_request, *_response, _epollSocket, location, this);

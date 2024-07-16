@@ -98,6 +98,12 @@ void Server::start() {
     for (int i = 0; i < nfds; i++) {
       _events.push(events[i]);
     }
+    if (nfds < 0) {
+      usleep(1000);
+      continue;
+    }
+    for (int i = 0; i < nfds && _running; i++)
+      _events.push(events[i]);
   }
 }
 

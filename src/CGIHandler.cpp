@@ -19,8 +19,6 @@ CGIHandler::CGIHandler(HTTPRequest& request, HTTPResponse& response):
   _request(request),
   _response(response),
   _processOutput(""),
-  _processOutputSize(0),
-  _processOutputPos(0),
   _runtime(_identifyRuntime(_request)),
   _argv(CGIHandler::_getArgv(_request)),
   _envp(CGIHandler::_getEnvp(_request)),

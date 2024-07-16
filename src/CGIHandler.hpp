@@ -113,8 +113,6 @@ class CGIHandler {
   HTTPResponse& _response;
   LocationConfig* _location;
   std::string   _processOutput;
-  size_t        _processOutputSize;
-  size_t        _processOutputPos;
   std::string   _runtime;
   std::string   _root;
   std::string   _index;

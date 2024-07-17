@@ -240,8 +240,8 @@ void ConnectionHandler::_processRequest(struct epoll_event& event) {
   if (location.cgi && CGIHandler::isScript(*_request, location) &&
       _cgiState == NONE) {
     _log.info("CONNECTION_HANDLER: CGI request detected");
-    if (_request->getHeader("Cache-Control") == "") {
-      CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(_request->getRawRequest(), static_cast<EventData *>(event.data.ptr));
+    if (_request->getHeader("Cache-Control") != "no-cache") {
+      CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(_cacheHandler.generateKey(*_request), static_cast<EventData *>(event.data.ptr));
       if (cacheStatus.status == CACHE_FOUND) {
         _log.info("CONNECTION_HANDLER: Cache found");
         _response = new HTTPResponse(*cacheStatus.response, location);
@@ -295,6 +295,17 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Status: " + getStatusString());
   try {
+    if (_connectionStatus == CACHE_WAITING) {
+    CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(_cacheHandler.generateKey(*_request), static_cast<EventData *>(event.data.ptr));
+      if (cacheStatus.status == CACHE_FOUND) {
+        _log.info("CONNECTION_HANDLER: Cache found");
+        _response = new HTTPResponse(*cacheStatus.response);
+        _setConnectionStatus(SENDING);
+      } else if (cacheStatus.status == CACHE_CURRENTLY_BUILDING) {
+        _log.info("CONNECTION_HANDLER: Cache currently building");
+        _setConnectionStatus(CACHE_WAITING);
+      }
+    }
     if (_connectionStatus == READING)
       _receiveRequest(event);
     if (_connectionStatus == EXECUTING)

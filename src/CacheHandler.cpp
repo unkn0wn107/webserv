@@ -99,9 +99,6 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key, Eve
     return cacheEntry;
   }
 
-  if (!eventData)
-    it->second.waitingEventsData.clear();
-
   pthread_mutex_unlock(&_mutex);
   return entry;
 }

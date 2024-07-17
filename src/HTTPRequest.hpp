@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 11:03:17 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/07/17 12:15:43 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,6 @@ class HTTPRequest {
   // GETTERS
   std::string                        getSessionId() const;
   std::string                        getRawRequest() const;
-  LocationConfig&                    getConfig() const;
   std::string                        getMethod() const;
   std::string                        getURI() const;
   URI::Components                    getURIComponents() const;
@@ -46,7 +45,6 @@ class HTTPRequest {
 
   // SETTERS
   void setSessionId(const std::string& sessionId);
-  void setConfig(LocationConfig& config);
   void setMethod(const std::string& method);
   void setURI(const std::string& uri);
   void setHeaders(const std::map<std::string, std::string>& headers);

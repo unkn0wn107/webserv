@@ -14,14 +14,13 @@
 
 Logger&       CGIHandler::_log = Logger::getInstance();
 
-CacheHandler&  CGIHandler::_cacheHandler = CacheHandler::getInstance();
-
 CGIHandler::CGIHandler(HTTPRequest&          request,
                        HTTPResponse&         response,
                        int                   epollSocket,
                        const LocationConfig& location/*,
                        ConnectionHandler*    connectionHandler*/)
-    : _state(REGISTER_SCRIPT_FD),
+    : _cacheHandler(CacheHandler::getInstance()),
+      _state(REGISTER_SCRIPT_FD),
       _epollSocket(epollSocket),
       _eventData(NULL),
       _request(request),

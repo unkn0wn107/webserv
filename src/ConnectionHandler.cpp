@@ -22,16 +22,14 @@
 const int    ConnectionHandler::MAX_TRIES = 10;
 const time_t ConnectionHandler::TIMEOUT = 10;
 
-CacheHandler& ConnectionHandler::_cacheHandler = CacheHandler::getInstance();
-
 ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
     std::vector<VirtualServer*>& virtualServers,
     ListenConfig&                listenConfig,
     EventQueue&                   events)
-    : _log(Logger::getInstance()),
-      _busy(false),
+    : _cacheHandler(CacheHandler::getInstance()),
+      _log(Logger::getInstance()),
       _connectionStatus(READING),
       _clientSocket(clientSocket),
       _epollSocket(epollSocket),

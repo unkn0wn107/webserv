@@ -78,9 +78,8 @@ class ConnectionHandler {
   };
 
  private:
-  static CacheHandler& _cacheHandler;
+  CacheHandler& _cacheHandler;
   Logger&              _log;
-  bool                _busy;
   ConnectionStatus            _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
@@ -104,16 +103,12 @@ class ConnectionHandler {
   VirtualServer*   _findDefaultServer();
   std::string      _extractHost(const std::string& requestHeader);
   void             _sendResponse();
-  void             _makeAction();
   ConnectionStatus _checkConnectionStatus();
   void             _setConnectionStatus(ConnectionStatus status);
 
   void _processExecutingState();
   void _cleanupCGIHandler();
 
-  void _modifyEpollEventsForReading(struct epoll_event& event);
-  void _modifyEpollEventsForExecuting(struct epoll_event& event);
-  void _modifyEpollEventsForSending(struct epoll_event& event);
   void _handleClosedConnection();
 };
 

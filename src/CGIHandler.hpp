@@ -124,7 +124,7 @@ class CGIHandler {
 
  private:
   static Logger&       _log;
-  static CacheHandler& _cacheHandler;
+  CacheHandler& _cacheHandler;
 
   CGIState _state;
 

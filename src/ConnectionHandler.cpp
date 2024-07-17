@@ -153,6 +153,7 @@ void ConnectionHandler::_sendResponse() {
       _setConnectionStatus(CLOSED);
       return;
     }
+    _response->setCookie("sessionid", _request->getSessionId());
     if (_response->sendResponse(_clientSocket, _sndbuf) == 1)
       _setConnectionStatus(CLOSED);
   } catch (const Exception& e) {
@@ -246,7 +247,6 @@ void ConnectionHandler::_processRequest(struct epoll_event& event) {
       if (cacheStatus.status == CACHE_FOUND) {
         _log.info("CONNECTION_HANDLER: Cache found");
         _response = new HTTPResponse(*cacheStatus.response, location);
-        _response->setCookie("sessionid", _request->getSessionId()); // TODO : in sendResponse
         _setConnectionStatus(SENDING);
         return;
       } else if (cacheStatus.status == CACHE_CURRENTLY_BUILDING) {
@@ -263,7 +263,6 @@ void ConnectionHandler::_processRequest(struct epoll_event& event) {
   } else {
     _log.info("CONNECTION_HANDLER: NO CGI in request detected");
     _response = vserv->handleRequest(*_request);
-    _response->setCookie("sessionid", _request->getSessionId());
     _setConnectionStatus(SENDING);
   }
 }
@@ -378,28 +377,6 @@ void ConnectionHandler::_handleClosedConnection() {
               protocol);
     _log.info("Response : " + status + " sent with no Content-Length");
   }
-  closeClientSocket();
-}
-
-void ConnectionHandler::closeClientSocket() {
-  // if (fcntl(_clientSocket, F_GETFD) != -1 || errno != EBADF) {
-  //   if (epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL) == -1)
-  //     _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-  //                "): Failed to delete client socket from epoll : " +
-  //                Utils::to_string(_clientSocket) + " " +
-  //                std::string(strerror(errno)));
-  //   if (close(_clientSocket) == -1) {
-  //     _log.error(
-  //         "CONNECTION_HANDLER(" + Utils::to_string(_step) +
-  //         "): Error closing client socket: " + std::string(strerror(errno)));
-  //   } else {
-  //     _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-  //               "): Client socket closed successfully");
-  //   }
-  // } else {
-  //   _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-  //              "): Invalid client socket: " + Utils::to_string(_clientSocket));
-  // }
   epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
   close(_clientSocket);
 }

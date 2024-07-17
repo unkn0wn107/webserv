@@ -40,7 +40,6 @@ class ConnectionHandler {
   std::string         getStatusString() const;
   int                 processConnection(struct epoll_event& event);
   void                setInternalServerError();
-  void                closeClientSocket();
   static const int    MAX_TRIES;
   static const time_t TIMEOUT;
 

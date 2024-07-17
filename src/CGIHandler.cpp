@@ -268,7 +268,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       ssize_t count = 0;
       count = read(_outpipefd[0], buffer, sizeof(buffer));
       if (count == -1) {
-        _log.warning("CGI: read failed: " + std::string(strerror(errno)));
+        _log.warning("CGI: read failed");
         return EXECUTING;
       } 
       _processOutput.append(buffer, count);

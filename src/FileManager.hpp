@@ -14,7 +14,6 @@
 #define FILEMANAGER_H
 
 #include <dirent.h>
-#include <errno.h>
 #include <sys/stat.h>
 #include <cstring>
 #include <fstream>

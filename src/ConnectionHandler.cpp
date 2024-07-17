@@ -96,7 +96,7 @@ void ConnectionHandler::_setConnectionStatus(ConnectionStatus status) {
   _connectionStatus = status;
 }
 
-void ConnectionHandler::_receiveRequest() {
+void ConnectionHandler::_receiveRequest(struct epoll_event& event) {
   bool        headersEnd = false;
   ssize_t     bytes;
   std::string headers;
@@ -139,7 +139,7 @@ void ConnectionHandler::_receiveRequest() {
     return;
   }
   if (headersEnd) {
-    _processRequest();
+    _processRequest(event);
   } else if (bytes == 0)
     throw RequestException(
         "CONNECTION_HANDLER: Request invalid: no more to read but headers not "
@@ -217,7 +217,7 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
   return "";
 }
 
-void ConnectionHandler::_processRequest() {
+void ConnectionHandler::_processRequest(struct epoll_event& event) {
   _log.info("CONNECTION_HANDLER: Processing request");
   if (_request) {
     delete _request;
@@ -242,19 +242,16 @@ void ConnectionHandler::_processRequest() {
       _cgiState == NONE) {
     _log.info("CONNECTION_HANDLER: CGI request detected");
     if (_request->getHeader("Cache-Control") == "") {
-      CacheStatus cacheStatus = _cacheHandler.checkCache(_request->getRawRequest());
-      if (cacheStatus == CACHE_FOUND) {
+      CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(_request->getRawRequest(), static_cast<EventData *>(event.data.ptr));
+      if (cacheStatus.status == CACHE_FOUND) {
         _log.info("CONNECTION_HANDLER: Cache found");
-        _response = _cacheHandler.getResponse(_requestString);
-        _response->setCookie("sessionid", _request->getSessionId());
+        _response = new HTTPResponse(*cacheStatus.response, location);
+        _response->setCookie("sessionid", _request->getSessionId()); // TODO : in sendResponse
         _setConnectionStatus(SENDING);
         return;
-      }
-      else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
-        _log.error("CONNECTION_HANDLER: Cache currently building");
-        _response = _cacheHandler.waitResponse(_requestString);
-        _response->setCookie("sessionid", _request->getSessionId());
-        _setConnectionStatus(SENDING);
+      } else if (cacheStatus.status == CACHE_CURRENTLY_BUILDING) {
+        _log.info("CONNECTION_HANDLER: Cache currently building");
+        _setConnectionStatus(CACHE_WAITING);
         return;
       }
     }
@@ -280,6 +277,7 @@ void ConnectionHandler::_processExecutingState() {
   }
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): " + " Status: " + getStatusString() + " Processing data");
+          
   ConnectionStatus returnStatus = _cgiHandler->handleCGIRequest();
   _setConnectionStatus(returnStatus);
   _cgiState = _cgiHandler->getCgiState();
@@ -301,7 +299,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
             "): Status: " + getStatusString());
   try {
     if (_connectionStatus == READING)
-      _receiveRequest();
+      _receiveRequest(event);
     if (_connectionStatus == EXECUTING)
       _processExecutingState();
     if (_connectionStatus == SENDING)
@@ -337,6 +335,9 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
         //                           "): epoll_ctl: ") +
         //               strerror(errno));
         // }
+      break;
+
+    case CACHE_WAITING:
       break;
 
     case SENDING:

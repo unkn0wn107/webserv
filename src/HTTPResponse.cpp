@@ -219,6 +219,22 @@ HTTPResponse::~HTTPResponse() {
   _responseBuffer.clear();
 }
 
+HTTPResponse::HTTPResponse(const HTTPResponse& other, const LocationConfig& config)
+    : _log(other._log),
+      _statusCode(other._statusCode),
+      _statusMessage(other._statusMessage),
+      _headers(other._headers),
+      _body(other._body),
+      _file(other._file),
+      _protocol(other._protocol),
+      _config(config),
+      _errorPages(other._errorPages),
+      _responseBufferSize(other._responseBufferSize),
+      _responseBufferPos(other._responseBufferPos),
+      _responseFilePos(other._responseFilePos),
+      _fileSize(other._fileSize) {
+}
+
 // Doesn't carry const config
 HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
   if (this != &other) {

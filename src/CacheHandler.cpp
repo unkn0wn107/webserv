@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/08 16:28:12 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/08 16:28:12 by agaley           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,142 +15,136 @@
 const time_t  CacheHandler::MAX_AGE = 3600;
 CacheHandler* CacheHandler::_instance = NULL;
 
-CacheHandler& CacheHandler::getInstance() {
-  if (_instance == NULL) {
-    _instance = new CacheHandler();
+CacheHandler::CacheEntry::CacheEntry()
+    : response(NULL), timestamp(0), status(CACHE_NOT_FOUND), waitingEventsData() {}
+
+CacheHandler::CacheEntry::CacheEntry(const CacheEntry& other)
+    : response(other.response ? new HTTPResponse(*other.response) : NULL),
+      timestamp(other.timestamp),
+      status(other.status),
+      waitingEventsData(other.waitingEventsData) {}
+
+CacheHandler::CacheEntry& CacheHandler::CacheEntry::operator=(
+    const CacheEntry& other) {
+  if (this != &other) {
+    delete response;
+    response = other.response ? new HTTPResponse(*other.response) : NULL;
+    timestamp = other.timestamp;
+    status = other.status;
+    waitingEventsData = other.waitingEventsData;
   }
+  return *this;
+}
+
+CacheHandler::CacheEntry::~CacheEntry() {
+  delete response;
+}
+
+CacheHandler& CacheHandler::init(EventQueue& eventQueue) {
+  _instance = new CacheHandler(eventQueue);
+  return *_instance;
+}
+
+CacheHandler& CacheHandler::getInstance() {
   return *_instance;
 }
 
 void CacheHandler::deleteInstance() {
-  if (_instance != NULL) {
-    delete _instance;
-    _instance = NULL;
-  }
+  delete _instance;
+  _instance = NULL;
 }
 
-CacheHandler::CacheHandler() :
-_log(Logger::getInstance()),
-_cache(),
-_maxAge(MAX_AGE)
-{
+CacheHandler::CacheHandler(EventQueue& eventQueue)
+    : _log(Logger::getInstance()), _eventQueue(eventQueue), _cache(), _maxAge(MAX_AGE) {
   pthread_mutex_init(&_mutex, NULL);
 }
 
 CacheHandler::~CacheHandler() {
-  for (std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator it =
-           _cache.begin();
-       it != _cache.end(); ++it) {
-    delete it->second.first;
-  }
-  _cache.clear();
   pthread_mutex_destroy(&_mutex);
 }
 
-CacheStatus CacheHandler::checkCache(std::string requestString) {
-  std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator found;
-  std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator end;
-  std::string key = _generateKey(requestString);
+CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key, EventData *eventData) {
   pthread_mutex_lock(&_mutex);
-  found = _cache.find(key);
-  end = _cache.end();
-  pthread_mutex_unlock(&_mutex);
-  if (found == end)
-  {
+  CacheMap::iterator it = _cache.find(key);
+
+  if (it == _cache.end()) {
     _log.info("CACHE_HANDLER: Cache not found, reserving");
-    this->reserveCache(requestString);
-    return CACHE_NOT_FOUND;
-  }
-  if (found->second.first == NULL)
-  {
-    _log.info("CACHE_HANDLER: Cache currently building");
-    return CACHE_CURRENTLY_BUILDING;
-  }
-  if (found->second.second + _maxAge <= time(NULL) &&
-      found->second.first != NULL) // Check cache freshness
-  {
-    _log.info("CACHE_HANDLER: Cache expired, deleting");
-    this->deleteCache(requestString, found->second.first);
-  }
-  return CACHE_FOUND;
-}
-
-HTTPResponse* CacheHandler::getResponse(std::string requestString) {
-  std::string key = _generateKey(requestString);
-  HTTPResponse* response = NULL;
-  pthread_mutex_lock(&_mutex);
-  response = new HTTPResponse(*(_cache[key].first));
-  pthread_mutex_unlock(&_mutex);
-  return response;
-}
-
-HTTPResponse* CacheHandler::waitResponse(std::string requestString) {
-  std::string key = _generateKey(requestString);
-  HTTPResponse* response = NULL;
-
-  while (true)
-  {
-    usleep(10000);
-    pthread_mutex_lock(&_mutex);
-    response = _cache[key].first;
+    _cache[key] = CacheEntry();
+    _cache[key].status = CACHE_CURRENTLY_BUILDING;
+    CacheEntry cacheEntry(_cache[key]);
     pthread_mutex_unlock(&_mutex);
-    if (response != NULL)
-      break;
+    cacheEntry.status = CACHE_NOT_FOUND;
+    return cacheEntry;
   }
-  return new HTTPResponse(*response);
-}
 
-void CacheHandler::reserveCache(std::string requestString) {
-  std::string key = _generateKey(requestString);
-  pthread_mutex_lock(&_mutex);
-  _cache[key].first = NULL;
-  _cache[key].second = time(NULL);
+  CacheEntry& entry = it->second;
+
+  if (entry.status == CACHE_CURRENTLY_BUILDING) {
+    _log.warning("CACHE_HANDLER: Cache currently building");
+    if (eventData)
+      it->second.waitingEventsData.push_back(eventData);
+    pthread_mutex_unlock(&_mutex);
+    return entry;
+  }
+
+  if (entry.timestamp + _maxAge <= time(NULL)) {
+    _log.warning("CACHE_HANDLER: Cache expired, deleting and reserving");
+    if (entry.response)
+      delete entry.response;
+    _cache[key] = CacheEntry();
+    _cache[key].status = CACHE_CURRENTLY_BUILDING;
+    CacheEntry cacheEntry(_cache[key]);
+    pthread_mutex_unlock(&_mutex);
+    cacheEntry.status = CACHE_NOT_FOUND;
+    return cacheEntry;
+  }
+
+  if (!eventData)
+    it->second.waitingEventsData.clear();
+
   pthread_mutex_unlock(&_mutex);
+  return entry;
 }
 
-void CacheHandler::storeResponse(const HTTPRequest&  request,
+void CacheHandler::storeResponse(const std::string& key,
                                  const HTTPResponse& response) {
-  std::string key = _generateKey(request);
   _log.warning("CACHE_HANDLER: Storing response in cache");
   pthread_mutex_lock(&_mutex);
-  _cache[key].first = new HTTPResponse(response);
-  _cache[key].second = time(NULL);
-  pthread_mutex_unlock(&_mutex);
-}
-
-void CacheHandler::deleteCache(std::string requestString,
-                               HTTPResponse* response) {
-  std::string key = _generateKey(requestString);
-  pthread_mutex_lock(&_mutex);
-  delete response;
-  _cache.erase(key);
-  pthread_mutex_unlock(&_mutex);
-}
-
-void CacheHandler::deleteCache(const HTTPRequest& request) {
-  std::string key = _generateKey(request);
-  std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator found;
-  std::map<std::string, std::pair<HTTPResponse*, time_t> >::iterator end;
-  pthread_mutex_lock(&_mutex);
-  found = _cache.find(key);
-  end = _cache.end();
-  if (found == end)
-  {
-    pthread_mutex_unlock(&_mutex);
-    return;
+  CacheEntry& entry = _cache[key];
+  if (entry.response)
+    delete entry.response;
+  entry.response = new HTTPResponse(response);
+  entry.timestamp = time(NULL);
+  entry.status = CACHE_FOUND;
+  for (std::deque<EventData*>::iterator it = entry.waitingEventsData.begin();
+       it != entry.waitingEventsData.end(); ++it) {
+    struct epoll_event event;
+    event.data.ptr = *it;
+    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+    _eventQueue.push(event);
   }
-  delete found->second.first;
-  _cache.erase(found);
+  entry.waitingEventsData.clear();
   pthread_mutex_unlock(&_mutex);
 }
 
-std::string CacheHandler::_generateKey(const HTTPRequest& request) const {
-  std::ostringstream oss;
-  oss << _hash(request.getRawRequest());
-  return oss.str();
+void CacheHandler::deleteCache(const std::string& key) {
+  pthread_mutex_lock(&_mutex);
+  CacheMap::iterator it = _cache.find(key);
+
+  if (it != _cache.end()) {
+    _log.warning("CACHE_HANDLER: Deleting cache entry");
+    delete it->second.response;
+    _cache.erase(it);
+  }
+
+  pthread_mutex_unlock(&_mutex);
 }
 
-std::string CacheHandler::_generateKey(std::string requestString) const {
+std::string CacheHandler::generateKey(const HTTPRequest& request) const {
+  return generateKey(request.getRawRequest());
+}
+
+std::string CacheHandler::generateKey(const std::string& requestString) const {
   std::ostringstream oss;
   oss << _hash(requestString);
   return oss.str();

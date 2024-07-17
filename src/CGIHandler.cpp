@@ -13,6 +13,7 @@
 #include "CGIHandler.hpp"
 
 Logger&       CGIHandler::_log = Logger::getInstance();
+
 CacheHandler&  CGIHandler::_cacheHandler = CacheHandler::getInstance();
 
 CGIHandler::CGIHandler(HTTPRequest&          request,
@@ -313,32 +314,21 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           _parseOutputHeaders(headerPart);
       headers["Content-Length"] = Utils::to_string(bodyContent.size());
       _response.setHeaders(headers);
-      _response.setBody(bodyContent);
-      _state = FINALIZE_RESPONSE;
-    } catch (...) {
-      _state = CGI_ERROR;
-    }
-  }
-  if (_state == FINALIZE_RESPONSE){
-    _log.warning("CGI: FINALIZE_RESPONSE");
-    try {
-      if (_request.getHeader("Cache-Control") == "no-cache")
-        _response.addHeader("Cache-Control", "no-cache");
-      else {
-        _response.addHeader(
+      _response.addHeader(
             "Cache-Control",
             "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
-      }
+      _response.setBody(bodyContent);
+      _cacheHandler.storeResponse(_cacheHandler.generateKey(_request), _response);
       return SENDING;
     } catch (...) {
       _state = CGI_ERROR;
     }
   }
+
   if (_state == CGI_ERROR){
     _log.warning("CGI: CGI_ERROR");
     if (_response.getStatusCode() == HTTPResponse::OK)
           _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
-    _cacheHandler.deleteCache(_request);
     return SENDING;
   }
   return EXECUTING;

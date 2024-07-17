@@ -158,13 +158,23 @@ void CGIHandler::_runScript() {
   char** envp_ptrs = new char*[_envp.size() + 1];
 
   for (size_t i = 0; i < _argv.size(); ++i)
-      argv_ptrs[i] = const_cast<char*>(_argv[i].data());
+    argv_ptrs[i] = const_cast<char*>(_argv[i].data());
   argv_ptrs[_argv.size()] = NULL;
 
-  for (size_t i = 0; i < _envp.size(); ++i)
-      envp_ptrs[i] = const_cast<char*>(_envp[i].data());
+  std::string execDir;
+  for (size_t i = 0; i < _envp.size(); ++i) {
+    if (size_t pos = _envp[i].find("DOCUMENT_ROOT=") != std::string::npos)
+      execDir = _envp[i].substr(14);
+    envp_ptrs[i] = const_cast<char*>(_envp[i].data());
+  }
   envp_ptrs[_envp.size()] = NULL;
 
+  if (chdir(execDir.data()) == -1) {
+    std::cerr << "CHILD: chdir failed: unable to execute CGI script" << std::endl;
+    delete[] argv_ptrs;
+    delete[] envp_ptrs;
+    exit(EXIT_FAILURE);
+  }
   if (execve(argv_ptrs[0], argv_ptrs, envp_ptrs) == -1) {
     std::cerr << "CHILD: execve failed: unable to execute CGI script" << std::endl;
     delete[] argv_ptrs;

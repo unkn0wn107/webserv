@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include "Utils.hpp"
 #include "VirtualServer.hpp"
+#include "Config.hpp"
 
 const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::CONTINUE, "Continue"),
@@ -217,6 +218,22 @@ HTTPResponse::~HTTPResponse() {
   _body.clear();
   _file.clear();
   _responseBuffer.clear();
+}
+
+HTTPResponse::HTTPResponse(const HTTPResponse& other, const LocationConfig& config)
+    : _log(other._log),
+      _statusCode(other._statusCode),
+      _statusMessage(other._statusMessage),
+      _headers(other._headers),
+      _body(other._body),
+      _file(other._file),
+      _protocol(other._protocol),
+      _config(config),
+      _errorPages(other._errorPages),
+      _responseBufferSize(other._responseBufferSize),
+      _responseBufferPos(other._responseBufferPos),
+      _responseFilePos(other._responseFilePos),
+      _fileSize(other._fileSize) {
 }
 
 // Doesn't carry const config

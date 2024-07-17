@@ -27,6 +27,7 @@
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
 #include "EventQueue.hpp"
+#include "CacheHandler.hpp"
 
 #define BUFFER_SIZE 16384
 
@@ -39,13 +40,8 @@ class ConnectionHandler {
   std::string         getStatusString() const;
   int                 processConnection(struct epoll_event& event);
   void                setInternalServerError();
-  void                closeClientSocket();
   static const int    MAX_TRIES;
   static const time_t TIMEOUT;
-
-  bool isBusy();
-  void setBusy();
-  void setNotBusy();
 
   ConnectionHandler(int                          clientSocket,
                     int                          epollSocket,
@@ -82,9 +78,8 @@ class ConnectionHandler {
   };
 
  private:
-  static CacheHandler& _cacheHandler;
+  CacheHandler& _cacheHandler;
   Logger&              _log;
-  bool                _busy;
   ConnectionStatus            _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
@@ -102,22 +97,18 @@ class ConnectionHandler {
   int                         _step;
   EventQueue&                 _events;
 
-  void             _receiveRequest();
-  void             _processRequest();
+  void             _receiveRequest(struct epoll_event& event);
+  void             _processRequest(struct epoll_event& event);
   VirtualServer*   _selectVirtualServer(std::string host);
   VirtualServer*   _findDefaultServer();
   std::string      _extractHost(const std::string& requestHeader);
   void             _sendResponse();
-  void             _makeAction();
   ConnectionStatus _checkConnectionStatus();
   void             _setConnectionStatus(ConnectionStatus status);
 
   void _processExecutingState();
   void _cleanupCGIHandler();
 
-  void _modifyEpollEventsForReading(struct epoll_event& event);
-  void _modifyEpollEventsForExecuting(struct epoll_event& event);
-  void _modifyEpollEventsForSending(struct epoll_event& event);
   void _handleClosedConnection();
 };
 

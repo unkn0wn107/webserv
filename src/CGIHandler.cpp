@@ -13,14 +13,14 @@
 #include "CGIHandler.hpp"
 
 Logger&       CGIHandler::_log = Logger::getInstance();
-CacheHandler&  CGIHandler::_cacheHandler = CacheHandler::getInstance();
 
 CGIHandler::CGIHandler(HTTPRequest&          request,
                        HTTPResponse&         response,
                        int                   epollSocket,
                        const LocationConfig& location/*,
                        ConnectionHandler*    connectionHandler*/)
-    : _state(REGISTER_SCRIPT_FD),
+    : _cacheHandler(CacheHandler::getInstance()),
+      _state(REGISTER_SCRIPT_FD),
       _epollSocket(epollSocket),
       _eventData(NULL),
       _request(request),
@@ -160,13 +160,23 @@ void CGIHandler::_runScript() {
   char** envp_ptrs = new char*[_envp.size() + 1];
 
   for (size_t i = 0; i < _argv.size(); ++i)
-      argv_ptrs[i] = const_cast<char*>(_argv[i].data());
+    argv_ptrs[i] = const_cast<char*>(_argv[i].data());
   argv_ptrs[_argv.size()] = NULL;
 
-  for (size_t i = 0; i < _envp.size(); ++i)
-      envp_ptrs[i] = const_cast<char*>(_envp[i].data());
+  std::string execDir;
+  for (size_t i = 0; i < _envp.size(); ++i) {
+    if (size_t pos = _envp[i].find("DOCUMENT_ROOT=") != std::string::npos)
+      execDir = _envp[i].substr(14);
+    envp_ptrs[i] = const_cast<char*>(_envp[i].data());
+  }
   envp_ptrs[_envp.size()] = NULL;
 
+  if (chdir(execDir.data()) == -1) {
+    std::cerr << "CHILD: chdir failed: unable to execute CGI script" << std::endl;
+    delete[] argv_ptrs;
+    delete[] envp_ptrs;
+    exit(EXIT_FAILURE);
+  }
   if (execve(argv_ptrs[0], argv_ptrs, envp_ptrs) == -1) {
     std::cerr << "CHILD: execve failed: unable to execute CGI script" << std::endl;
     delete[] argv_ptrs;
@@ -315,32 +325,21 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
           _parseOutputHeaders(headerPart);
       headers["Content-Length"] = Utils::to_string(bodyContent.size());
       _response.setHeaders(headers);
-      _response.setBody(bodyContent);
-      _state = FINALIZE_RESPONSE;
-    } catch (...) {
-      _state = CGI_ERROR;
-    }
-  }
-  if (_state == FINALIZE_RESPONSE){
-    _log.warning("CGI: FINALIZE_RESPONSE");
-    try {
-      if (_request.getHeader("Cache-Control") == "no-cache")
-        _response.addHeader("Cache-Control", "no-cache");
-      else {
-        _response.addHeader(
+      _response.addHeader(
             "Cache-Control",
             "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
-      }
+      _response.setBody(bodyContent);
+      _cacheHandler.storeResponse(_cacheHandler.generateKey(_request), _response);
       return SENDING;
     } catch (...) {
       _state = CGI_ERROR;
     }
   }
+
   if (_state == CGI_ERROR){
     _log.warning("CGI: CGI_ERROR");
     if (_response.getStatusCode() == HTTPResponse::OK)
           _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
-    _cacheHandler.deleteCache(_request);
     return SENDING;
   }
   return EXECUTING;

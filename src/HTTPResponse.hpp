@@ -139,8 +139,8 @@ class HTTPResponse {
  public:
   HTTPResponse(int statusCode, const LocationConfig& config);
   HTTPResponse(const HTTPResponse& other);
+  HTTPResponse(const HTTPResponse& other, const LocationConfig& config);
   ~HTTPResponse();
-  // TODO : Check if doesn't carry const config is an issue
   HTTPResponse&      operator=(const HTTPResponse& other);
   static std::string getContentType(const std::string& path);
   static std::string getExtensionFromContentType(

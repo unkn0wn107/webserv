@@ -17,6 +17,7 @@
 #include "EventQueue.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
+#include "CacheHandler.hpp"
 
 Server* Server::_instance = NULL;
 int     Server::_callCount = 1;
@@ -32,6 +33,7 @@ Server::Server()
             Utils::to_string(_callCount));
   _setupEpoll();
   _setupServerSockets();
+  CacheHandler::init(_events);
   _setupWorkers();
   pthread_mutex_init(&_mutex, NULL);
   _callCount++;

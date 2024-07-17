@@ -11,6 +11,7 @@ cat <<EOL > $SIEGE_URLS_FILE
 http://${ADDR}:${PORT}/
 http://${ADDR}:${PORT}/nonexistent
 http://${ADDR}:${PORT}/cgi/hello.py?name=Marvin
+http://${ADDR}:${PORT}/cgi/hello.php?name=Marvin
 http://${ADDR}:${PORT}/cgi/hello.js?name=Marvin
 http://${ADDR}:${PORT}/cgi/post.py POST {"name": "Marvin"}
 http://${ADDR}:${PORT}/cgi/post.php POST {"name": "Marvin"}
@@ -22,27 +23,15 @@ printf "\n" >> $SIEGE_LOG_FILE
 
 siege > /dev/null 2>&1
 
-echo "Running siege with no-cache"
-echo "Running siege with no-cache" >> $SIEGE_LOG_FILE
-siege -t 10s -c 25 -b -f $SIEGE_URLS_FILE -H "Cache-Control: no-cache" >> $SIEGE_LOG_FILE
+echo "Running siege without caching"
+echo "Running siege without caching" >> $SIEGE_LOG_FILE
+siege -v -t 10s -c 25 -b -H "Cache-Control: no-cache" -f $SIEGE_URLS_FILE >> $SIEGE_LOG_FILE
 
 if grep -q '"failed_transactions": *[1-9]' $SIEGE_LOG_FILE; then
-    echo "!!!KO!!!: Siege test failed with no-cache. Check $SIEGE_LOG_FILE for details."
+    echo "!!!KO!!!: Siege test failed without caching. Check $SIEGE_LOG_FILE for details."
     TEST_FAILED=1
 else
-    echo "OK: Siege test passed with no-cache."
-fi
-printf "\n"
-
-echo "Running siege with caching enabled"
-echo "Running siege with caching enabled" >> $SIEGE_LOG_FILE
-siege -t 10s -c 25 -b -f $SIEGE_URLS_FILE >> $SIEGE_LOG_FILE
-
-if grep -q '"failed_transactions": *[1-9]' $SIEGE_LOG_FILE; then
-    echo "!!!KO!!!: Siege test failed with caching enabled. Check $SIEGE_LOG_FILE for details."
-    TEST_FAILED=1
-else
-    echo "OK: Siege test passed with caching enabled."
+    echo "OK: Siege test passed without caching."
 fi
 printf "\n"
 

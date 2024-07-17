@@ -108,9 +108,8 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
     return new HTTPResponse(HTTPResponse::NOT_FOUND, location);
   }
 
-  if (request.getHeader("Cache-Control") == "no-cache") {
+  if (request.getHeader("Cache-Control") == "no-cache")
     response->addHeader("Cache-Control", "no-cache");
-  }
   return response;
 }
 

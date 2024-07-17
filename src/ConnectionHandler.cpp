@@ -22,16 +22,14 @@
 const int    ConnectionHandler::MAX_TRIES = 10;
 const time_t ConnectionHandler::TIMEOUT = 10;
 
-CacheHandler& ConnectionHandler::_cacheHandler = CacheHandler::getInstance();
-
 ConnectionHandler::ConnectionHandler(
     int                          clientSocket,
     int                          epollSocket,
     std::vector<VirtualServer*>& virtualServers,
     ListenConfig&                listenConfig,
     EventQueue&                   events)
-    : _log(Logger::getInstance()),
-      _busy(false),
+    : _cacheHandler(CacheHandler::getInstance()),
+      _log(Logger::getInstance()),
       _connectionStatus(READING),
       _clientSocket(clientSocket),
       _epollSocket(epollSocket),
@@ -96,7 +94,7 @@ void ConnectionHandler::_setConnectionStatus(ConnectionStatus status) {
   _connectionStatus = status;
 }
 
-void ConnectionHandler::_receiveRequest() {
+void ConnectionHandler::_receiveRequest(struct epoll_event& event) {
   bool        headersEnd = false;
   ssize_t     bytes;
   std::string headers;
@@ -111,7 +109,6 @@ void ConnectionHandler::_receiveRequest() {
 
   char* buffer = new char[_rcvbuf];
   bytes = recv(_clientSocket, buffer, _rcvbuf, 0);
-  _log.warning("bytes readn = " + Utils::to_string(bytes));
   if (bytes < 0) {
     _log.warning("CONNECTION_HANDLER: recv failed");
     return;
@@ -158,6 +155,7 @@ void ConnectionHandler::_sendResponse() {
       _setConnectionStatus(CLOSED);
       return;
     }
+    _response->setCookie("sessionid", _request->getSessionId());
     if (_response->sendResponse(_clientSocket, _sndbuf) == 1)
       _setConnectionStatus(CLOSED);
   } catch (const Exception& e) {
@@ -222,7 +220,7 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
   return "";
 }
 
-void ConnectionHandler::_processRequest() {
+void ConnectionHandler::_processRequest(struct epoll_event& event) {
   _log.info("CONNECTION_HANDLER: Processing request");
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
   if (vserv == NULL) {
@@ -241,20 +239,16 @@ void ConnectionHandler::_processRequest() {
   if (location.cgi && CGIHandler::isScript(*_request, location) &&
       _cgiState == NONE) {
     _log.info("CONNECTION_HANDLER: CGI request detected");
-    if (_request->getHeader("Cache-Control") == "") {
-      CacheStatus cacheStatus = _cacheHandler.checkCache(_request->getRawRequest());
-      if (cacheStatus == CACHE_FOUND) {
+    if (_request->getHeader("Cache-Control") != "no-cache") {
+      CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(_cacheHandler.generateKey(*_request), static_cast<EventData *>(event.data.ptr));
+      if (cacheStatus.status == CACHE_FOUND) {
         _log.info("CONNECTION_HANDLER: Cache found");
-        _response = _cacheHandler.getResponse(_requestString);
-        _response->setCookie("sessionid", _request->getSessionId());
+        _response = new HTTPResponse(*cacheStatus.response, location);
         _setConnectionStatus(SENDING);
         return;
-      }
-      else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
-        _log.error("CONNECTION_HANDLER: Cache currently building");
-        _response = _cacheHandler.waitResponse(_requestString);
-        _response->setCookie("sessionid", _request->getSessionId());
-        _setConnectionStatus(SENDING);
+      } else if (cacheStatus.status == CACHE_CURRENTLY_BUILDING) {
+        _log.info("CONNECTION_HANDLER: Cache currently building");
+        _setConnectionStatus(CACHE_WAITING);
         return;
       }
     }
@@ -266,7 +260,6 @@ void ConnectionHandler::_processRequest() {
   } else {
     _log.info("CONNECTION_HANDLER: NO CGI in request detected");
     _response = vserv->handleRequest(*_request);
-    _response->setCookie("sessionid", _request->getSessionId());
     _setConnectionStatus(SENDING);
   }
 }
@@ -298,12 +291,22 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
             "): _sndbuf: " + Utils::to_string(_sndbuf));
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Connection status: " + getStatusString());
-
   _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
             "): Status: " + getStatusString());
   try {
+    if (_connectionStatus == CACHE_WAITING) {
+    CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(_cacheHandler.generateKey(*_request), static_cast<EventData *>(event.data.ptr));
+      if (cacheStatus.status == CACHE_FOUND) {
+        _log.info("CONNECTION_HANDLER: Cache found");
+        _response = new HTTPResponse(*cacheStatus.response);
+        _setConnectionStatus(SENDING);
+      } else if (cacheStatus.status == CACHE_CURRENTLY_BUILDING) {
+        _log.info("CONNECTION_HANDLER: Cache currently building");
+        _setConnectionStatus(CACHE_WAITING);
+      }
+    }
     if (_connectionStatus == READING)
-      _receiveRequest();
+      _receiveRequest(event);
     if (_connectionStatus == EXECUTING)
       _processExecutingState();
     if (_connectionStatus == SENDING)
@@ -333,6 +336,9 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
                        "): CGIHandler is NULL");
       }
         _events.push(event);
+      break;
+
+    case CACHE_WAITING:
       break;
 
     case SENDING:
@@ -373,28 +379,6 @@ void ConnectionHandler::_handleClosedConnection() {
               protocol);
     _log.info("Response : " + status + " sent with no Content-Length");
   }
-  closeClientSocket();
-}
-
-void ConnectionHandler::closeClientSocket() {
-  // if (fcntl(_clientSocket, F_GETFD) != -1 || errno != EBADF) {
-  //   if (epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL) == -1)
-  //     _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-  //                "): Failed to delete client socket from epoll : " +
-  //                Utils::to_string(_clientSocket) + " " +
-  //                std::string(strerror(errno)));
-  //   if (close(_clientSocket) == -1) {
-  //     _log.error(
-  //         "CONNECTION_HANDLER(" + Utils::to_string(_step) +
-  //         "): Error closing client socket: " + std::string(strerror(errno)));
-  //   } else {
-  //     _log.info("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-  //               "): Client socket closed successfully");
-  //   }
-  // } else {
-  //   _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-  //              "): Invalid client socket: " + Utils::to_string(_clientSocket));
-  // }
   epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
   close(_clientSocket);
 }

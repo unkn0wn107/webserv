@@ -21,9 +21,7 @@
 #include <cctype>
 
 #include <sys/epoll.h>
-#include "CacheHandler.hpp"
 #include "Common.hpp"
-#include "ConnectionHandler.hpp"
 #include "Exception.hpp"
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
@@ -31,10 +29,11 @@
 #include "Logger.hpp"
 #include "EventData.hpp"
 
+class CacheHandler;
+
 #define CGI_TIMEOUT_SEC 10
 // enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
 
-class ConnectionHandler;
 struct EventData;
 
 class CGIHandler {
@@ -125,7 +124,7 @@ class CGIHandler {
 
  private:
   static Logger&       _log;
-  static CacheHandler& _cacheHandler;
+  CacheHandler& _cacheHandler;
 
   CGIState _state;
 

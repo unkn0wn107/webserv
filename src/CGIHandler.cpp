@@ -17,8 +17,7 @@ Logger&       CGIHandler::_log = Logger::getInstance();
 CGIHandler::CGIHandler(HTTPRequest&          request,
                        HTTPResponse&         response,
                        int                   epollSocket,
-                       const LocationConfig& location/*,
-                       ConnectionHandler*    connectionHandler*/)
+                       const LocationConfig& location)
     : _cacheHandler(CacheHandler::getInstance()),
       _state(REGISTER_SCRIPT_FD),
       _epollSocket(epollSocket),
@@ -44,7 +43,6 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
 }
 
 CGIHandler::~CGIHandler() {
-  _log.info("CGI: Destroying handler");
   kill(_pid, SIGKILL);
   waitpid(_pid, NULL, 0);
   if (_inpipefd[0] != -1)
@@ -127,7 +125,7 @@ void CGIHandler::_runScript() {
     }
     close(_inpipefd[0]);
     std::size_t totalWritten = 0; 
-    int         trys = 0;  // Ajout d'un compteur de tentatives
+    int         trys = 0;
 
     while (totalWritten < postData.size()) {
       ssize_t written =
@@ -186,8 +184,7 @@ void CGIHandler::_runScript() {
 }
 
 ConnectionStatus CGIHandler::handleCGIRequest() {
-  if (_state == REGISTER_SCRIPT_FD){  // Set-up execution environment
-    _log.warning("CGI: REGISTER_SCRIPT_FD");
+  if (_state == REGISTER_SCRIPT_FD){
     try {
       _checkIfProcessingPossible();
       if (pipe(_outpipefd) == -1)
@@ -196,31 +193,12 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       if (_pid == -1)
         throw ForkFailure("CGI: Failed to fork process");
       if (_pid > 0) {
-        // struct epoll_event event;
-        // memset(&event, 0, sizeof(event));
-        // _eventData = new EventData(_outpipefd[0], _connectionHandler);
-        // event.data.ptr = _eventData;
-        // event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-        // if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
-        //   close(_outpipefd[0]);
-        //   _outpipefd[0] = -1;
-        //   close(_outpipefd[1]);
-        //   _outpipefd[1] = -1;
-        //   close(_inpipefd[0]);
-        //   _inpipefd[0] = -1;
-        //   close(_inpipefd[1]);
-        //   _inpipefd[1] = -1;
-        //   delete _eventData;
-        //   _state = CGI_ERROR;
-          
-        // } else {
           close(_inpipefd[0]);
           _inpipefd[0] = -1;
           close(_outpipefd[1]);
           _outpipefd[1] = -1;
           _state = SCRIPT_RUNNING;
           _runStartTime = std::time(NULL);
-        // }
       } else if (_pid == 0)
         _state = RUN_SCRIPT;
     } catch (const Exception& e) {
@@ -232,7 +210,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     }
   }
   if (_state == RUN_SCRIPT){
-    // _log.warning("CGI: RUN_SCRIPT");
     try {
       _runScript();
     } catch (...) {
@@ -240,7 +217,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     }
   }
   if (_state == SCRIPT_RUNNING){
-    _log.warning("CGI: SCRIPT_RUNNING");
     try {
       pid_t   pidReturn = 0;
       int     status = -1;
@@ -248,20 +224,11 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       if ((pidReturn = waitpid(_pid, &status, WNOHANG)) == -1)
         throw ExecutorError("CGI: waitpid failed: " + std::string(strerror(errno)));
       if (pidReturn == 0) {
-        _log.info("CGI: script is still running");
-        // if (std::time(NULL) - _runStartTime > CGI_TIMEOUT_SEC) {
-        //   kill(_pid, SIGKILL);
-        //   int statusClean;
-        //   waitpid(_pid, &statusClean, 0); // To stop child process in Zombie state
-        //   throw TimeoutException("CGI: script timedout after " +
-        //                         Utils::to_string(std::time(NULL) - _runStartTime) + " seconds");
-        // }
         usleep(1000);
         return EXECUTING;
       }
       if (WIFEXITED(status)) {
         int exitStatus = WEXITSTATUS(status);
-        _log.info("CGI: script exited, status=" + Utils::to_string(exitStatus));
         if (exitStatus != 0)
           throw ExecutorError("CGI: script finished with errors, exit status: " + Utils::to_string(exitStatus));
         _state = READ_FROM_CGI;
@@ -274,7 +241,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     }
   }
   if (_state == READ_FROM_CGI){
-    _log.warning("CGI: READ_FROM_CGI");
     try {
       char    buffer[BUFFER_SIZE];
       ssize_t count = 0;
@@ -300,7 +266,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     }
   }
   if (_state == PROCESS_OUTPUT){
-    _log.warning("CGI: PROCESS_OUTPUT");
     try {
       std::string normalizedOutput = _processOutput;
       std::string::size_type pos = 0;
@@ -312,7 +277,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
             ++pos; // Already \r\n, move to the next character
         }
       }
-      _log.info("CGI: processOutput: " + normalizedOutput);
       std::size_t headerEndPos = normalizedOutput.find("\r\n\r\n");
       if (headerEndPos == std::string::npos)
         throw ExecutorError(
@@ -337,7 +301,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   }
 
   if (_state == CGI_ERROR){
-    _log.warning("CGI: CGI_ERROR");
     if (_response.getStatusCode() == HTTPResponse::OK)
           _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
     return SENDING;
@@ -353,17 +316,14 @@ std::map<std::string, std::string> CGIHandler::_parseOutputHeaders(
   while (std::getline(headerStream, line)) {
     std::size_t colonPos = line.find(':');
     if (colonPos == std::string::npos) {
-      _log.error("CGI: Malformed header line: " + line); // Log the problematic line
       throw ExecutorError("CGI: Invalid response: malformed header line");
     }
     std::string key = line.substr(0, colonPos);
     if (key.empty()) {
-      _log.error("CGI: Empty header key in line: " + line); // Log the problematic line
       throw ExecutorError("CGI: Invalid response: empty header key");
     }
     std::string value = line.substr(colonPos + 2);  // +2 to skip ": "
     if (value.empty()) {
-      _log.error("CGI: Empty header value in line: " + line); // Log the problematic line
       throw ExecutorError("CGI: Invalid response: empty header value");
     }
     headers[key] = value;

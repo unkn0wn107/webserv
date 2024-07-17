@@ -38,13 +38,4 @@ class Utils {
   static char* cstr(const std::string& str);
 };
 
-class LockGuard {
- public:
-  explicit LockGuard(pthread_mutex_t& mutex);
-  ~LockGuard();
-
- private:
-  pthread_mutex_t& _mutex;
-};
-
 #endif

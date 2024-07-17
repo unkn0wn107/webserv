@@ -30,6 +30,7 @@ int main(int argc, char* argv[]) {
 
   sigaction(SIGINT, &sigHandler, NULL);
   sigaction(SIGTERM, &sigHandler, NULL);
+  signal(SIGPIPE, SIG_IGN);
 
   srand(static_cast<unsigned int>(time(NULL)));
 

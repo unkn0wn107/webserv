@@ -24,11 +24,11 @@ class EventQueue {
   void push(const struct epoll_event& event);
   bool pop(struct epoll_event& event);
   bool try_pop(struct epoll_event& event);
-  bool empty() const;
+  bool empty();
 
  private:
   std::queue<struct epoll_event> _queue;
-  mutable pthread_mutex_t        _mutex;
+  pthread_mutex_t                _mutex;
   pthread_cond_t                 _cond;
 };
 

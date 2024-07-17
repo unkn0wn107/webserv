@@ -90,9 +90,7 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string&    path,
 HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
   std::string           uriPath = request.getURIComponents().path;
   const LocationConfig& location = _server.getLocationConfig(uriPath);
-  _log.info("HTTPMethods::_handleGetRequest : URI path: " + uriPath);
   std::string path = _getPath(uriPath, location);
-  _log.info("HTTPMethods::_handleGetRequest : path: " + path);
   HTTPResponse* response;
   if (FileManager::isDirectory(path)) {
     response = _autoindex(path, location);

@@ -26,7 +26,6 @@ Config ConfigParser::parseConfigFile(const std::string& filepath) {
   _configFilepath = filepath;
   std::ifstream configFile(filepath.c_str());
   if (!configFile.is_open()) {
-    _log.emerg("Failed to open config file: " + filepath);
     throw Exception("Failed to open config file: " + filepath);
   }
 

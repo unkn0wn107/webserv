@@ -82,9 +82,6 @@ void ConfigManager::printConfig() {
     std::cout << "Root: " << server.root << std::endl;
     std::cout << "Client Max Body Size: " << server.client_max_body_size
               << std::endl;
-
-    // Display error pages
-
     std::cout << "Routes:" << std::endl;
     _printLocationsConfig(server.locations);
   }

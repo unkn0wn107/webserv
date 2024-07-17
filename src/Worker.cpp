@@ -27,7 +27,6 @@ Worker::Worker(Server&                      server,
       _listenSockets(listenSockets),
       _load(0),
       _shouldStop(false) {
-  _log.info("Worker constructor called");
 }
 
 Worker::~Worker() {}
@@ -45,7 +44,7 @@ bool Worker::Thread::create(void* (*start_routine)(void*), void* arg) {
 
 void Worker::start() {
   if (!_thread.create(_workerRoutine, this)) {
-    _log.error("WORKER : Failed to create thread");
+    throw Exception("WORKER : Failed to create thread");
   }
 }
 
@@ -81,10 +80,6 @@ void Worker::_runEventLoop() {
       usleep(1000);
       continue;
     }
-
-    _log.info("WORKER (" + Utils::to_string(_threadId) +
-              "): Event: " + Utils::to_string(event.events));
-
     EventData* eventData = static_cast<EventData*>(event.data.ptr);
     if (eventData && eventData->isListening && (event.events & EPOLLIN)) {
       _acceptNewConnection(eventData->fd);
@@ -96,13 +91,8 @@ void Worker::_runEventLoop() {
                    "): Unable to handle event with no data");
       epoll_ctl(_epollSocket, EPOLL_CTL_DEL, event.data.fd, NULL);
       close(event.data.fd);
-      // delete eventData->handler;
-      // delete eventData;
     }
   }
-  // _cleanUpForceResponse();
-  // _cleanUpSendings();
-  // _cleanUpAll();
 }
 
 void Worker::_launchEventProcessing(EventData*          eventData,
@@ -121,9 +111,6 @@ void Worker::_launchEventProcessing(EventData*          eventData,
                "): Exception: " + e.what());
   }
   if (handlerStatus == 1) {  // Done
-    _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                 "): Handler deleted with con status " +
-                 eventData->handler->getStatusString());
     delete eventData->handler;
     delete eventData;
   }
@@ -141,9 +128,6 @@ void Worker::_acceptNewConnection(int fd) {
         accept(fd, (struct sockaddr*)&address,
                &addrlen);  // creer un nouveau sockect d'echange d'event
     if (new_socket < 0) {
-      _log.warning("WORKER (" + Utils::to_string(_threadId) +
-                   "): Failed \"accept\" on listening socket " +
-                   Utils::to_string(fd));
       return;
     }
     if (set_non_blocking(new_socket) == -1) {
@@ -170,7 +154,7 @@ void Worker::_acceptNewConnection(int fd) {
       close(new_socket);
       delete handler;
       delete eventData;
-      continue;
+      // continue;
     }
   }
 }

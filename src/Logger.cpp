@@ -59,53 +59,65 @@ void Logger::_openLogFile() {
 
 void Logger::info(const std::string& message) const {
 #if LOG_LEVEL >= LOG_LEVEL_INFO
-  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] INFO: " + message;
   if (_progLogFile->is_open()) {
+    pthread_mutex_lock(&_mutex);
     *_progLogFile << msg << std::endl;
+    pthread_mutex_unlock(&_mutex);
   }
+  pthread_mutex_lock(&_mutex);
   std::cout << "\033[1;32m" << msg << "\033[0m" << std::endl;  // Green
+  pthread_mutex_unlock(&_mutex);
 #else
-  (void)message; // Avoid unused parameter warning
+  (void)message;
 #endif
 }
 
 void Logger::warning(const std::string& message) const {
 #if LOG_LEVEL >= LOG_LEVEL_WARNING
-  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] WARNING: " + message;
   if (_progLogFile->is_open()) {
+    pthread_mutex_lock(&_mutex);
     *_progLogFile << msg << std::endl;
+    pthread_mutex_unlock(&_mutex);
   }
+  pthread_mutex_lock(&_mutex);
   std::cout << "\033[1;33m" << msg << "\033[0m" << std::endl;  // Yellow
+  pthread_mutex_unlock(&_mutex);
 #else
-  (void)message; // Avoid unused parameter warning
+  (void)message;
 #endif
 }
 
 void Logger::error(const std::string& message) const {
 #if LOG_LEVEL >= LOG_LEVEL_ERROR
-  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] ERROR: " + message;
   if (_progLogFile->is_open()) {
+    pthread_mutex_lock(&_mutex);
     *_progLogFile << msg << std::endl;
+    pthread_mutex_unlock(&_mutex);
   }
+  pthread_mutex_lock(&_mutex);
   std::cerr << "\033[1;31m" << msg << "\033[0m" << std::endl;  // Red
+  pthread_mutex_unlock(&_mutex);
 #else
-  (void)message; // Avoid unused parameter warning
+  (void)message;
 #endif
 }
 
 void Logger::emerg(const std::string& message) const {
 #if LOG_LEVEL >= LOG_LEVEL_ERROR // Assuming EMERG is at least as critical as ERROR
-  LockGuard lock(_mutex);
   std::string msg = "[" + _getCurrentTime() + "] EMERG: " + message;
   if (_progLogFile->is_open()) {
+    pthread_mutex_lock(&_mutex);
     *_progLogFile << msg << std::endl;
+    pthread_mutex_unlock(&_mutex);
   }
+  pthread_mutex_lock(&_mutex);
   std::cerr << "\033[1;35m" << msg << "\033[0m" << std::endl;  // Magenta
+  pthread_mutex_unlock(&_mutex);
 #else
-  (void)message; // Avoid unused parameter warning
+  (void)message;
 #endif
 }
 
@@ -128,5 +140,5 @@ void Logger::_setFileName() {
 void Logger::setConfig(const Config config) {
   getInstance()._config = config;
   _setFileName();
-  // _openLogFile();
+  _openLogFile();
 }

@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "EventQueue.hpp"
+#include <errno.h>
 #include <pthread.h>
 #include <queue>
 #include "Utils.hpp"
@@ -26,32 +27,38 @@ EventQueue::~EventQueue() {
 }
 
 void EventQueue::push(const struct epoll_event& event) {
-  LockGuard lock(_mutex);
+  pthread_mutex_lock(&_mutex);
   _queue.push(event);
   pthread_cond_signal(&_cond);
+  pthread_mutex_unlock(&_mutex);
 }
 
 bool EventQueue::pop(struct epoll_event& event) {
-  LockGuard lock(_mutex);
+  pthread_mutex_lock(&_mutex);
   while (_queue.empty()) {
     pthread_cond_wait(&_cond, &_mutex);
   }
   event = _queue.front();
   _queue.pop();
+  pthread_mutex_unlock(&_mutex);
   return true;
 }
 
 bool EventQueue::try_pop(struct epoll_event& event) {
-  LockGuard lock(_mutex);
+  pthread_mutex_lock(&_mutex);
   if (_queue.empty()) {
-    return false;
+      pthread_mutex_unlock(&_mutex);
+      return false;
   }
   event = _queue.front();
   _queue.pop();
+  pthread_mutex_unlock(&_mutex);
   return true;
 }
 
-bool EventQueue::empty() const {
-  LockGuard lock(_mutex);
-  return _queue.empty();
+bool EventQueue::empty() {
+  pthread_mutex_lock(&_mutex);
+  bool empty = _queue.empty();
+  pthread_mutex_unlock(&_mutex);
+  return empty;
 }

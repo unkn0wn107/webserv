@@ -68,7 +68,6 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key, Eve
   CacheMap::iterator it = _cache.find(key);
 
   if (it == _cache.end()) {
-    _log.info("CACHE_HANDLER: Cache not found, reserving");
     _cache[key] = CacheEntry();
     _cache[key].status = CACHE_CURRENTLY_BUILDING;
     CacheEntry cacheEntry(_cache[key]);
@@ -80,7 +79,6 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key, Eve
   CacheEntry& entry = it->second;
 
   if (entry.status == CACHE_CURRENTLY_BUILDING) {
-    _log.warning("CACHE_HANDLER: Cache currently building");
     if (eventData)
       it->second.waitingEventsData.push_back(eventData);
     pthread_mutex_unlock(&_mutex);
@@ -88,7 +86,6 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key, Eve
   }
 
   if (entry.timestamp + _maxAge <= time(NULL)) {
-    _log.warning("CACHE_HANDLER: Cache expired, deleting and reserving");
     if (entry.response)
       delete entry.response;
     _cache[key] = CacheEntry();
@@ -105,7 +102,6 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key, Eve
 
 void CacheHandler::storeResponse(const std::string& key,
                                  const HTTPResponse& response) {
-  _log.warning("CACHE_HANDLER: Storing response in cache");
   pthread_mutex_lock(&_mutex);
   CacheEntry& entry = _cache[key];
   if (entry.response)
@@ -129,7 +125,6 @@ void CacheHandler::deleteCache(const std::string& key) {
   CacheMap::iterator it = _cache.find(key);
 
   if (it != _cache.end()) {
-    _log.warning("CACHE_HANDLER: Deleting cache entry");
     delete it->second.response;
     _cache.erase(it);
   }

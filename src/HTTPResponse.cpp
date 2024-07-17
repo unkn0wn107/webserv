@@ -191,13 +191,6 @@ std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
     std::make_pair(504, std::string(ERR_PAGE_504)),
     std::make_pair(505, std::string(ERR_PAGE_505))};
 
-// HTTPResponse::HTTPResponse()
-//     : _log(Logger::getInstance()),
-//       _statusCode(HTTPResponse::OK),
-//       _config(NULL) {
-//   _protocol = "HTTP/1.1";
-// }
-
 HTTPResponse::HTTPResponse(const HTTPResponse& other)
     : _log(other._log),
       _statusCode(other._statusCode),
@@ -277,9 +270,7 @@ void HTTPResponse::_errorResponse() {
 
   if (it != _errorPages.end()) {
     _file = _config.root + it->second;
-    _log.info("Error page: " + _file);
   } else {
-    _log.info("Default error page");
     _body = HTTPResponse::defaultErrorPage(_statusCode);
   }
   addHeader("Content-Type", "text/html");
@@ -293,8 +284,6 @@ void HTTPResponse::_errorResponse() {
 }
 
 void HTTPResponse::buildResponse() {
-  _log.info("HTTPResponse: buildResponse status: " +
-            Utils::to_string(_statusCode));
   if (_statusCode >= 300)
     _errorResponse();
   if (_responseBuffer.empty()) {
@@ -338,21 +327,16 @@ ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
     return -1;
   }
   _responseBufferPos += bytesSent;
-  _log.info("HTTPResponse: _send bytesSent: " + Utils::to_string(bytesSent) +
-            " remaining: " + Utils::to_string(remaining) +
-            " _responseBufferPos: " + Utils::to_string(_responseBufferPos) +
-            " _responseBufferSize: " + Utils::to_string(_responseBufferSize));
   return _responseBufferPos;
 }
 
 void HTTPResponse::_sendfile(int clientSocket, FILE* file, ssize_t sndbuf) {
   ssize_t bytesSent;
   bytesSent = sendfile(clientSocket, fileno(file), &_responseFilePos, sndbuf);
-  if (bytesSent == -1)
+  if (bytesSent == -1){
+    throw Exception("SENDFILE: failed sendfile: "+ std::string(strerror(errno)));
     usleep(1000);
-  _log.info(
-      "HTTPResponse: _sendfile bytesSent: " + Utils::to_string(bytesSent) +
-      " _responseFilePos: " + Utils::to_string(_responseFilePos));
+  }
 }
 
 int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {

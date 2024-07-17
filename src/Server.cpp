@@ -29,8 +29,6 @@ Server::Server()
       _listenEventData(),
       _activeWorkers(0),
       _events() {
-  _log.info("====================SERVER: Setup server " +
-            Utils::to_string(_callCount));
   _setupEpoll();
   _setupServerSockets();
   CacheHandler::init(_events);
@@ -72,7 +70,7 @@ Server& Server::getInstance() {
 }
 
 void Server::workerFinished() {
-  LockGuard lock(_mutex);
+  pthread_mutex_lock(&_mutex);
   _activeWorkers--;
   _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) +
             ")");
@@ -80,15 +78,21 @@ void Server::workerFinished() {
     _running = false;
     _log.info("SERVER: All workers finished");
   }
+  pthread_mutex_unlock(&_mutex);
 }
 
 void Server::start() {
   _running = true;
   for (size_t i = 0; i < _workers.size(); i++) {
-    _workers[i]->start();
-    pthread_mutex_lock(&_mutex);
-    _activeWorkers++;
-    pthread_mutex_unlock(&_mutex);
+    try {
+      _workers[i]->start();
+      pthread_mutex_lock(&_mutex);
+      _activeWorkers++;
+      pthread_mutex_unlock(&_mutex);
+    }
+    catch (...) {
+      stop(SIGINT);
+    }
   }
   _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) +
             ")");
@@ -140,7 +144,6 @@ void Server::_setupEpoll() {
 void Server::_setupServerSockets() {
   const std::set<ListenConfig>& uniqueConfigs = _config.unique_listen_configs;
 
-  _log.info("SERVER: Setup server sockets");
   for (std::set<ListenConfig>::const_iterator it = uniqueConfigs.begin();
        it != uniqueConfigs.end(); ++it) {
     const ListenConfig& listenConfig = *it;
@@ -245,8 +248,6 @@ void Server::_setupServerSockets() {
                  strerror(errno) + " (" + Utils::to_string(sock) + ")");
       continue;
     }
-    _log.info("SERVER (assign conn): Add socket to epoll : " +
-              Utils::to_string(sock));
     _listenSockets[sock] = listenConfig;
     _listenEventData.insert(eventData);
   }

@@ -23,7 +23,7 @@
 
 class HTTPRequest {
  public:
-  HTTPRequest(std::string rawRequest /*, size_t readn*/);
+  HTTPRequest(std::string rawRequest);
   ~HTTPRequest();
 
   static const std::string supportedMethods[4];

@@ -101,11 +101,3 @@ char* Utils::cstr(const std::string& str) {
   std::strcpy(result, str.c_str());
   return result;
 }
-
-LockGuard::LockGuard(pthread_mutex_t& mutex) : _mutex(mutex) {
-  pthread_mutex_lock(&_mutex);
-}
-
-LockGuard::~LockGuard() {
-  pthread_mutex_unlock(&_mutex);
-}

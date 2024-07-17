@@ -147,12 +147,7 @@ std::map<int, std::string> VirtualServer::_getErrorPages(
 }
 
 HTTPResponse* VirtualServer::handleRequest(HTTPRequest& request) {
-  std::clock_t  start = std::clock();
   HTTPResponse* response = _httpMethods->handleRequest(request);
-  std::clock_t  end = std::clock();
-  double duration = static_cast<double>(end - start) * 1000 / CLOCKS_PER_SEC;
-  _log.info("VirtualServer: handleRequest duration [" +
-            Utils::to_string(duration) + " ms]");
   return response;
 }
 

@@ -44,7 +44,7 @@ ListenConfig::ListenConfig() {
   port = 80;
   default_server = false;
   backlog = 10000;
-  rcvbuf = 10000;
+  rcvbuf = 1000;
   sndbuf = 10000;
   ipv6only = false;
 }

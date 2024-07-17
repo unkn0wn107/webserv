@@ -134,7 +134,7 @@ class HTTPResponse {
 
   void    _errorResponse();
   ssize_t _send(int socket, size_t sndbuf);
-  void    _sendfile(int socket, FILE* file, size_t sndbuf);
+  void    _sendfile(int socket, FILE* file, ssize_t sndbuf);
 
  public:
   HTTPResponse(int statusCode, const LocationConfig& config);
@@ -147,7 +147,7 @@ class HTTPResponse {
       const std::string& contentType);
 
   void               buildResponse();
-  int                sendResponse(int clientSocket, size_t sndbuf);
+  int                sendResponse(int clientSocket, ssize_t sndbuf);
   static int         sendResponse(int statusCode, int clientSocket);
   static std::string defaultErrorPage(int status);
   // Setters

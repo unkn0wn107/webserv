@@ -45,6 +45,8 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
 
 CGIHandler::~CGIHandler() {
   _log.info("CGI: Destroying handler");
+  kill(_pid, SIGKILL);
+  waitpid(_pid, NULL, 0);
   if (_inpipefd[0] != -1)
     close(_inpipefd[0]);
   if (_inpipefd[1] != -1)

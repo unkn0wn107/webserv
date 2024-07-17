@@ -88,8 +88,8 @@ class ConnectionHandler {
   ConnectionStatus            _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
-  size_t                      _rcvbuf;
-  size_t                      _sndbuf;
+  ssize_t                      _rcvbuf;
+  ssize_t                      _sndbuf;
   std::string                 _requestString;
   size_t                      _readn;
   std::vector<VirtualServer*> _vservPool;

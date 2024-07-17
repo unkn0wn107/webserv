@@ -37,13 +37,6 @@ void HTTPRequest::parseRequest() {
   _uriComponents = URI::parse(_uri);
 
   _parseHeaders(requestStream);
-
-  if (_method == "POST" || _method == "PUT") {
-    std::stringstream bodyStream;
-    bodyStream << requestStream.rdbuf();
-    setBody(bodyStream.str());
-  }
-
   _parseSession();
 }
 

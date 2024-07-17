@@ -140,7 +140,7 @@ void Worker::_acceptNewConnection(int fd) {
     new_socket =
         accept(fd, (struct sockaddr*)&address,
                &addrlen);  // creer un nouveau sockect d'echange d'event
-    if (new_socket <= 0) {
+    if (new_socket < 0) {
       _log.warning("WORKER (" + Utils::to_string(_threadId) +
                    "): Failed \"accept\" on listening socket " +
                    Utils::to_string(fd));
@@ -170,6 +170,7 @@ void Worker::_acceptNewConnection(int fd) {
       close(new_socket);
       delete handler;
       delete eventData;
+      continue;
     }
   }
 }

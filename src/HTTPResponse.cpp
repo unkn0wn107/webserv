@@ -328,7 +328,7 @@ ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   return _responseBufferPos;
 }
 
-void HTTPResponse::_sendfile(int clientSocket, FILE* file, size_t sndbuf) {
+void HTTPResponse::_sendfile(int clientSocket, FILE* file, ssize_t sndbuf) {
   ssize_t bytesSent;
   bytesSent = sendfile(clientSocket, fileno(file), &_responseFilePos, sndbuf);
   if (bytesSent == -1)
@@ -338,7 +338,7 @@ void HTTPResponse::_sendfile(int clientSocket, FILE* file, size_t sndbuf) {
       " _responseFilePos: " + Utils::to_string(_responseFilePos));
 }
 
-int HTTPResponse::sendResponse(int clientSocket, size_t sndbuf) {
+int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
   buildResponse();
   if (_send(clientSocket, sndbuf) == -1)
     return -1;

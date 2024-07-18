@@ -14,8 +14,8 @@
 #include <sys/sendfile.h>
 #include <sys/socket.h>
 #include "Utils.hpp"
-#include "VirtualServer.hpp"
 #include "Config.hpp"
+#include "FileManager.hpp"
 
 const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::CONTINUE, "Continue"),
@@ -330,13 +330,14 @@ ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   return _responseBufferPos;
 }
 
-void HTTPResponse::_sendfile(int clientSocket, FILE* file, ssize_t sndbuf) {
+ssize_t HTTPResponse::_sendfile(int clientSocket, FILE* file, ssize_t sndbuf) {
   ssize_t bytesSent;
   bytesSent = sendfile(clientSocket, fileno(file), &_responseFilePos, sndbuf);
-  if (bytesSent == -1){
-    throw Exception("SENDFILE: failed sendfile: "+ std::string(strerror(errno)));
-    usleep(1000);
+  if (bytesSent == -1) {
+    _log.error("SENDFILE: failed sendfile, client probably closed the connection");
+    return -1;
   }
+  return bytesSent;
 }
 
 int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
@@ -353,7 +354,10 @@ int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
     throw Exception("(fopen) Error opening file : " + _file + " : " +
                     std::string(strerror(errno)));
   }
-  _sendfile(clientSocket, _toSend, sndbuf);
+  if (_sendfile(clientSocket, _toSend, sndbuf) == -1) {
+    fclose(_toSend);
+    return -1;
+  }
   fclose(_toSend);
   if (static_cast<size_t>(_responseFilePos) == _fileSize)
     return 1;

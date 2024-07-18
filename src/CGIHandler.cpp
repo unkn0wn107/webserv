@@ -112,8 +112,7 @@ void CGIHandler::_runScript() {
   close(_outpipefd[0]);
   close(_outpipefd[1]);
   std::string postData = _request.getBody();
-  if (!postData.empty())
-  {
+  if (!postData.empty()) {
     if (pipe(_inpipefd) == -1)
     {
         std::cerr << "CHILD: Failed to create pipe"<< std::endl;
@@ -148,9 +147,6 @@ void CGIHandler::_runScript() {
       trys = 0;
       totalWritten += written;
     }
-    close(_inpipefd[1]);
-  } else {
-    close(_inpipefd[0]);
     close(_inpipefd[1]);
   }
 
@@ -193,8 +189,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       if (_pid == -1)
         throw ForkFailure("CGI: Failed to fork process");
       if (_pid > 0) {
-          close(_inpipefd[0]);
-          _inpipefd[0] = -1;
           close(_outpipefd[1]);
           _outpipefd[1] = -1;
           _state = SCRIPT_RUNNING;
@@ -253,10 +247,8 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       _processOutputSize += count;
       if (count < (ssize_t)sizeof(buffer) || count == 0)
       {
-          close(_outpipefd[0]);
-          _outpipefd[0] = -1;
-          close(_inpipefd[1]);
-          _inpipefd[1] = -1;
+        close(_outpipefd[0]);
+        _outpipefd[0] = -1;
         _state = PROCESS_OUTPUT;
       }
       else

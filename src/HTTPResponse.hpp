@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 00:37:56 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/18 03:36:44 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -134,7 +134,7 @@ class HTTPResponse {
 
   void    _errorResponse();
   ssize_t _send(int socket, size_t sndbuf);
-  void    _sendfile(int socket, FILE* file, ssize_t sndbuf);
+  ssize_t _sendfile(int socket, FILE* file, ssize_t sndbuf);
 
  public:
   HTTPResponse(int statusCode, const LocationConfig& config);

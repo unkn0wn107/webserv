@@ -28,7 +28,7 @@
 #include "Common.hpp"
 #include "ConnectionHandler.hpp"
 #include "EventData.hpp"
-#include "EventQueue.hpp"
+#include "SPMCQueue.hpp"
 #include "Logger.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
@@ -44,7 +44,7 @@ class Worker {
   Worker(Server&                      server,
          int                          epollSocket,
          std::map<int, ListenConfig>& listenSockets,
-         EventQueue&                  events);
+         SPMCQueue<struct epoll_event>& events);
   ~Worker();
 
   void  start();
@@ -72,7 +72,7 @@ class Worker {
       EventData* eventData, struct epoll_event& event);
 
   Server&                             _server;
-  EventQueue&                         _events;
+  SPMCQueue<struct epoll_event>&      _events;
   Thread                              _thread;
   std::map<int, EventData*>           _eventsData;
   const Config&                       _config;

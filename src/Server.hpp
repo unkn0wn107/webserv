@@ -25,9 +25,9 @@
 #include "Common.hpp"
 #include "Config.hpp"
 #include "EventData.hpp"
-#include "EventQueue.hpp"
 #include "Logger.hpp"
 #include "Worker.hpp"
+#include "SPMCQueue.hpp"
 
 #define SHUTDOWN_DELAY 200000
 
@@ -45,7 +45,7 @@ class Server {
   pthread_mutex_t                             _mutex;
   int                                         _epollSocket;
   int                                         _activeWorkers;
-  EventQueue                                  _events;
+  SPMCQueue<struct epoll_event>               _events;
   bool                                        _running;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
 

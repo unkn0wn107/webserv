@@ -14,7 +14,6 @@
 
 #include "Common.hpp"
 #include "ConfigManager.hpp"
-#include "EventQueue.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
 #include "CacheHandler.hpp"
@@ -108,7 +107,7 @@ void Server::start() {
       continue;
     }
     for (int i = 0; i < nfds && _running; i++)
-      _events.push(events[i]);
+      _events.enqueue(events[i]);
   }
 }
 

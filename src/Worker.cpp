@@ -18,7 +18,7 @@
 Worker::Worker(Server&                      server,
                int                          epollSocket,
                std::map<int, ListenConfig>& listenSockets,
-               EventQueue&                  events)
+               SPMCQueue<struct epoll_event>& events)
     : _server(server),
       _events(events),
       _config(ConfigManager::getInstance().getConfig()),
@@ -76,7 +76,7 @@ void Worker::_runEventLoop() {
   while (!_shouldStop) {
     struct epoll_event event;
 
-    if (!_events.try_pop(event)) {
+    if (!_events.dequeue(event)) {
       usleep(1000);
       continue;
     }

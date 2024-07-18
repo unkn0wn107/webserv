@@ -40,7 +40,7 @@ CacheHandler::CacheEntry::~CacheEntry() {
   delete response;
 }
 
-CacheHandler& CacheHandler::init(EventQueue& eventQueue) {
+CacheHandler& CacheHandler::init(SPMCQueue<struct epoll_event>& eventQueue) {
   _instance = new CacheHandler(eventQueue);
   return *_instance;
 }
@@ -54,7 +54,7 @@ void CacheHandler::deleteInstance() {
   _instance = NULL;
 }
 
-CacheHandler::CacheHandler(EventQueue& eventQueue)
+CacheHandler::CacheHandler(SPMCQueue<struct epoll_event>& eventQueue)
     : _log(Logger::getInstance()), _eventQueue(eventQueue), _cache(), _maxAge(MAX_AGE) {
   pthread_mutex_init(&_mutex, NULL);
 }
@@ -114,7 +114,7 @@ void CacheHandler::storeResponse(const std::string& key,
     struct epoll_event event;
     event.data.ptr = *it;
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    _eventQueue.push(event);
+    _eventQueue.enqueue(event);
   }
   entry.waitingEventsData.clear();
   pthread_mutex_unlock(&_mutex);

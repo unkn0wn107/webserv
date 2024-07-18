@@ -26,7 +26,7 @@
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
-#include "EventQueue.hpp"
+#include "SPMCQueue.hpp"
 #include "CacheHandler.hpp"
 
 #define BUFFER_SIZE 16384
@@ -47,7 +47,7 @@ class ConnectionHandler {
                     int                          epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
                     ListenConfig&                listenConfig,
-                    EventQueue&                   events);
+                    SPMCQueue<struct epoll_event>& events);
   ~ConnectionHandler();
 
   class ConnectionException : public Exception {
@@ -95,7 +95,7 @@ class ConnectionHandler {
   CGIHandler*                 _cgiHandler;
   CGIState                    _cgiState;
   int                         _step;
-  EventQueue&                 _events;
+  SPMCQueue<struct epoll_event>& _events;
 
   void             _receiveRequest(struct epoll_event& event);
   void             _processRequest(struct epoll_event& event);

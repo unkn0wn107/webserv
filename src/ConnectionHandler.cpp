@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/10 13:29:04 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/18 02:53:30 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ ConnectionHandler::ConnectionHandler(
     int                          epollSocket,
     std::vector<VirtualServer*>& virtualServers,
     ListenConfig&                listenConfig,
-    EventQueue&                   events)
+    SPMCQueue<struct epoll_event>& events)
     : _cacheHandler(CacheHandler::getInstance()),
       _log(Logger::getInstance()),
       _connectionStatus(READING),
@@ -307,7 +307,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
         throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                        "): CGIHandler is NULL");
       }
-        _events.push(event);
+      _events.enqueue(event);
       break;
 
     case CACHE_WAITING:

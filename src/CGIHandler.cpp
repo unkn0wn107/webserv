@@ -163,7 +163,7 @@ void CGIHandler::_runScript() {
 
   std::string execDir;
   for (size_t i = 0; i < _envp.size(); ++i) {
-    if (size_t pos = _envp[i].find("DOCUMENT_ROOT=") != std::string::npos)
+    if (_envp[i].find("DOCUMENT_ROOT=") != std::string::npos)
       execDir = _envp[i].substr(14);
     envp_ptrs[i] = const_cast<char*>(_envp[i].data());
   }

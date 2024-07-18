@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/06/27 15:34:58 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/07/16 21:45:32 by mchenava         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@ NAME = webserv
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
-DEBUGFLAGS = -g3 -fsanitize=address
+DEBUGFLAGS = -gdwarf-3 #-fsanitize=address
 
 SRC_DIR = src
 OBJ_DIR = .obj
@@ -35,7 +35,7 @@ SRC = $(SRC_DIR)/Server.cpp \
 		$(SRC_DIR)/Config.cpp $(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
 		$(SRC_DIR)/FileManager.cpp \
 		$(SRC_DIR)/ConnectionHandler.cpp $(SRC_DIR)/CacheHandler.cpp \
-		$(SRC_DIR)/Worker.cpp $(SRC_DIR)/EventQueue.cpp \
+		$(SRC_DIR)/Worker.cpp $(SRC_DIR)/EventQueue.cpp $(SRC_DIR)/EventData.cpp \
 		$(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp $(SRC_DIR)/URI.cpp \
 		$(SRC_DIR)/CGIHandler.cpp \
 		$(SRC_DIR)/VirtualServer.cpp $(SRC_DIR)/Common.cpp \
@@ -51,6 +51,9 @@ DEBUG_DEPS = $(patsubst $(SRC_DIR)/%.cpp, $(DEBUG_OBJ_DIR)/%.d, $(SRC))
 VPATH = $(SRC_DIR)
 
 all: $(NAME) setup
+
+fix:
+	dos2unix *.sh && chmod +x *.sh
 
 setup:
 	NUM=1; \
@@ -117,7 +120,19 @@ valgrind:
 	export BUILD_TYPE=debug
 	docker compose up --build -d webserv-dev
 	docker compose exec -it webserv-dev make debug
+	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --track-origins=yes ./webserv"
+
+valgrind-full:
+	export BUILD_TYPE=debug
+	docker compose up --build -d webserv-dev
+	docker compose exec -it webserv-dev make debug
 	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./webserv"
+
+helgrind:
+	export BUILD_TYPE=debug
+	docker compose up --build -d webserv-dev
+	docker compose exec -it webserv-dev make debug
+	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --tool=helgrind ./webserv"
 
 logs:
 	docker compose logs -f

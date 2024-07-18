@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/28 01:50:34 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/05 01:40:26 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,56 +20,71 @@
 #include <unistd.h>
 #include <algorithm>
 #include <cstdlib>
-#include <iostream>
-#include <queue>
 #include <ctime>
+#include <iostream>
+#include <map>
+#include <queue>
 
-#include "ConnectionHandler.hpp"
-#include "Logger.hpp"
-#include "Utils.hpp"
 #include "Common.hpp"
-#include "VirtualServer.hpp"
-#include "Server.hpp"
+#include "ConnectionHandler.hpp"
+#include "EventData.hpp"
 #include "EventQueue.hpp"
+#include "Logger.hpp"
+#include "Server.hpp"
+#include "Utils.hpp"
+#include "VirtualServer.hpp"
 
-
-#define MAX_EVENTS 10
-#define WORKER_TIME_TO_STOP 2
-
-class ConnectionHandler;
 class Server;
 
+#define MAX_EVENTS 1024
+#define WORKER_TIME_TO_STOP 2
+
 class Worker {
- private:
-  Server&                                     _server;
-  EventQueue&                                 _events;
-  pthread_t                                   _thread;
-  Config                                     _config;
-  Logger&                                     _log;
-  std::map<int, ConnectionHandler*>           _handlers;
-  std::map<int, std::vector<VirtualServer*> > _virtualServers;
-  int                                         _epollSocket;
-  std::map<int, ListenConfig>                 _listenSockets;
-  int                                         _load;
-  bool                                        _shouldStop;
-
-  static void* _workerRoutine(void* ref);
-
-  std::vector<VirtualServer*> _setupAssociateVirtualServer(
-      const ListenConfig& listenConfig);
-  void _acceptNewConnection(int fd);
-  void _runEventLoop();
-  void _handleIncomingConnection(struct epoll_event event);
-
  public:
-  int                                         _threadId;
-  Worker(Server& server, int epollSocket,
+  Worker(Server&                      server,
+         int                          epollSocket,
          std::map<int, ListenConfig>& listenSockets,
-         EventQueue& events);
+         EventQueue&                  events);
   ~Worker();
-  void stop();
-  void start();
-  int getLoad();
+
+  void  start();
+  void  stop();
+  pid_t getThreadId() const;
+  int   getLoad() const;
+
+ private:
+  class Thread {
+   public:
+    Thread();
+    ~Thread();
+    bool create(void* (*start_routine)(void*), void* arg);
+
+   private:
+    pthread_t _thread;
+  };
+
+  static void*                _workerRoutine(void* arg);
+  void                        _runEventLoop();
+  void                        _acceptNewConnection(int fd);
+  std::vector<VirtualServer*> _setupAssociatedVirtualServers(
+      const ListenConfig& listenConfig);
+  void                        _launchEventProcessing(
+      EventData* eventData, struct epoll_event& event);
+
+  Server&                             _server;
+  EventQueue&                         _events;
+  Thread                              _thread;
+  std::map<int, EventData*>           _eventsData;
+  const Config&                       _config;
+  Logger&                             _log;
+  int                                 _epollSocket;
+  std::map<int, ListenConfig>&        _listenSockets;
+  int                                 _load;
+  bool                                _shouldStop;
+  pid_t                               _threadId;
+
+  Worker(const Worker&);
+  Worker& operator=(const Worker&);
 };
 
 #endif

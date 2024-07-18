@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 11:06:33 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/26 16:33:07 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/18 13:46:53 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,8 @@ int set_non_blocking(int sockfd) {
 }
 
 void signalHandler(int signum) {
-  Logger::getInstance().info("Signal received: " + Utils::to_string(signum) + "getting server instance");
+  Logger::getInstance().info("Signal received: " + Utils::to_string(signum) +
+                             "getting server instance");
   Server::getInstance().stop(signum);
 }
 
@@ -47,4 +48,3 @@ std::string generateSessionId(void) {
   }
   return sessionId;
 }
-

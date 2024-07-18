@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 01:52:32 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/05 01:34:46 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,32 +19,36 @@
 #include <ctime>
 #include <vector>
 
-#include "Config.hpp"
+#include "CGIHandler.hpp"
 #include "Common.hpp"
+#include "Config.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
-#include "CGIHandler.hpp"
+#include "EventQueue.hpp"
+#include "CacheHandler.hpp"
 
 #define BUFFER_SIZE 16384
-
-
 
 class VirtualServer;
 class CGIHandler;
 
 class ConnectionHandler {
  public:
- static const int    MAX_TRIES;
- static const time_t TIMEOUT;
+  ConnectionStatus    getConnectionStatus() const;
+  std::string         getStatusString() const;
+  int                 processConnection(struct epoll_event& event);
+  void                setInternalServerError();
+  static const int    MAX_TRIES;
+  static const time_t TIMEOUT;
 
-  ConnectionHandler(int clientSocket,
-                    int epollSocket,
+  ConnectionHandler(int                          clientSocket,
+                    int                          epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
-                    ListenConfig listenConfig);
+                    ListenConfig&                listenConfig,
+                    EventQueue&                   events);
   ~ConnectionHandler();
-  void processConnection();
 
   class ConnectionException : public Exception {
    public:
@@ -67,30 +71,45 @@ class ConnectionHandler {
         : ConnectionException(message) {}
   };
 
+  class RequestException : public ConnectionException {
+   public:
+    RequestException(const std::string& message)
+        : ConnectionException(message) {}
+  };
+
  private:
-  Logger& _log;
-  int                         _connectionStatus;
+  CacheHandler& _cacheHandler;
+  Logger&              _log;
+  ConnectionStatus            _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
-  char*                       _buffer;
-  size_t                         _rcvbuf;
-  size_t                         _sndbuf;
+  ssize_t                      _rcvbuf;
+  ssize_t                      _sndbuf;
   std::string                 _requestString;
-  size_t                         _readn;
+  size_t                      _readn;
   std::vector<VirtualServer*> _vservPool;
   HTTPRequest*                _request;
   HTTPResponse*               _response;
   int                         _count;
   time_t                      _startTime;
   CGIHandler*                 _cgiHandler;
+  CGIState                    _cgiState;
+  int                         _step;
+  EventQueue&                 _events;
 
-  void           _receiveRequest();
-  void           _processRequest();
-  VirtualServer* _selectVirtualServer(std::string host);
-  VirtualServer* _findDefaultServer();
-  std::string    _extractHost(const std::string& requestHeader);
-  void           _sendResponse();
-  void           _processData();
+  void             _receiveRequest(struct epoll_event& event);
+  void             _processRequest(struct epoll_event& event);
+  VirtualServer*   _selectVirtualServer(std::string host);
+  VirtualServer*   _findDefaultServer();
+  std::string      _extractHost(const std::string& requestHeader);
+  void             _sendResponse();
+  ConnectionStatus _checkConnectionStatus();
+  void             _setConnectionStatus(ConnectionStatus status);
+
+  void _processExecutingState();
+  void _cleanupCGIHandler();
+
+  void _handleClosedConnection();
 };
 
 #endif

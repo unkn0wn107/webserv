@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigManager.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 01:50:04 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/02 23:48:35 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,8 +37,11 @@ class ConfigManager {
    * Retrieve all config.
    * @return The configuration object.
    */
-  Config getConfig() const;
-  static void     printConfig();
+  Config&               getConfig();
+  ServerConfig&         getServerConfig();
+  const LocationConfig& getLocationConfig() const;
+  ListenConfig&         getListenConfig();
+  static void           printConfig();
 
   static void loadConfig(const std::string& filepath);
 

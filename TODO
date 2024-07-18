@@ -1,0 +1,8 @@
+- TIMEOUT: alex
+- cache: a & mat
+- errno on accept: mat ok
+- test cross sieges (multiple socket): mat ok
+- Because you won’t call the CGI directly, use the full path as PATH_INFO: alex
+- Just remember that, for chunked request, your server needs to unchunk it, the CGI will expect EOF as end of the body: (on verra)
+- Same things for the output of the CGI. If no content_length is returned from the CGI, EOF will mark the end of the returned data: mat ok
+- The CGI should be run in the correct directory for relative path file access: alex

@@ -6,16 +6,18 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/05/07 09:16:32 by agaley           ###   ########.fr   */
+/*   Updated: 2024/07/04 20:47:08 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Server.hpp"
 #include <climits>
+
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 #include "EventQueue.hpp"
+#include "Server.hpp"
 #include "Utils.hpp"
+#include "CacheHandler.hpp"
 
 Server* Server::_instance = NULL;
 int     Server::_callCount = 1;
@@ -23,15 +25,15 @@ int     Server::_callCount = 1;
 Server::Server()
     : _config(ConfigManager::getInstance().getConfig()),
       _log(Logger::getInstance()),
+      _listenSockets(),
+      _listenEventData(),
       _activeWorkers(0),
       _events() {
-  _log.info("====================SERVER: Setup server " +
-            Utils::to_string(_callCount));
   _setupEpoll();
   _setupServerSockets();
+  CacheHandler::init(_events);
   _setupWorkers();
   pthread_mutex_init(&_mutex, NULL);
-  pthread_mutex_init(&_eventsMutex, NULL);
   _callCount++;
   _running = false;
   _instance = this;
@@ -42,8 +44,18 @@ Server::~Server() {
     delete _workers[i];
   }
   _workers.clear();
+  close(_epollSocket);
+  for (std::map<int, ListenConfig>::iterator it = _listenSockets.begin();
+       it != _listenSockets.end(); ++it) {
+    close(it->first);
+  }
+  for (std::set<EventData*>::iterator it = _listenEventData.begin();
+       it != _listenEventData.end(); ++it) {
+    delete *it;
+  }
+  _listenSockets.clear();
+  _listenEventData.clear();
   pthread_mutex_destroy(&_mutex);
-  pthread_mutex_destroy(&_eventsMutex);
   CacheHandler::deleteInstance();
   ConfigManager::deleteInstance();
   Server::_instance = NULL;
@@ -72,33 +84,41 @@ void Server::workerFinished() {
 void Server::start() {
   _running = true;
   for (size_t i = 0; i < _workers.size(); i++) {
-    _workers[i]->start();
-    pthread_mutex_lock(&_mutex);
-    _activeWorkers++;
-    pthread_mutex_unlock(&_mutex);
+    try {
+      _workers[i]->start();
+      pthread_mutex_lock(&_mutex);
+      _activeWorkers++;
+      pthread_mutex_unlock(&_mutex);
+    }
+    catch (...) {
+      stop(SIGINT);
+    }
   }
   _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) +
             ")");
   struct epoll_event events[MAX_EVENTS];
   while (_running) {
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
+    if (nfds == 0) {
+      _log.info("SERVER: epoll_wait: 0 events");
+      continue;
+    }
     if (nfds < 0) {
       usleep(1000);
       continue;
     }
-    for (int i = 0; i < nfds && _running; i++) {
+    for (int i = 0; i < nfds && _running; i++)
       _events.push(events[i]);
-    }
   }
 }
 
 void Server::stop(int signum) {
-  if (signum == SIGINT || signum == SIGTERM || signum == SIGKILL) {
+  if (signum == SIGINT || signum == SIGTERM) {
     Server::_instance->_log.info("Server stopped from signal " +
                                  Utils::to_string(signum));
     for (size_t i = 0; i < _workers.size(); i++) {
       _log.info("SERVER: stopping worker " + Utils::to_string(i) + " (" +
-                Utils::to_string(_workers[i]->_threadId) + ")");
+                Utils::to_string(_workers[i]->getThreadId()) + ")");
       _workers[i]->stop();
     }
     _log.info("SERVER: workers stopped");
@@ -124,7 +144,6 @@ void Server::_setupEpoll() {
 void Server::_setupServerSockets() {
   const std::set<ListenConfig>& uniqueConfigs = _config.unique_listen_configs;
 
-  _log.info("SERVER: Setup server sockets");
   for (std::set<ListenConfig>::const_iterator it = uniqueConfigs.begin();
        it != uniqueConfigs.end(); ++it) {
     const ListenConfig& listenConfig = *it;
@@ -219,16 +238,17 @@ void Server::_setupServerSockets() {
 
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
-    event.data.fd = sock;
+    EventData* eventData = new EventData(sock, NULL, -1, true);
+    event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {
       close(sock);
+      delete eventData;
       _log.error(std::string("SERVER (assign conn): Failed \"epoll_ctl\": ") +
                  strerror(errno) + " (" + Utils::to_string(sock) + ")");
       continue;
     }
-    _log.info("SERVER (assign conn): Add socket to epoll : " +
-              Utils::to_string(sock));
     _listenSockets[sock] = listenConfig;
+    _listenEventData.insert(eventData);
   }
 }

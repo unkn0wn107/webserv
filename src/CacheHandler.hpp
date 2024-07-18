@@ -6,40 +6,69 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/25 03:12:49 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/18 13:46:13 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CACHEHANDLER_HPP
 #define CACHEHANDLER_HPP
 
+#include <pthread.h>
 #include <ctime>
 #include <map>
+#include <deque>
+#include <string>
 
+#include "Common.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "EventData.hpp"
+#include "EventQueue.hpp"
+
+struct EventData;
 
 class CacheHandler {
  public:
   static const time_t MAX_AGE;
 
+  static CacheHandler& init(EventQueue& eventQueue);
   static CacheHandler& getInstance();
   static void          deleteInstance();
 
-  void storeResponse(const HTTPRequest& request, const HTTPResponse& response);
-  HTTPResponse* getResponse(const HTTPRequest& request);
+  struct CacheEntry {
+    HTTPResponse*          response;
+    time_t                 timestamp;
+    CacheStatus            status;
+    std::deque<EventData*> waitingEventsData;
+
+    CacheEntry();
+    CacheEntry(const CacheEntry& other);
+    CacheEntry& operator=(const CacheEntry& other);
+    ~CacheEntry();
+  };
+
+  std::string   generateKey(const HTTPRequest& request) const;
+  std::string   generateKey(const std::string& requestString) const;
+  CacheEntry getCacheEntry(const std::string& key, EventData *eventData);
+  void storeResponse(const std::string& key, const HTTPResponse& response);
+  void deleteCache(const std::string& key);
 
  private:
-  CacheHandler();
+  CacheHandler(EventQueue& eventQueue);
   ~CacheHandler();
+  CacheHandler(const CacheHandler&);
+  CacheHandler& operator=(const CacheHandler&);
 
-  static CacheHandler*                                     _instance;
-  std::map<std::string, std::pair<HTTPResponse*, time_t> > _cache;
-  time_t                                                   _maxAge;
+  typedef std::map<std::string, CacheEntry> CacheMap;
 
-  std::string             _generateKey(const HTTPRequest& request) const;
-  unsigned long           _hash(const std::string& str) const;
-  mutable pthread_mutex_t _mutex;
+  static CacheHandler* _instance;
+  Logger&              _log;
+  EventQueue&          _eventQueue;
+  CacheMap             _cache;
+  time_t               _maxAge;
+  pthread_mutex_t      _mutex;
+
+  unsigned long _hash(const std::string& str) const;
 };
 
 #endif

@@ -32,14 +32,6 @@ std::string FileManager::readFile(const std::string& path) {
   return contents.str();
 }
 
-// size_t FileManager::size(const std::string& path) {
-//   struct stat buffer;
-//   if (stat(path.c_str(), &buffer) != 0) {
-//     return -1;
-//   }
-//   return buffer.st_size;
-// }
-
 int FileManager::getFileSize(const std::string& filePath) {
   struct stat buffer;
   if (stat(filePath.c_str(), &buffer) != 0) {

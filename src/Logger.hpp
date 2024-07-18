@@ -3,21 +3,23 @@
 /*                                                        :::      ::::::::   */
 /*   Logger.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:21:59 by mchenava          #+#    #+#             */
-/*   Updated: 2024/06/28 02:05:28 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/03 01:10:15 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef LOGGER_H
 #define LOGGER_H
 
+#include <pthread.h>
 #include <ctime>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <string>
+
 #include "Config.hpp"
 
 #define LOG_FILE_PATH "./logs/"
@@ -42,13 +44,13 @@ class Logger {
 
   static Logger* _instance;
 
-  Config         _config;
-  std::ofstream* _progLogFile;
-  std::string    _progLogFileName;
-  std::string    _getCurrentTime() const;
+  mutable pthread_mutex_t _mutex;
+  Config                  _config;
+  std::ofstream*          _progLogFile;
+  std::string             _progLogFileName;
+  std::string             _getCurrentTime() const;
 
   void _openLogFile();
-  void _closeLogFile();
   void _setFileName();
 };
 

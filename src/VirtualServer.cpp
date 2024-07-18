@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   VirtualServer.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/06/28 01:57:44 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/02 23:38:18 by agaley           ###   ########.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #include <sstream>
 #include "Utils.hpp"
 
-VirtualServer::VirtualServer(ServerConfig serverConfig)
+VirtualServer::VirtualServer(const ServerConfig& serverConfig)
     : _serverConfig(serverConfig),
       _log(Logger::getInstance()),
       _httpMethods(new HTTPMethods(*this)) {
@@ -51,13 +51,14 @@ bool VirtualServer::isHostMatching(const std::string& host) const {
   return false;
 }
 
-LocationConfig& VirtualServer::getLocationConfig(const std::string& uri) {
-  std::map<std::string, LocationConfig>::iterator it;
-  std::map<std::string, LocationConfig>::iterator bestMatch =
+const LocationConfig& VirtualServer::getLocationConfig(
+    const std::string& uri) const {
+  std::map<std::string, LocationConfig>::const_iterator bestMatch =
       _serverConfig.locations.find("/");
   size_t longestMatchLength = 0;
 
-  for (it = _serverConfig.locations.begin();
+  for (std::map<std::string, LocationConfig>::const_iterator it =
+           _serverConfig.locations.begin();
        it != _serverConfig.locations.end(); ++it) {
     if (uri.compare(0, it->first.length(), it->first) == 0) {
       if (it->first.length() > longestMatchLength) {
@@ -80,62 +81,65 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
   std::string body = request.getBody();
   int         contentLength = request.getContentLength();
 
-  LocationConfig location;
   try {
-    location = getLocationConfig(uri);
+    const LocationConfig& location = getLocationConfig(uri);
+
+    if (protocol != "HTTP/1.1") {
+      _log.warning("CheckRequest: Unsupported protocol: " + protocol);
+      return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
+    }
+
+    if (std::find(location.allowed_methods.begin(),
+                  location.allowed_methods.end(),
+                  method) == location.allowed_methods.end()) {
+      _log.warning("CheckRequest: Method not allowed for this location");
+      return new HTTPResponse(HTTPResponse::METHOD_NOT_ALLOWED, location);
+    }
+
+    if (method != "GET" && method != "HEAD") {
+      if (!body.empty() && contentLength == -1) {
+        _log.warning("CheckRequest: Content length not provided");
+        return new HTTPResponse(HTTPResponse::LENGTH_REQUIRED, location);
+      }
+
+      if (contentLength < 0) {
+        _log.warning("CheckRequest: Negative content length");
+        return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
+      }
+
+      if (contentLength != -1) {
+        if (static_cast<size_t>(contentLength) >
+            location.client_max_body_size) {
+          _log.warning("CheckRequest: Content length too big");
+          return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE,
+                                  location);
+        }
+        if (static_cast<size_t>(contentLength) != body.length()) {
+          _log.warning("CheckRequest: Content length mismatch");
+          return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
+        }
+      }
+    }
+
+    if (location.returnCode >= 300 && location.returnCode < 400) {
+      return new HTTPResponse(location.returnCode, location);
+    }
+
+    return NULL;  // Successful case with no specific response needed
   } catch (const std::exception& e) {
-    _log.error("Location not found for URI: " + uri);
-    return new HTTPResponse(HTTPResponse::NOT_FOUND, &location);
+    _log.warning("CheckRequest: Location not found for URI: " + uri);
+    // Define a default location config for error handling
+    static const LocationConfig errorLocation;
+    return new HTTPResponse(HTTPResponse::NOT_FOUND, errorLocation);
   }
-
-  if (protocol != "HTTP/1.1") {
-    _log.error("Unsupported protocol: " + protocol);
-    return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
-  }
-
-  if (std::find(location.allowed_methods.begin(),
-                location.allowed_methods.end(),
-                method) == location.allowed_methods.end()) {
-    _log.error("Method not allowed for this location");
-    return new HTTPResponse(HTTPResponse::METHOD_NOT_ALLOWED, &location);
-  }
-
-  if (method != "GET" && method != "HEAD") {
-    if (!body.empty() && contentLength == -1) {
-      _log.error("Content length not provided");
-      return new HTTPResponse(HTTPResponse::LENGTH_REQUIRED, &location);
-    }
-
-    if (contentLength < 0) {
-      _log.error("Negative content length");
-      return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
-    }
-
-    if (contentLength != -1) {
-      if (static_cast<size_t>(contentLength) > location.client_max_body_size) {
-        _log.error("Content length too big");
-        return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE,
-                                &location);
-      }
-      if (static_cast<size_t>(contentLength) != body.length()) {
-        _log.error("Content length mismatch");
-        return new HTTPResponse(HTTPResponse::BAD_REQUEST, &location);
-      }
-    }
-  }
-
-  if (location.returnCode >= 300 && location.returnCode < 400) {
-    return new HTTPResponse(location.returnCode, &location);
-  }
-
-  return NULL;
 }
 
 std::map<int, std::string> VirtualServer::_getErrorPages(
     const std::string& uri) {
   std::map<int, std::string> errorPages;
-  LocationConfig             location = getLocationConfig(uri);
-  for (std::map<int, std::string>::iterator it = location.error_pages.begin();
+  const LocationConfig&      location = getLocationConfig(uri);
+  for (std::map<int, std::string>::const_iterator it =
+           location.error_pages.begin();
        it != location.error_pages.end(); ++it) {
     errorPages[it->first] = it->second;
   }
@@ -143,11 +147,7 @@ std::map<int, std::string> VirtualServer::_getErrorPages(
 }
 
 HTTPResponse* VirtualServer::handleRequest(HTTPRequest& request) {
-  std::clock_t start = std::clock();
   HTTPResponse* response = _httpMethods->handleRequest(request);
-  std::clock_t end = std::clock();
-  double duration = static_cast<double>(end - start) * 1000 / CLOCKS_PER_SEC;
-  _log.info("VirtualServer: handleRequest duration [" + Utils::to_string(duration) + " ms]");
   return response;
 }
 

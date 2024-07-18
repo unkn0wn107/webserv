@@ -13,23 +13,23 @@
 #ifndef EVENTQUEUE_HPP
 #define EVENTQUEUE_HPP
 
-#include <queue>
 #include <pthread.h>
 #include <sys/epoll.h>
+#include <queue>
 
 class EventQueue {
-public:
-    EventQueue();
-    ~EventQueue();
-    void push(const struct epoll_event& event);
-    bool pop(struct epoll_event& event);
-    bool try_pop(struct epoll_event& event);
-    bool empty() const;
+ public:
+  EventQueue();
+  ~EventQueue();
+  void push(const struct epoll_event& event);
+  bool pop(struct epoll_event& event);
+  bool try_pop(struct epoll_event& event);
+  bool empty();
 
-private:
-    std::queue<struct epoll_event> _queue;
-    mutable pthread_mutex_t _mutex;
-    pthread_cond_t _cond;
+ private:
+  std::queue<struct epoll_event> _queue;
+  pthread_mutex_t                _mutex;
+  pthread_cond_t                 _cond;
 };
 
 #endif

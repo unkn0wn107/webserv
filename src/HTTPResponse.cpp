@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 15:00:37 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/10 13:27:04 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,8 @@
 #include <sys/sendfile.h>
 #include <sys/socket.h>
 #include "Utils.hpp"
-#include "VirtualServer.hpp"
+#include "Config.hpp"
+#include "FileManager.hpp"
 
 const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::CONTINUE, "Continue"),
@@ -165,9 +166,24 @@ std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
     std::make_pair(302, std::string(ERR_PAGE_302)),
     std::make_pair(307, std::string(ERR_PAGE_307)),
     std::make_pair(400, std::string(ERR_PAGE_400)),
+    std::make_pair(401, std::string(ERR_PAGE_401)),
+    std::make_pair(402, std::string(ERR_PAGE_402)),
     std::make_pair(403, std::string(ERR_PAGE_403)),
     std::make_pair(404, std::string(ERR_PAGE_404)),
     std::make_pair(405, std::string(ERR_PAGE_405)),
+    std::make_pair(406, std::string(ERR_PAGE_406)),
+    std::make_pair(407, std::string(ERR_PAGE_407)),
+    std::make_pair(408, std::string(ERR_PAGE_408)),
+    std::make_pair(409, std::string(ERR_PAGE_409)),
+    std::make_pair(410, std::string(ERR_PAGE_410)),
+    std::make_pair(411, std::string(ERR_PAGE_411)),
+    std::make_pair(412, std::string(ERR_PAGE_412)),
+    std::make_pair(413, std::string(ERR_PAGE_413)),
+    std::make_pair(414, std::string(ERR_PAGE_414)),
+    std::make_pair(415, std::string(ERR_PAGE_415)),
+    std::make_pair(416, std::string(ERR_PAGE_416)),
+    std::make_pair(417, std::string(ERR_PAGE_417)),
+    std::make_pair(426, std::string(ERR_PAGE_426)),
     std::make_pair(500, std::string(ERR_PAGE_500)),
     std::make_pair(501, std::string(ERR_PAGE_501)),
     std::make_pair(502, std::string(ERR_PAGE_502)),
@@ -175,13 +191,20 @@ std::pair<int, std::string> HTTPResponse::_defaultErrorPages[] = {
     std::make_pair(504, std::string(ERR_PAGE_504)),
     std::make_pair(505, std::string(ERR_PAGE_505))};
 
-
-HTTPResponse::HTTPResponse()
-    : _log(Logger::getInstance()),
-      _statusCode(HTTPResponse::OK),
-      _config(NULL) {
-  _protocol = "HTTP/1.1";
-}
+HTTPResponse::HTTPResponse(const HTTPResponse& other)
+    : _log(other._log),
+      _statusCode(other._statusCode),
+      _statusMessage(other._statusMessage),
+      _headers(other._headers),
+      _body(other._body),
+      _file(other._file),
+      _protocol(other._protocol),
+      _config(other._config),
+      _errorPages(other._errorPages),
+      _responseBufferSize(other._responseBufferSize),
+      _responseBufferPos(other._responseBufferPos),
+      _responseFilePos(other._responseFilePos),
+      _fileSize(other._fileSize) {}
 
 HTTPResponse::~HTTPResponse() {
   _headers.clear();
@@ -190,6 +213,23 @@ HTTPResponse::~HTTPResponse() {
   _responseBuffer.clear();
 }
 
+HTTPResponse::HTTPResponse(const HTTPResponse& other, const LocationConfig& config)
+    : _log(other._log),
+      _statusCode(other._statusCode),
+      _statusMessage(other._statusMessage),
+      _headers(other._headers),
+      _body(other._body),
+      _file(other._file),
+      _protocol(other._protocol),
+      _config(config),
+      _errorPages(other._errorPages),
+      _responseBufferSize(other._responseBufferSize),
+      _responseBufferPos(other._responseBufferPos),
+      _responseFilePos(other._responseFilePos),
+      _fileSize(other._fileSize) {
+}
+
+// Doesn't carry const config
 HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
   if (this != &other) {
     _log = other._log;
@@ -199,23 +239,12 @@ HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
     _body = other._body;
     _file = other._file;
     _protocol = other._protocol;
-    _config = other._config;
+    _errorPages = other._errorPages;
   }
   return *this;
 }
 
-HTTPResponse::HTTPResponse(const std::string& protocol)
-    : _log(Logger::getInstance()),
-      _statusCode(HTTPResponse::OK),
-      _protocol(protocol),
-      _config(NULL),
-      _responseBufferSize(0),
-      _responseBufferPos(0),
-      _responseFilePos(0),
-      _fileSize(0)
-{}
-
-HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
+HTTPResponse::HTTPResponse(int statusCode, const LocationConfig& config)
     : _log(Logger::getInstance()),
       _statusCode(statusCode),
       _statusMessage(getStatusMessage(statusCode)),
@@ -224,6 +253,7 @@ HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
       _file(""),
       _protocol("HTTP/1.1"),
       _config(config),
+      _errorPages(config.error_pages),
       _responseBufferSize(0),
       _responseBufferPos(0),
       _responseFilePos(0),
@@ -232,39 +262,16 @@ HTTPResponse::HTTPResponse(int statusCode, LocationConfig* config)
     throw std::invalid_argument("Invalid status code");
   }
   if (statusCode >= 300 && statusCode < 400)
-    addHeader("Location", _config->returnUrl);
-}
-
-HTTPResponse::HTTPResponse(int statusCode)
-    : _log(Logger::getInstance()),
-      _statusCode(statusCode),
-      _statusMessage(getStatusMessage(statusCode)),
-      _headers(std::map<std::string, std::string>()),
-      _body(""),
-      _file(""),
-      _protocol("HTTP/1.1"),
-      _config(NULL),
-      _responseBufferSize(0),
-      _responseBufferPos(0),
-      _responseFilePos(0),
-      _fileSize(0) {
-  if (statusCode != 200 && statusCode != 201) {
-    throw std::invalid_argument("Invalid status code : " +
-                                Utils::to_string(statusCode));
-  }
+    addHeader("Location", config.returnUrl);
 }
 
 void HTTPResponse::_errorResponse() {
-  if (_config) {
-    std::map<int, std::string>::const_iterator it = _config->error_pages.find(_statusCode);
-    if (_statusCode >= 300) {
-    if (it != _config->error_pages.end()) {
-      _file = _config->root + it->second;
-      _log.info("Error page: " + _file);
-    } else {
-      _log.info("Default error page");
-      _body = HTTPResponse::defaultErrorPage(_statusCode);
-    }
+  std::map<int, std::string>::const_iterator it = _errorPages.find(_statusCode);
+
+  if (it != _errorPages.end()) {
+    _file = _config.root + it->second;
+  } else {
+    _body = HTTPResponse::defaultErrorPage(_statusCode);
   }
   addHeader("Content-Type", "text/html");
   if (!_file.empty() || !_body.empty()) {
@@ -272,17 +279,18 @@ void HTTPResponse::_errorResponse() {
               _file.empty()
                   ? Utils::to_string(_body.length())
                   : Utils::to_string(FileManager::getFileSize(_file)));
-    }
   }
+  _statusMessage = getStatusMessage(_statusCode);
 }
 
 void HTTPResponse::buildResponse() {
-  _log.info("HTTPResponse: buildResponse status: " + Utils::to_string(_statusCode));
-  _errorResponse();
+  if (_statusCode >= 300)
+    _errorResponse();
   if (_responseBuffer.empty()) {
     _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
                       _statusMessage + "\r\n";
-    for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
+    for (std::map<std::string, std::string>::const_iterator it =
+             _headers.begin();
          it != _headers.end(); ++it) {
       _responseBuffer += it->first + ": " + it->second + "\r\n";
     }
@@ -306,46 +314,50 @@ std::string HTTPResponse::defaultErrorPage(int status) {
 
 ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   ssize_t bytesSent;
-  size_t remaining = _responseBuffer.size() - _responseBufferPos;
+  size_t  remaining = _responseBuffer.size() - _responseBufferPos;
 
   if (sndbuf > remaining) {
     sndbuf = remaining;
   }
 
-  bytesSent = send(socket, _responseBuffer.c_str() + _responseBufferPos, sndbuf, 0);
+  bytesSent =
+      send(socket, _responseBuffer.c_str() + _responseBufferPos, sndbuf, 0);
   if (bytesSent == -1) {
     usleep(1000);
     return -1;
   }
-  _log.info("HTTPResponse: _send bytesSent: " + Utils::to_string(bytesSent) +
-            " remaining: " + Utils::to_string(remaining) +
-            " _responseBufferPos: " + Utils::to_string(_responseBufferPos) +
-            " _responseBufferSize: " + Utils::to_string(_responseBufferSize));
   _responseBufferPos += bytesSent;
   return _responseBufferPos;
 }
 
-void HTTPResponse::_sendfile(int clientSocket, FILE* file, size_t sndbuf) {
+ssize_t HTTPResponse::_sendfile(int clientSocket, FILE* file, ssize_t sndbuf) {
   ssize_t bytesSent;
   bytesSent = sendfile(clientSocket, fileno(file), &_responseFilePos, sndbuf);
-  if (bytesSent == -1)
-    usleep(1000);
-  _log.info("HTTPResponse: _sendfile bytesSent: " + Utils::to_string(bytesSent) +
-            " _responseFilePos: " + Utils::to_string(_responseFilePos));
+  if (bytesSent == -1) {
+    _log.error("SENDFILE: failed sendfile, client probably closed the connection");
+    return -1;
+  }
+  return bytesSent;
 }
 
-int HTTPResponse::sendResponse(int clientSocket, size_t sndbuf) {
+int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
   buildResponse();
   if (_send(clientSocket, sndbuf) == -1)
     return -1;
   if (_responseBufferPos == _responseBufferSize && _file.empty())
     return 1;
+  if (_file.empty())
+    return 0;
   _toSend = fopen(_file.c_str(), "r");
-  if (!_toSend){
+  if (!_toSend) {
     sendResponse(500, clientSocket);
-    throw Exception("(fopen) Error opening file" + std::string(strerror(errno)));
+    throw Exception("(fopen) Error opening file : " + _file + " : " +
+                    std::string(strerror(errno)));
   }
-  _sendfile(clientSocket, _toSend, sndbuf);
+  if (_sendfile(clientSocket, _toSend, sndbuf) == -1) {
+    fclose(_toSend);
+    return -1;
+  }
   fclose(_toSend);
   if (static_cast<size_t>(_responseFilePos) == _fileSize)
     return 1;

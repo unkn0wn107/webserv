@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/27 14:30:39 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/18 13:46:46 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,34 +20,45 @@
 #include <algorithm>
 #include <cctype>
 
-#include "CacheHandler.hpp"
+#include <sys/epoll.h>
+#include "Common.hpp"
 #include "Exception.hpp"
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
-#include "Common.hpp"
 #include "Logger.hpp"
+#include "EventData.hpp"
+
+class CacheHandler;
 
 #define CGI_TIMEOUT_SEC 10
-// enum CGIStatus { READING, EXECUTING, SENDING, CLOSED };
 
+struct EventData;
 
 class CGIHandler {
-  public:
-    CGIHandler(HTTPRequest& request, HTTPResponse& response);
-    ~CGIHandler();
+ public:
+  CGIHandler(HTTPRequest&          request,
+             HTTPResponse&         response,
+             int                   epollSocket,
+             const LocationConfig& location);
+  ~CGIHandler();
+
+  int      getCgifd();
+  CGIState getCgiState();
+
   /**
    * Check if url has an executable file extension.
    * @param request The HTTP request object.
    * @return true if the URL ends with a registered CGI script extension.
    */
-  static bool isScript(const HTTPRequest& request);
+  static bool isScript(const HTTPRequest&    request,
+                       const LocationConfig& location);
 
   /**
    * Handles the CGI request and generates an HTTP response.
    * @return HTTPResponse object containing the response from the CGI script.
    */
-  int handleCGIRequest();
+  ConnectionStatus handleCGIRequest();
 
   class NoRuntimeError : public Exception {
    public:
@@ -94,6 +105,11 @@ class CGIHandler {
     PipeFailure(const std::string& message) : Exception(message) {}
   };
 
+  class MutexFailure : public Exception {
+   public:
+    MutexFailure(const std::string& message) : Exception(message) {}
+  };
+
   class ForkFailure : public Exception {
    public:
     ForkFailure(const std::string& message) : Exception(message) {}
@@ -104,22 +120,28 @@ class CGIHandler {
     TimeoutException(const std::string& message) : Exception(message) {}
   };
 
-
  private:
   static Logger&       _log;
-  static CacheHandler& _cacheHandler;
+  CacheHandler& _cacheHandler;
 
-  HTTPRequest&  _request;
-  HTTPResponse& _response;
-  LocationConfig* _location;
-  std::string   _processOutput;
-  std::string   _runtime;
-  std::string   _root;
-  std::string   _index;
-  bool          _cgi;
+  CGIState _state;
 
-  std::vector<char*> _argv;
-  std::vector<char*> _envp;
+  int                   _epollSocket;
+  EventData*            _eventData;
+  HTTPRequest&          _request;
+  HTTPResponse&         _response;
+  const LocationConfig& _location;
+  std::time_t           _runStartTime;
+  std::string           _processOutput;
+  size_t                _processOutputSize;
+  std::string           _runtime;
+  std::string           _root;
+  std::string           _index;
+  bool                  _cgi;
+  bool                  _done;
+
+  std::vector<std::string> _argv;
+  std::vector<std::string> _envp;
 
   int   _inpipefd[2];
   int   _outpipefd[2];
@@ -133,7 +155,8 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return String representing the runtime to be used.
    */
-  static const   std::string _identifyRuntime(const HTTPRequest& request);
+  static const std::string _identifyRuntime(const HTTPRequest&    request,
+                                            const LocationConfig& location);
 
   /**
    * Checks if the processing of the request is possible.
@@ -149,7 +172,9 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return Array of environment variable strings.
    */
-  static std::vector<char*> _getEnvp(const HTTPRequest& request);
+  static std::vector<std::string> _buildScriptEnvironment(
+      const HTTPRequest&    request,
+      const LocationConfig& location);
 
   /**
    * Generates a list of arguments for the CGI script based on the HTTP request.
@@ -157,21 +182,38 @@ class CGIHandler {
    * @return A vector of strings, each representing an argument for the CGI
    * script.
    */
-  static std::vector<char*> _getArgv(const HTTPRequest& request);
+  static std::vector<std::string> _buildScriptArguments(
+      const HTTPRequest&    request,
+      const LocationConfig& location);
 
   /**
    * Executes the parent process logic for CGI script execution.
-   * @param pipefd Array holding file descriptors for the pipe.
-   * @param pid The process ID of the forked process.
-   * @param argv A vector of strings, each representing an argument for the CGI
-   * script.
-   * @param envp A vector of strings, each representing an environment variable
-   * for the CGI script.
-   * @return HTTPResponse object containing the response from the CGI script.
    */
-  int   _executeParentProcess();
-  int   _processRequest();
-  void  _runScript();
+  void _executeParentProcess();
+
+  /**
+   * Processes the output from the CGI script after execution.
+   */
+  void _postProcessOutput();
+
+  /**
+   * Parses the headers from the CGI script output.
+   * @param headerPart The header part of the CGI script output.
+   * @return A map containing the parsed headers.
+   */
+  std::map<std::string, std::string> _parseOutputHeaders(
+      const std::string& headerPart);
+
+  /**
+   * Processes the CGI request.
+   * @return Status code indicating the result of the request processing.
+   */
+  int _processRequest();
+
+  /**
+   * Runs the CGI script.
+   */
+  void _runScript();
 };
 
 #endif

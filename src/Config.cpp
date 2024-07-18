@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 18:58:00 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 00:13:39 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/09 16:09:36 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,22 @@ LocationConfig::LocationConfig() {
   upload = false;
   cgi = false;
   autoindex = false;
+}
+
+LocationConfig& LocationConfig::operator=(const LocationConfig& other) {
+  location = other.location;
+  client_max_body_size = other.client_max_body_size;
+  root = other.root;
+  index = other.index;
+  upload = other.upload;
+  delete_ = other.delete_;
+  cgi = other.cgi;
+  autoindex = other.autoindex;
+  error_pages = other.error_pages;
+  allowed_methods = other.allowed_methods;
+  returnCode = other.returnCode;
+  returnUrl = other.returnUrl;
+  return *this;
 }
 
 LocationConfig::~LocationConfig() {

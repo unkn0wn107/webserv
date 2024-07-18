@@ -122,6 +122,18 @@ valgrind:
 	docker compose exec -it webserv-dev make debug
 	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --track-origins=yes ./webserv"
 
+valgrind-full:
+	export BUILD_TYPE=debug
+	docker compose up --build -d webserv-dev
+	docker compose exec -it webserv-dev make debug
+	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./webserv"
+
+helgrind:
+	export BUILD_TYPE=debug
+	docker compose up --build -d webserv-dev
+	docker compose exec -it webserv-dev make debug
+	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --tool=helgrind ./webserv"
+
 logs:
 	docker compose logs -f
 

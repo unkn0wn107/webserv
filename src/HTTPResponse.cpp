@@ -14,8 +14,8 @@
 #include <sys/sendfile.h>
 #include <sys/socket.h>
 #include "Utils.hpp"
-#include "VirtualServer.hpp"
 #include "Config.hpp"
+#include "FileManager.hpp"
 
 const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::CONTINUE, "Continue"),

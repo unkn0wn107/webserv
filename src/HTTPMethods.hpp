@@ -30,10 +30,9 @@ class HTTPMethods {
   HTTPResponse* _handleGetRequest(HTTPRequest& request);
   HTTPResponse* _handlePostRequest(HTTPRequest& request);
   HTTPResponse* _handleDeleteRequest(HTTPRequest& request);
-  HTTPResponse* _autoindex(const std::string&    path,
-                           const LocationConfig& location);
+  HTTPResponse* _autoindex(const std::string& path, const LocationConfig& location);
   std::string   _generateDirectoryListing(const std::string& path);
-  std::string _getPath(const std::string& uri, const LocationConfig& location);
+  std::string   _getPath(const std::string& uri, const LocationConfig& location);
 
  public:
   HTTPMethods(VirtualServer& server);

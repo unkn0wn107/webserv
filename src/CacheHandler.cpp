@@ -24,8 +24,7 @@ CacheHandler::CacheEntry::CacheEntry(const CacheEntry& other)
       status(other.status),
       waitingEventsData(other.waitingEventsData) {}
 
-CacheHandler::CacheEntry& CacheHandler::CacheEntry::operator=(
-    const CacheEntry& other) {
+CacheHandler::CacheEntry& CacheHandler::CacheEntry::operator=(const CacheEntry& other) {
   if (this != &other) {
     delete response;
     response = other.response ? new HTTPResponse(*other.response) : NULL;
@@ -63,7 +62,8 @@ CacheHandler::~CacheHandler() {
   pthread_mutex_destroy(&_mutex);
 }
 
-CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key, EventData *eventData) {
+CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key,
+                                                     EventData*         eventData) {
   pthread_mutex_lock(&_mutex);
   CacheMap::iterator it = _cache.find(key);
 
@@ -100,8 +100,7 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key, Eve
   return entry;
 }
 
-void CacheHandler::storeResponse(const std::string& key,
-                                 const HTTPResponse& response) {
+void CacheHandler::storeResponse(const std::string& key, const HTTPResponse& response) {
   pthread_mutex_lock(&_mutex);
   CacheEntry& entry = _cache[key];
   if (entry.response)

@@ -47,8 +47,7 @@ std::string Utils::trim(const std::string& str) {
   return str.substr(start, end - start + 1);
 }
 
-size_t Utils::calculateByteLength(const std::string& input,
-                                  const std::string& charset) {
+size_t Utils::calculateByteLength(const std::string& input, const std::string& charset) {
   if (charset == "UTF-8") {
     std::size_t length = 0;
     for (std::size_t i = 0; i < input.length(); ++i) {
@@ -71,8 +70,7 @@ size_t Utils::calculateByteLength(const std::string& input,
     return input.size();  // These encodings are usually 1 byte per character
   }
   // Add other encodings if necessary
-  return input
-      .size();  // Returns the default length if the encoding is not handled
+  return input.size();  // Returns the default length if the encoding is not handled
 }
 
 template size_t       Utils::stoi<size_t>(const std::string& str);

@@ -11,11 +11,10 @@
 /* ************************************************************************** */
 
 #include "HTTPRequest.hpp"
-#include "Utils.hpp"
 #include "Common.hpp"
+#include "Utils.hpp"
 
-const std::string HTTPRequest::supportedMethods[4] = {"GET", "HEAD", "DELETE",
-                                                      "POST"};
+const std::string HTTPRequest::supportedMethods[4] = {"GET", "HEAD", "DELETE", "POST"};
 
 HTTPRequest::HTTPRequest(std::string rawRequest)
     : _rawRequest(rawRequest), _method(""), _uri(""), _body("") {
@@ -87,8 +86,7 @@ void HTTPRequest::setURI(const std::string& uri) {
   _uri = uri;
 }
 
-void HTTPRequest::setHeaders(
-    const std::map<std::string, std::string>& headers) {
+void HTTPRequest::setHeaders(const std::map<std::string, std::string>& headers) {
   _headers = headers;
 }
 

@@ -68,20 +68,19 @@ class Worker {
   void                        _acceptNewConnection(int fd);
   std::vector<VirtualServer*> _setupAssociatedVirtualServers(
       const ListenConfig& listenConfig);
-  void                        _launchEventProcessing(
-      EventData* eventData, struct epoll_event& event);
+  void _launchEventProcessing(EventData* eventData, struct epoll_event& event);
 
-  Server&                             _server;
-  EventQueue&                         _events;
-  Thread                              _thread;
-  std::map<int, EventData*>           _eventsData;
-  const Config&                       _config;
-  Logger&                             _log;
-  int                                 _epollSocket;
-  std::map<int, ListenConfig>&        _listenSockets;
-  int                                 _load;
-  bool                                _shouldStop;
-  pid_t                               _threadId;
+  Server&                      _server;
+  EventQueue&                  _events;
+  Thread                       _thread;
+  std::map<int, EventData*>    _eventsData;
+  const Config&                _config;
+  Logger&                      _log;
+  int                          _epollSocket;
+  std::map<int, ListenConfig>& _listenSockets;
+  int                          _load;
+  bool                         _shouldStop;
+  pid_t                        _threadId;
 
   Worker(const Worker&);
   Worker& operator=(const Worker&);

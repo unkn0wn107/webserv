@@ -12,12 +12,12 @@
 
 #include <climits>
 
+#include "CacheHandler.hpp"
 #include "Common.hpp"
 #include "ConfigManager.hpp"
 #include "EventQueue.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
-#include "CacheHandler.hpp"
 
 Server* Server::_instance = NULL;
 int     Server::_callCount = 1;
@@ -72,8 +72,7 @@ Server& Server::getInstance() {
 void Server::workerFinished() {
   pthread_mutex_lock(&_mutex);
   _activeWorkers--;
-  _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) +
-            ")");
+  _log.info("SERVER: Worker finished (" + Utils::to_string(_activeWorkers) + ")");
   if (_activeWorkers == 0) {
     _running = false;
     _log.info("SERVER: All workers finished");
@@ -89,13 +88,11 @@ void Server::start() {
       pthread_mutex_lock(&_mutex);
       _activeWorkers++;
       pthread_mutex_unlock(&_mutex);
-    }
-    catch (...) {
+    } catch (...) {
       stop(SIGINT);
     }
   }
-  _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) +
-            ")");
+  _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) + ")");
   struct epoll_event events[MAX_EVENTS];
   while (_running) {
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
@@ -128,8 +125,7 @@ void Server::stop(int signum) {
 
 void Server::_setupWorkers() {
   for (int i = 0; i < _config.worker_processes; i++) {
-    _workers.push_back(
-        new Worker(*this, _epollSocket, _listenSockets, _events));
+    _workers.push_back(new Worker(*this, _epollSocket, _listenSockets, _events));
   }
 }
 
@@ -149,8 +145,7 @@ void Server::_setupServerSockets() {
     const ListenConfig& listenConfig = *it;
     int                 sock = socket(AF_INET6, SOCK_STREAM, 0);
     if (sock < 0) {
-      _log.error("(" + listenConfig.address + ":" +
-                 Utils::to_string(listenConfig.port) +
+      _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) +
                  ") Failed to create socket");
       continue;
     }
@@ -163,8 +158,7 @@ void Server::_setupServerSockets() {
     if (listenConfig.address.empty() || listenConfig.address == "*") {
       address.sin6_addr = in6addr_any;
     } else {
-      if (inet_pton(AF_INET6, listenConfig.address.c_str(),
-                    &address.sin6_addr) <= 0) {
+      if (inet_pton(AF_INET6, listenConfig.address.c_str(), &address.sin6_addr) <= 0) {
         _log.error("(" + listenConfig.address + ":" +
                    Utils::to_string(listenConfig.port) + ") Invalid address");
         close(sock);
@@ -173,10 +167,9 @@ void Server::_setupServerSockets() {
     }
 
     int opt = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
-                   sizeof(opt)) < 0) {
-      _log.error("(" + listenConfig.address + ":" +
-                 Utils::to_string(listenConfig.port) +
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) <
+        0) {
+      _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) +
                  ") Failed to set socket options");
       close(sock);
       continue;
@@ -184,11 +177,9 @@ void Server::_setupServerSockets() {
 
     if (listenConfig.ipv6only) {
       int ipv6only = 1;
-      if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only,
-                     sizeof(ipv6only)) < 0) {
+      if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) < 0) {
         _log.error("(" + listenConfig.address + ":" +
-                   Utils::to_string(listenConfig.port) +
-                   ") Failed to set IPV6_V6ONLY");
+                   Utils::to_string(listenConfig.port) + ") Failed to set IPV6_V6ONLY");
         close(sock);
         continue;
       }
@@ -196,8 +187,7 @@ void Server::_setupServerSockets() {
 
     if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &listenConfig.rcvbuf,
                    sizeof(listenConfig.rcvbuf)) < 0) {
-      _log.error("(" + listenConfig.address + ":" +
-                 Utils::to_string(listenConfig.port) +
+      _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) +
                  ") Failed to set SO_REUSEPORT");
       close(sock);
       continue;
@@ -205,32 +195,28 @@ void Server::_setupServerSockets() {
 
     if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &listenConfig.sndbuf,
                    sizeof(listenConfig.sndbuf)) < 0) {
-      _log.error("(" + listenConfig.address + ":" +
-                 Utils::to_string(listenConfig.port) +
+      _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) +
                  ") Failed to set SO_SNDBUF");
       close(sock);
       continue;
     }
 
     if (bind(sock, (struct sockaddr*)&address, sizeof(address)) < 0) {
-      _log.error("(" + listenConfig.address + ":" +
-                 Utils::to_string(listenConfig.port) +
+      _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) +
                  ") Failed to bind socket");
       close(sock);
       continue;
     }
 
     if (listen(sock, listenConfig.backlog) < 0) {
-      _log.error("(" + listenConfig.address + ":" +
-                 Utils::to_string(listenConfig.port) +
+      _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) +
                  ") Failed to listen on socket");
       close(sock);
       continue;
     }
 
     if (set_non_blocking(sock) < 0) {
-      _log.error("(" + listenConfig.address + ":" +
-                 Utils::to_string(listenConfig.port) +
+      _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) +
                  ") Failed to set socket to non-blocking");
       close(sock);
       continue;

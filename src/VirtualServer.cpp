@@ -27,8 +27,7 @@ VirtualServer::VirtualServer(const ServerConfig& serverConfig)
 }
 
 bool VirtualServer::_hasDefaultListenConfig() {
-  for (std::vector<ListenConfig>::const_iterator it =
-           _serverConfig.listen.begin();
+  for (std::vector<ListenConfig>::const_iterator it = _serverConfig.listen.begin();
        it != _serverConfig.listen.end(); ++it) {
     if (it->default_server) {
       return true;
@@ -51,8 +50,7 @@ bool VirtualServer::isHostMatching(const std::string& host) const {
   return false;
 }
 
-const LocationConfig& VirtualServer::getLocationConfig(
-    const std::string& uri) const {
+const LocationConfig& VirtualServer::getLocationConfig(const std::string& uri) const {
   std::map<std::string, LocationConfig>::const_iterator bestMatch =
       _serverConfig.locations.find("/");
   size_t longestMatchLength = 0;
@@ -89,8 +87,7 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
       return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);
     }
 
-    if (std::find(location.allowed_methods.begin(),
-                  location.allowed_methods.end(),
+    if (std::find(location.allowed_methods.begin(), location.allowed_methods.end(),
                   method) == location.allowed_methods.end()) {
       _log.warning("CheckRequest: Method not allowed for this location");
       return new HTTPResponse(HTTPResponse::METHOD_NOT_ALLOWED, location);
@@ -108,11 +105,9 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
       }
 
       if (contentLength != -1) {
-        if (static_cast<size_t>(contentLength) >
-            location.client_max_body_size) {
+        if (static_cast<size_t>(contentLength) > location.client_max_body_size) {
           _log.warning("CheckRequest: Content length too big");
-          return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE,
-                                  location);
+          return new HTTPResponse(HTTPResponse::REQUEST_ENTITY_TOO_LARGE, location);
         }
         if (static_cast<size_t>(contentLength) != body.length()) {
           _log.warning("CheckRequest: Content length mismatch");
@@ -134,12 +129,10 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
   }
 }
 
-std::map<int, std::string> VirtualServer::_getErrorPages(
-    const std::string& uri) {
+std::map<int, std::string> VirtualServer::_getErrorPages(const std::string& uri) {
   std::map<int, std::string> errorPages;
   const LocationConfig&      location = getLocationConfig(uri);
-  for (std::map<int, std::string>::const_iterator it =
-           location.error_pages.begin();
+  for (std::map<int, std::string>::const_iterator it = location.error_pages.begin();
        it != location.error_pages.end(); ++it) {
     errorPages[it->first] = it->second;
   }

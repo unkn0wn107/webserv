@@ -13,9 +13,9 @@
 #include "HTTPResponse.hpp"
 #include <sys/sendfile.h>
 #include <sys/socket.h>
-#include "Utils.hpp"
 #include "Config.hpp"
 #include "FileManager.hpp"
+#include "Utils.hpp"
 
 const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::CONTINUE, "Continue"),
@@ -52,17 +52,14 @@ const std::pair<int, std::string> HTTPResponse::STATUS_CODE_MESSAGES[] = {
     std::make_pair(HTTPResponse::GONE, "Gone"),
     std::make_pair(HTTPResponse::LENGTH_REQUIRED, "Length Required"),
     std::make_pair(HTTPResponse::PRECONDITION_FAILED, "Precondition Failed"),
-    std::make_pair(HTTPResponse::REQUEST_ENTITY_TOO_LARGE,
-                   "Request Entity Too Large"),
+    std::make_pair(HTTPResponse::REQUEST_ENTITY_TOO_LARGE, "Request Entity Too Large"),
     std::make_pair(HTTPResponse::REQUEST_URI_TOO_LONG, "Request URI Too Long"),
-    std::make_pair(HTTPResponse::UNSUPPORTED_MEDIA_TYPE,
-                   "Unsupported Media Type"),
+    std::make_pair(HTTPResponse::UNSUPPORTED_MEDIA_TYPE, "Unsupported Media Type"),
     std::make_pair(HTTPResponse::REQUESTED_RANGE_NOT_SATISFIABLE,
                    "Requested Range Not Satisfiable"),
     std::make_pair(HTTPResponse::EXPECTATION_FAILED, "Expectation Failed"),
     // 500
-    std::make_pair(HTTPResponse::INTERNAL_SERVER_ERROR,
-                   "Internal Server Error"),
+    std::make_pair(HTTPResponse::INTERNAL_SERVER_ERROR, "Internal Server Error"),
     std::make_pair(HTTPResponse::NOT_IMPLEMENTED, "Not Implemented"),
     std::make_pair(HTTPResponse::BAD_GATEWAY, "Bad Gateway"),
     std::make_pair(HTTPResponse::SERVICE_UNAVAILABLE, "Service Unavailable"),
@@ -91,10 +88,9 @@ const std::pair<std::string, std::string> HTTPResponse::CONTENT_TYPES[] = {
     std::make_pair("css", "text/css"),
     std::make_pair("csv", "text/csv"),
     std::make_pair("doc", "application/msword"),
-    std::make_pair(
-        "docx",
-        "application/"
-        "vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    std::make_pair("docx",
+                   "application/"
+                   "vnd.openxmlformats-officedocument.wordprocessingml.document"),
     std::make_pair("eot", "application/vnd.ms-fontobject"),
     std::make_pair("epub", "application/epub+zip"),
     std::make_pair("gz", "application/gzip"),
@@ -128,10 +124,9 @@ const std::pair<std::string, std::string> HTTPResponse::CONTENT_TYPES[] = {
     std::make_pair("pdf", "application/pdf"),
     std::make_pair("php", "application/x-httpd-php"),
     std::make_pair("ppt", "application/vnd.ms-powerpoint"),
-    std::make_pair(
-        "pptx",
-        "application/"
-        "vnd.openxmlformats-officedocument.presentationml.presentation"),
+    std::make_pair("pptx",
+                   "application/"
+                   "vnd.openxmlformats-officedocument.presentationml.presentation"),
     std::make_pair("rar", "application/vnd.rar"),
     std::make_pair("rtf", "application/rtf"),
     std::make_pair("sh", "application/x-sh"),
@@ -151,9 +146,8 @@ const std::pair<std::string, std::string> HTTPResponse::CONTENT_TYPES[] = {
     std::make_pair("woff2", "font/woff2"),
     std::make_pair("xhtml", "application/xhtml+xml"),
     std::make_pair("xls", "application/vnd.ms-excel"),
-    std::make_pair(
-        "xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    std::make_pair("xlsx",
+                   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
     std::make_pair("xml", "application/xml"),
     std::make_pair("xul", "application/vnd.mozilla.xul+xml"),
     std::make_pair("zip", "application/zip"),
@@ -226,8 +220,7 @@ HTTPResponse::HTTPResponse(const HTTPResponse& other, const LocationConfig& conf
       _responseBufferSize(other._responseBufferSize),
       _responseBufferPos(other._responseBufferPos),
       _responseFilePos(other._responseFilePos),
-      _fileSize(other._fileSize) {
-}
+      _fileSize(other._fileSize) {}
 
 // Doesn't carry const config
 HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
@@ -275,10 +268,9 @@ void HTTPResponse::_errorResponse() {
   }
   addHeader("Content-Type", "text/html");
   if (!_file.empty() || !_body.empty()) {
-    addHeader("Content-Length",
-              _file.empty()
-                  ? Utils::to_string(_body.length())
-                  : Utils::to_string(FileManager::getFileSize(_file)));
+    addHeader("Content-Length", _file.empty()
+                                    ? Utils::to_string(_body.length())
+                                    : Utils::to_string(FileManager::getFileSize(_file)));
   }
   _statusMessage = getStatusMessage(_statusCode);
 }
@@ -287,10 +279,9 @@ void HTTPResponse::buildResponse() {
   if (_statusCode >= 300)
     _errorResponse();
   if (_responseBuffer.empty()) {
-    _responseBuffer = "HTTP/1.1 " + Utils::to_string(_statusCode) + " " +
-                      _statusMessage + "\r\n";
-    for (std::map<std::string, std::string>::const_iterator it =
-             _headers.begin();
+    _responseBuffer =
+        "HTTP/1.1 " + Utils::to_string(_statusCode) + " " + _statusMessage + "\r\n";
+    for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
          it != _headers.end(); ++it) {
       _responseBuffer += it->first + ": " + it->second + "\r\n";
     }
@@ -320,8 +311,7 @@ ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
     sndbuf = remaining;
   }
 
-  bytesSent =
-      send(socket, _responseBuffer.c_str() + _responseBufferPos, sndbuf, 0);
+  bytesSent = send(socket, _responseBuffer.c_str() + _responseBufferPos, sndbuf, 0);
   if (bytesSent == -1) {
     usleep(1000);
     return -1;
@@ -377,10 +367,8 @@ int HTTPResponse::sendResponse(int statusCode, int clientSocket) {
   return 0;
 }
 
-std::string HTTPResponse::getExtensionFromContentType(
-    const std::string& contentType) {
-  for (size_t i = 0; i < sizeof(CONTENT_TYPES) / sizeof(CONTENT_TYPES[0]);
-       ++i) {
+std::string HTTPResponse::getExtensionFromContentType(const std::string& contentType) {
+  for (size_t i = 0; i < sizeof(CONTENT_TYPES) / sizeof(CONTENT_TYPES[0]); ++i) {
     if (CONTENT_TYPES[i].second == contentType) {
       return CONTENT_TYPES[i].first;
     }
@@ -390,8 +378,7 @@ std::string HTTPResponse::getExtensionFromContentType(
 
 std::string HTTPResponse::getContentType(const std::string& path) {
   std::string  extension = path.substr(path.find_last_of('.') + 1);
-  const size_t numContentTypes =
-      sizeof(CONTENT_TYPES) / sizeof(CONTENT_TYPES[0]);
+  const size_t numContentTypes = sizeof(CONTENT_TYPES) / sizeof(CONTENT_TYPES[0]);
 
   for (size_t i = 0; i < numContentTypes; ++i) {
     if (CONTENT_TYPES[i].first == extension) {

@@ -22,12 +22,12 @@
 
 #include <sys/epoll.h>
 #include "Common.hpp"
+#include "EventData.hpp"
 #include "Exception.hpp"
 #include "FileManager.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
-#include "EventData.hpp"
 
 class CacheHandler;
 
@@ -51,8 +51,7 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return true if the URL ends with a registered CGI script extension.
    */
-  static bool isScript(const HTTPRequest&    request,
-                       const LocationConfig& location);
+  static bool isScript(const HTTPRequest& request, const LocationConfig& location);
 
   /**
    * Handles the CGI request and generates an HTTP response.
@@ -121,8 +120,8 @@ class CGIHandler {
   };
 
  private:
-  static Logger&       _log;
-  CacheHandler& _cacheHandler;
+  static Logger& _log;
+  CacheHandler&  _cacheHandler;
 
   CGIState _state;
 
@@ -172,9 +171,8 @@ class CGIHandler {
    * @param request The HTTP request object.
    * @return Array of environment variable strings.
    */
-  static std::vector<std::string> _buildScriptEnvironment(
-      const HTTPRequest&    request,
-      const LocationConfig& location);
+  static std::vector<std::string> _buildScriptEnvironment(const HTTPRequest&    request,
+                                                          const LocationConfig& location);
 
   /**
    * Generates a list of arguments for the CGI script based on the HTTP request.
@@ -182,9 +180,8 @@ class CGIHandler {
    * @return A vector of strings, each representing an argument for the CGI
    * script.
    */
-  static std::vector<std::string> _buildScriptArguments(
-      const HTTPRequest&    request,
-      const LocationConfig& location);
+  static std::vector<std::string> _buildScriptArguments(const HTTPRequest&    request,
+                                                        const LocationConfig& location);
 
   /**
    * Executes the parent process logic for CGI script execution.
@@ -201,8 +198,7 @@ class CGIHandler {
    * @param headerPart The header part of the CGI script output.
    * @return A map containing the parsed headers.
    */
-  std::map<std::string, std::string> _parseOutputHeaders(
-      const std::string& headerPart);
+  std::map<std::string, std::string> _parseOutputHeaders(const std::string& headerPart);
 
   /**
    * Processes the CGI request.

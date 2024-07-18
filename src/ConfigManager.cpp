@@ -47,41 +47,33 @@ const std::string ConfigManager::getFilePath() const {
 
 void ConfigManager::loadConfig(const std::string& filepath) {
   ConfigManager::_filePath = filepath;
-  ConfigManager::getInstance()._config =
-      ConfigParser::parseConfigFile(filepath);
-  ConfigManager::getInstance()._log.setConfig(
-      ConfigManager::getInstance()._config);
+  ConfigManager::getInstance()._config = ConfigParser::parseConfigFile(filepath);
+  ConfigManager::getInstance()._log.setConfig(ConfigManager::getInstance()._config);
 }
 
 void ConfigManager::printConfig() {
   const Config& config = getInstance()._config;
   std::cout << "Unique Listen Configs:" << std::endl;
-  for (std::set<ListenConfig>::const_iterator it =
-           config.unique_listen_configs.begin();
+  for (std::set<ListenConfig>::const_iterator it = config.unique_listen_configs.begin();
        it != config.unique_listen_configs.end(); ++it) {
     const ListenConfig& listen = *it;
     std::cout << "\tAddress: " << listen.address << " Port: " << listen.port
               << " Default Server: " << (listen.default_server ? "Yes" : "No")
               << " Backlog: " << listen.backlog << " Rcvbuf: " << listen.rcvbuf
               << " Sndbuf: " << listen.sndbuf
-              << " IPv6 Only: " << (listen.ipv6only ? "Yes" : "No")
-              << std::endl;
+              << " IPv6 Only: " << (listen.ipv6only ? "Yes" : "No") << std::endl;
   }
   for (std::vector<ServerConfig>::const_iterator it = config.servers.begin();
        it != config.servers.end(); ++it) {
     const ServerConfig& server = *it;
-    std::cout << std::endl
-              << "===================" << std::endl
-              << "Server Names: ";
-    for (std::vector<std::string>::const_iterator nameIt =
-             server.server_names.begin();
+    std::cout << std::endl << "===================" << std::endl << "Server Names: ";
+    for (std::vector<std::string>::const_iterator nameIt = server.server_names.begin();
          nameIt != server.server_names.end(); ++nameIt) {
       std::cout << *nameIt << " ";
     }
     std::cout << std::endl;
     std::cout << "Root: " << server.root << std::endl;
-    std::cout << "Client Max Body Size: " << server.client_max_body_size
-              << std::endl;
+    std::cout << "Client Max Body Size: " << server.client_max_body_size << std::endl;
     std::cout << "Routes:" << std::endl;
     _printLocationsConfig(server.locations);
   }
@@ -89,22 +81,20 @@ void ConfigManager::printConfig() {
 
 void ConfigManager::_printLocationsConfig(
     const std::map<std::string, LocationConfig> locations) {
-  for (std::map<std::string, LocationConfig>::const_iterator it =
-           locations.begin();
+  for (std::map<std::string, LocationConfig>::const_iterator it = locations.begin();
        it != locations.end(); ++it) {
     const LocationConfig& locationConfig = it->second;
     std::cout << std::endl << it->first << " --------------------" << std::endl;
     std::cout << "\tDirectory: " << locationConfig.root << std::endl;
     std::cout << "\tIndex File: " << locationConfig.index << std::endl;
     std::cout << "\tRoot Directory: " << locationConfig.root << std::endl;
-    std::cout << "\tClient Max Body Size: "
-              << locationConfig.client_max_body_size << std::endl;
+    std::cout << "\tClient Max Body Size: " << locationConfig.client_max_body_size
+              << std::endl;
     std::cout << "\tReturn code: " << locationConfig.returnCode << std::endl;
     std::cout << "\tReturn url: " << locationConfig.returnUrl << std::endl;
-    std::cout << "\tDirectory Listing: "
-              << (locationConfig.autoindex ? "on" : "off") << std::endl;
-    std::cout << "\tUpload: " << (locationConfig.upload ? "on" : "off")
+    std::cout << "\tDirectory Listing: " << (locationConfig.autoindex ? "on" : "off")
               << std::endl;
+    std::cout << "\tUpload: " << (locationConfig.upload ? "on" : "off") << std::endl;
     std::cout << "\tCGI: " << (locationConfig.cgi ? "on" : "off") << std::endl;
     std::cout << "\tAllowed Methods: ";
     for (std::set<std::string>::const_iterator methodIt =
@@ -118,8 +108,8 @@ void ConfigManager::_printLocationsConfig(
     for (std::map<int, std::string>::const_iterator errorIt =
              locationConfig.error_pages.begin();
          errorIt != locationConfig.error_pages.end(); ++errorIt) {
-      std::cout << " \tError Code: " << errorIt->first
-                << " - Page: " << errorIt->second << std::endl;
+      std::cout << " \tError Code: " << errorIt->first << " - Page: " << errorIt->second
+                << std::endl;
     }
   }
 }

@@ -57,8 +57,7 @@ Config ConfigParser::parseConfigFile(const std::string& filepath) {
         config.worker_processes = Utils::stoi<int>(value);
       }
     } else
-      _log.emerg("Unknown config directive: \"" + key + "\" in " +
-                 _configFilepath);
+      _log.emerg("Unknown config directive: \"" + key + "\" in " + _configFilepath);
     key = "";
   }
   configFile.close();
@@ -128,8 +127,7 @@ void ConfigParser::_parseServerConfig(std::ifstream& configFile,
         errorPage = _cleanValue(afterValue, ';');
         serverConfig.error_pages[errorCode] = errorPage;
       } else {
-        _log.emerg("Unknown server directive: \"" + key + "\" in " +
-                   _configFilepath);
+        _log.emerg("Unknown server directive: \"" + key + "\" in " + _configFilepath);
       }
     }
     key = "";
@@ -148,8 +146,7 @@ void ConfigParser::_parseListenConfig(std::istringstream& lineStream,
     if (token.find('[') != std::string::npos) {  // Adresse IPv6 avec port
       std::string::size_type endPos = token.find(']');
       std::string::size_type colonPos = token.find(':', endPos);
-      listenConfig->address =
-          token.substr(1, endPos - 1);  // Enlever les crochets
+      listenConfig->address = token.substr(1, endPos - 1);  // Enlever les crochets
       if (colonPos != std::string::npos) {
         listenConfig->port = Utils::stoi<int>(token.substr(colonPos + 1));
       }
@@ -176,13 +173,10 @@ void ConfigParser::_parseListenConfig(std::istringstream& lineStream,
   }
 }
 
-void ConfigParser::_fillLocationDefinedByServerConfig(
-    LocationConfig& locationConfig,
-    ServerConfig&   serverConfig) {
-  locationConfig.root =
-      serverConfig.root.empty() ? DEFAULT_ROOT : serverConfig.root;
-  locationConfig.index =
-      serverConfig.index.empty() ? DEFAULT_INDEX : serverConfig.index;
+void ConfigParser::_fillLocationDefinedByServerConfig(LocationConfig& locationConfig,
+                                                      ServerConfig&   serverConfig) {
+  locationConfig.root = serverConfig.root.empty() ? DEFAULT_ROOT : serverConfig.root;
+  locationConfig.index = serverConfig.index.empty() ? DEFAULT_INDEX : serverConfig.index;
   locationConfig.client_max_body_size =
       serverConfig.client_max_body_size == 0
           ? Utils::stoi<unsigned int>(DEFAULT_MAX_CLIENT_BODY_SIZE)
@@ -231,8 +225,7 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
         continue;
       locationConfig.returnCode = Utils::stoi<int>(value);
       std::string            urlValue;
-      std::string::size_type pos =
-          line.find(' ', line.find(key) + key.length());
+      std::string::size_type pos = line.find(' ', line.find(key) + key.length());
       if (pos != std::string::npos) {
         urlValue = line.substr(pos + 1);
       }
@@ -256,8 +249,7 @@ void ConfigParser::_parseLocationConfig(std::ifstream&  configFile,
       errorPage = _cleanValue(afterValue, ';');
       locationConfig.error_pages[errorCode] = errorPage;
     } else {
-      _log.emerg("Unknown location directive: \"" + key + "\" in " +
-                 _configFilepath);
+      _log.emerg("Unknown location directive: \"" + key + "\" in " + _configFilepath);
     }
     key = "";
   }
@@ -279,8 +271,7 @@ std::string ConfigParser::_trim(const std::string& str) {
   return str.substr(start, end - start + 1);
 }
 
-std::vector<std::string> ConfigParser::_split(const std::string& str,
-                                              char               delimiter) {
+std::vector<std::string> ConfigParser::_split(const std::string& str, char delimiter) {
   std::stringstream        ss(str);
   std::string              item;
   std::vector<std::string> tokens;

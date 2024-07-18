@@ -12,8 +12,5 @@
 
 #include "EventData.hpp"
 
-EventData::EventData(int                fd,
-                     ConnectionHandler* ptr,
-                     pid_t              threadId,
-                     bool               isListening)
+EventData::EventData(int fd, ConnectionHandler* ptr, pid_t threadId, bool isListening)
     : fd(fd), handler(ptr), threadId(threadId), isListening(isListening) {}

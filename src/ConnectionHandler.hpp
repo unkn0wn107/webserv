@@ -20,14 +20,14 @@
 #include <vector>
 
 #include "CGIHandler.hpp"
+#include "CacheHandler.hpp"
 #include "Common.hpp"
 #include "Config.hpp"
+#include "EventQueue.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
-#include "EventQueue.hpp"
-#include "CacheHandler.hpp"
 
 #define BUFFER_SIZE 16384
 
@@ -47,7 +47,7 @@ class ConnectionHandler {
                     int                          epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
                     ListenConfig&                listenConfig,
-                    EventQueue&                   events);
+                    EventQueue&                  events);
   ~ConnectionHandler();
 
   class ConnectionException : public Exception {
@@ -67,24 +67,22 @@ class ConnectionHandler {
 
   class ServerSelectionException : public ConnectionException {
    public:
-    ServerSelectionException(const std::string& message)
-        : ConnectionException(message) {}
+    ServerSelectionException(const std::string& message) : ConnectionException(message) {}
   };
 
   class RequestException : public ConnectionException {
    public:
-    RequestException(const std::string& message)
-        : ConnectionException(message) {}
+    RequestException(const std::string& message) : ConnectionException(message) {}
   };
 
  private:
-  CacheHandler& _cacheHandler;
-  Logger&              _log;
+  CacheHandler&               _cacheHandler;
+  Logger&                     _log;
   ConnectionStatus            _connectionStatus;
   int                         _clientSocket;
   int                         _epollSocket;
-  ssize_t                      _rcvbuf;
-  ssize_t                      _sndbuf;
+  ssize_t                     _rcvbuf;
+  ssize_t                     _sndbuf;
   std::string                 _requestString;
   size_t                      _readn;
   std::vector<VirtualServer*> _vservPool;

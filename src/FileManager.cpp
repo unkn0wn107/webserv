@@ -25,8 +25,7 @@ std::string FileManager::readFile(const std::string& path) {
   std::ostringstream contents;
   contents << file.rdbuf();
   if (contents.fail()) {
-    throw FileReadException(
-        "FileManager::readFile: Failed to read from file: " + path);
+    throw FileReadException("FileManager::readFile: Failed to read from file: " + path);
   }
   file.close();
   return contents.str();
@@ -66,8 +65,8 @@ std::vector<std::string> FileManager::listDirectory(const std::string& path) {
   std::vector<std::string> files;
   DIR*                     dirp = opendir(path.c_str());
   if (dirp == NULL)
-    throw DirectoryOpenException(
-        "FileManager::listDirectory: Cannot open directory: " + path);
+    throw DirectoryOpenException("FileManager::listDirectory: Cannot open directory: " +
+                                 path);
 
   struct dirent* dp;
   while ((dp = readdir(dirp)) != NULL) {
@@ -80,18 +79,16 @@ std::vector<std::string> FileManager::listDirectory(const std::string& path) {
   return files;
 }
 
-void FileManager::writeFile(const std::string& path,
-                            const std::string& content) {
+void FileManager::writeFile(const std::string& path, const std::string& content) {
   std::ofstream file(path.c_str(), std::ios::out | std::ios::binary);
   if (!file) {
-    throw FileOpenException(
-        "FileManager::writeFile: Cannot open file for writing: " + path);
+    throw FileOpenException("FileManager::writeFile: Cannot open file for writing: " +
+                            path);
   }
 
   file.write(content.c_str(), content.size());
   if (!file.good()) {
-    throw FileWriteException(
-        "FileManager::writeFile: Failed to write to file: " + path);
+    throw FileWriteException("FileManager::writeFile: Failed to write to file: " + path);
   }
 
   file.close();
@@ -99,7 +96,6 @@ void FileManager::writeFile(const std::string& path,
 
 void FileManager::deleteFile(const std::string& path) {
   if (remove(path.c_str()) != 0) {
-    throw FileDeleteException(
-        "FileManager::deleteFile: Failed to delete file: " + path);
+    throw FileDeleteException("FileManager::deleteFile: Failed to delete file: " + path);
   }
 }

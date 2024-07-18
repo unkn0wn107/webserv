@@ -47,8 +47,8 @@ bool EventQueue::pop(struct epoll_event& event) {
 bool EventQueue::try_pop(struct epoll_event& event) {
   pthread_mutex_lock(&_mutex);
   if (_queue.empty()) {
-      pthread_mutex_unlock(&_mutex);
-      return false;
+    pthread_mutex_unlock(&_mutex);
+    return false;
   }
   event = _queue.front();
   _queue.pop();

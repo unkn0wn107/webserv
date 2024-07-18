@@ -19,8 +19,7 @@
 
 int main(int argc, char* argv[]) {
   if (argc > 2) {
-    Logger::getInstance().error(
-        "Bad arguments. usage : ./webserv [config_path]");
+    Logger::getInstance().error("Bad arguments. usage : ./webserv [config_path]");
     return EXIT_FAILURE;
   }
   struct sigaction sigHandler;
@@ -36,10 +35,8 @@ int main(int argc, char* argv[]) {
 
   Config config;
   try {
-    ConfigManager::loadConfig(argc == 1 ? ConfigManager::DEFAULT_FILE_NAME
-                                        : argv[1]);
-    Logger::getInstance().info(
-        "WebServ running...\n\nCurrent configuration:\n\n");
+    ConfigManager::loadConfig(argc == 1 ? ConfigManager::DEFAULT_FILE_NAME : argv[1]);
+    Logger::getInstance().info("WebServ running...\n\nCurrent configuration:\n\n");
     ConfigManager::printConfig();
     config = ConfigManager::getInstance().getConfig();
   } catch (const std::exception& e) {

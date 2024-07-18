@@ -21,8 +21,7 @@
 
 #define ERR_PAGE_301 \
   "<!DOCTYPE html><html><body><h1>301 Moved Permanently</h1></body></html>"
-#define ERR_PAGE_302 \
-  "<!DOCTYPE html><html><body><h1>302 Found</h1></body></html>"
+#define ERR_PAGE_302 "<!DOCTYPE html><html><body><h1>302 Found</h1></body></html>"
 #define ERR_PAGE_307 \
   "<!DOCTYPE html><html><body><h1>307 Temporary Redirect</h1></body></html>"
 #define ERR_PAGE_400                                                           \
@@ -143,8 +142,7 @@ class HTTPResponse {
   ~HTTPResponse();
   HTTPResponse&      operator=(const HTTPResponse& other);
   static std::string getContentType(const std::string& path);
-  static std::string getExtensionFromContentType(
-      const std::string& contentType);
+  static std::string getExtensionFromContentType(const std::string& contentType);
 
   void               buildResponse();
   int                sendResponse(int clientSocket, ssize_t sndbuf);

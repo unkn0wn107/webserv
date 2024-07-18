@@ -15,10 +15,10 @@
 #include <iostream>
 #include <sstream>
 
-#include "Logger.hpp"
-#include "Config.hpp"
-#include "Utils.hpp"
 #include "Common.hpp"
+#include "Config.hpp"
+#include "Logger.hpp"
+#include "Utils.hpp"
 
 Logger* Logger::_instance = NULL;
 
@@ -106,7 +106,7 @@ void Logger::error(const std::string& message) const {
 }
 
 void Logger::emerg(const std::string& message) const {
-#if LOG_LEVEL >= LOG_LEVEL_ERROR // Assuming EMERG is at least as critical as ERROR
+#if LOG_LEVEL >= LOG_LEVEL_ERROR  // Assuming EMERG is at least as critical as ERROR
   std::string msg = "[" + _getCurrentTime() + "] EMERG: " + message;
   if (_progLogFile->is_open()) {
     pthread_mutex_lock(&_mutex);
@@ -131,8 +131,8 @@ std::string Logger::_getCurrentTime() const {
 
 void Logger::_setFileName() {
   if (_config.log_file.empty())
-    _progLogFileName = std::string(LOG_FILE_PATH) + "log_webserv_" +
-                       _getCurrentTime() + ".log";
+    _progLogFileName =
+        std::string(LOG_FILE_PATH) + "log_webserv_" + _getCurrentTime() + ".log";
   else
     _progLogFileName = _config.log_file + "_" + _getCurrentTime() + ".log";
 }

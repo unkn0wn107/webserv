@@ -47,10 +47,9 @@ class VirtualServer {
   void                  storeSessionData(const std::string& sessionId,
                                          const std::string& key,
                                          const std::string& value);
-  std::string           getSessionData(const std::string& sessionId,
-                                       const std::string& key);
-  void deleteSessionData(const std::string& sessionId, const std::string& key);
-  void clearSessionData(const std::string& sessionId);
+  std::string getSessionData(const std::string& sessionId, const std::string& key);
+  void        deleteSessionData(const std::string& sessionId, const std::string& key);
+  void        clearSessionData(const std::string& sessionId);
 };
 
 #endif

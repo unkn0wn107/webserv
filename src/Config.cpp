@@ -76,8 +76,7 @@ bool ListenConfig::operator<(const ListenConfig& other) const {
 bool ListenConfig::operator==(const ListenConfig& other) const {
   return address == other.address && port == other.port &&
          default_server == other.default_server && backlog == other.backlog &&
-         rcvbuf == other.rcvbuf && sndbuf == other.sndbuf &&
-         ipv6only == other.ipv6only;
+         rcvbuf == other.rcvbuf && sndbuf == other.sndbuf && ipv6only == other.ipv6only;
 }
 
 ServerConfig::ServerConfig() {

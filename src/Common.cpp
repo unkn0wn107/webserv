@@ -41,8 +41,7 @@ void signalHandler(int signum) {
 
 std::string generateSessionId(void) {
   std::string sessionId;
-  std::string chars =
-      "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  std::string chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   for (int i = 0; i < 32; i++) {
     sessionId += chars[rand() % chars.size()];
   }

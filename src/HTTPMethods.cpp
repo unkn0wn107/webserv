@@ -50,8 +50,7 @@ std::string HTTPMethods::_generateDirectoryListing(const std::string& path) {
       } else {
         html << "[FILE] ";
       }
-      html << "<a href=\"" << URI::encode(entryName) << "\">" << entryName
-           << "</a>";
+      html << "<a href=\"" << URI::encode(entryName) << "\">" << entryName << "</a>";
       html << "</li>";
     }
     closedir(dir);
@@ -77,8 +76,7 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string&    path,
     std::string   directoryListing = _generateDirectoryListing(path);
     HTTPResponse* response = new HTTPResponse(HTTPResponse::OK, location);
     response->addHeader("Content-Type", "text/html");
-    response->addHeader("Content-Length",
-                        Utils::to_string(directoryListing.size()));
+    response->addHeader("Content-Length", Utils::to_string(directoryListing.size()));
     response->setBody(directoryListing);
     return response;
   } else {
@@ -90,8 +88,8 @@ HTTPResponse* HTTPMethods::_autoindex(const std::string&    path,
 HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
   std::string           uriPath = request.getURIComponents().path;
   const LocationConfig& location = _server.getLocationConfig(uriPath);
-  std::string path = _getPath(uriPath, location);
-  HTTPResponse* response;
+  std::string           path = _getPath(uriPath, location);
+  HTTPResponse*         response;
   if (FileManager::isDirectory(path)) {
     response = _autoindex(path, location);
   } else if (FileManager::doesFileExists(path)) {
@@ -177,8 +175,7 @@ HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
 
 HTTPResponse* HTTPMethods::handleRequest(HTTPRequest& request) {
   std::string    method = request.getMethod();
-  LocationConfig location =
-      _server.getLocationConfig(request.getURIComponents().path);
+  LocationConfig location = _server.getLocationConfig(request.getURIComponents().path);
   if (request.getProtocol() != "HTTP/1.1") {
     _log.error("HTTPMethods::handleRequest : Protocol not supported");
     return new HTTPResponse(HTTPResponse::BAD_REQUEST, location);

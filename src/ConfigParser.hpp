@@ -45,8 +45,7 @@ class ConfigParser {
   static std::string              _cleanValue(std::string toClean, char c);
   static std::string              _parseValue(std::string toParse);
   static std::string              _trim(const std::string& str);
-  static std::vector<std::string> _split(const std::string& str,
-                                         char               delimiter);
+  static std::vector<std::string> _split(const std::string& str, char delimiter);
 
   static const Logger&     _log;
   static const std::string DEFAULT_HOST;

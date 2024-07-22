@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/18 13:46:46 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:07:41 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,6 +45,7 @@ class CGIHandler {
 
   int      getCgifd();
   CGIState getCgiState();
+  void     delEvent();
 
   /**
    * Check if url has an executable file extension.
@@ -137,7 +138,6 @@ class CGIHandler {
   std::string           _root;
   std::string           _index;
   bool                  _cgi;
-  bool                  _done;
 
   std::vector<std::string> _argv;
   std::vector<std::string> _envp;
@@ -184,27 +184,13 @@ class CGIHandler {
                                                         const LocationConfig& location);
 
   /**
-   * Executes the parent process logic for CGI script execution.
-   */
-  void _executeParentProcess();
-
-  /**
-   * Processes the output from the CGI script after execution.
-   */
-  void _postProcessOutput();
-
-  /**
    * Parses the headers from the CGI script output.
    * @param headerPart The header part of the CGI script output.
    * @return A map containing the parsed headers.
    */
   std::map<std::string, std::string> _parseOutputHeaders(const std::string& headerPart);
 
-  /**
-   * Processes the CGI request.
-   * @return Status code indicating the result of the request processing.
-   */
-  int _processRequest();
+  void _createEvent();
 
   /**
    * Runs the CGI script.

@@ -61,20 +61,6 @@ printf "\n"
 
 sleep 2
 
-echo "Running siege for GET cross-servers"
-echo "Running siege for GET cross-servers" >> $SIEGE_LOG_FILE
-siege -t ${TEST_DURATION} -c 250 -b -f $SIEGE_GET_URLS_FILE -H "Cookie: sessionid=marvin;" >> $SIEGE_LOG_FILE
-
-if grep -q '"failed_transactions": *[1-9]' $SIEGE_LOG_FILE; then
-    echo "!!!KO!!!: Siege test failed for GET cross-servers."
-    TEST_FAILED=1
-else
-    echo "OK: Siege test passed for GET cross-servers."
-fi
-printf "\n"
-
-sleep 2
-
 echo "Running siege for GET single"
 echo "Running siege for GET single" >> $SIEGE_LOG_FILE
 siege -t ${TEST_DURATION} -c 250 -b -H "Cookie: sessionid=marvin;" http://${CONTAINER}:${PORT} >> $SIEGE_LOG_FILE
@@ -84,6 +70,20 @@ if grep -q '"failed_transactions": *[1-9]' $SIEGE_LOG_FILE; then
     TEST_FAILED=1
 else
     echo "OK: Siege test passed for GET."
+fi
+printf "\n"
+
+sleep 2
+
+echo "Running siege for GET cross-servers"
+echo "Running siege for GET cross-servers" >> $SIEGE_LOG_FILE
+siege -t ${TEST_DURATION} -c 250 -b -f $SIEGE_GET_URLS_FILE -H "Cookie: sessionid=marvin;" >> $SIEGE_LOG_FILE
+
+if grep -q '"failed_transactions": *[1-9]' $SIEGE_LOG_FILE; then
+    echo "!!!KO!!!: Siege test failed for GET cross-servers."
+    TEST_FAILED=1
+else
+    echo "OK: Siege test passed for GET cross-servers."
 fi
 printf "\n"
 

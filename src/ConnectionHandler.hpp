@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/05 01:34:46 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 17:48:56 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,8 +46,7 @@ class ConnectionHandler {
   ConnectionHandler(int                          clientSocket,
                     int                          epollSocket,
                     std::vector<VirtualServer*>& virtualServers,
-                    ListenConfig&                listenConfig,
-                    EventQueue&                  events);
+                    ListenConfig&                listenConfig);
   ~ConnectionHandler();
 
   class ConnectionException : public Exception {
@@ -93,7 +92,6 @@ class ConnectionHandler {
   CGIHandler*                 _cgiHandler;
   CGIState                    _cgiState;
   int                         _step;
-  EventQueue&                 _events;
 
   void             _receiveRequest(struct epoll_event& event);
   void             _processRequest(struct epoll_event& event);

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/10 13:29:04 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:03:18 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,8 +25,7 @@ const time_t ConnectionHandler::TIMEOUT = 10;
 ConnectionHandler::ConnectionHandler(int                          clientSocket,
                                      int                          epollSocket,
                                      std::vector<VirtualServer*>& virtualServers,
-                                     ListenConfig&                listenConfig,
-                                     EventQueue&                  events)
+                                     ListenConfig&                listenConfig)
     : _cacheHandler(CacheHandler::getInstance()),
       _log(Logger::getInstance()),
       _connectionStatus(READING),
@@ -43,8 +42,7 @@ ConnectionHandler::ConnectionHandler(int                          clientSocket,
       _startTime(time(NULL)),
       _cgiHandler(NULL),
       _cgiState(NONE),
-      _step(0),
-      _events(events) {}
+      _step(0) {}
 
 ConnectionHandler::~ConnectionHandler() {
   for (std::vector<VirtualServer*>::iterator it = _vservPool.begin();
@@ -258,6 +256,7 @@ void ConnectionHandler::_processExecutingState() {
 int ConnectionHandler::processConnection(struct epoll_event& event) {
   _step++;
   if ((time(NULL) - _startTime) > TIMEOUT) {
+    _cgiHandler->delEvent();
     HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, _clientSocket);
     _setConnectionStatus(CLOSED);
   }
@@ -300,7 +299,13 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
         throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                         "): CGIHandler is NULL");
       }
-      _events.push(event);
+      event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+      if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
+        _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                               "): epoll_ctl: ") +
+                   strerror(errno));
+        close(_cgiHandler->getCgifd());
+      }
       break;
 
     case CACHE_WAITING:

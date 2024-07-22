@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/18 13:46:18 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:24:09 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,6 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
       _processOutput(""),
       _processOutputSize(0),
       _runtime(_identifyRuntime(_request, _location)),
-      _done(false),
       _argv(_buildScriptArguments(_request, _location)),
       _envp(_buildScriptEnvironment(_request, _location)),
       _pid(-2) {
@@ -186,8 +185,10 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       if (_pid > 0) {
         close(_outpipefd[1]);
         _outpipefd[1] = -1;
-        _state = SCRIPT_RUNNING;
         _runStartTime = std::time(NULL);
+        _state = SCRIPT_RUNNING;
+        _createEvent();
+        return EXECUTING;
       } else if (_pid == 0)
         _state = RUN_SCRIPT;
     } catch (const Exception& e) {
@@ -229,8 +230,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       }
       return EXECUTING;
     } catch (const Exception& e) {
-      if (dynamic_cast<const CGIHandler::TimeoutException*>(&e))
-        _response.setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
       _state = CGI_ERROR;
     }
   }
@@ -246,8 +245,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       _processOutput.append(buffer, count);
       _processOutputSize += count;
       if (count < (ssize_t)sizeof(buffer) || count == 0) {
-        close(_outpipefd[0]);
-        _outpipefd[0] = -1;
+        
         _state = PROCESS_OUTPUT;
       } else
         return EXECUTING;
@@ -293,6 +291,23 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     return SENDING;
   }
   return EXECUTING;
+}
+
+void CGIHandler::_createEvent() {
+  struct epoll_event event;
+  event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+  event.data.ptr = _eventData;
+  if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
+    _log.error(std::string("CGI_HANDLER: create epoll_ctl: ") + strerror(errno));
+  }
+}
+
+void CGIHandler::delEvent() {
+  if (epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _outpipefd[0], NULL) == -1) {
+    _log.error(std::string("CGI_HANDLER: delete epoll_ctl: ") + strerror(errno));
+  }
+  close(_outpipefd[0]);
+  _outpipefd[0] = -1;
 }
 
 std::map<std::string, std::string> CGIHandler::_parseOutputHeaders(

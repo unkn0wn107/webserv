@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 18:07:41 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:38:46 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,9 +30,6 @@
 #include "Logger.hpp"
 
 class CacheHandler;
-
-#define CGI_TIMEOUT_SEC 10
-
 struct EventData;
 
 class CGIHandler {

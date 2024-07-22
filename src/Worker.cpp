@@ -123,7 +123,7 @@ void Worker::_acceptNewConnection(int fd) {
     if (new_socket < 0) {
       return;
     }
-    if (set_non_blocking(new_socket) == -1) {
+    if (Utils::set_non_blocking(new_socket) == -1) {
       _log.error("WORKER (" + Utils::to_string(_threadId) +
                  "): Failed \"set_non_blocking\" on new socket " +
                  Utils::to_string(new_socket));

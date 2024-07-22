@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:02:12 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 01:20:53 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:36:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
   struct sigaction sigHandler;
-  sigHandler.sa_handler = signalHandler;
+  sigHandler.sa_handler = Utils::signalHandler;
   sigemptyset(&sigHandler.sa_mask);
   sigHandler.sa_flags = 0;
 

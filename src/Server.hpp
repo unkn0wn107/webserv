@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/18 13:45:12 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:43:10 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,8 +28,6 @@
 #include "EventQueue.hpp"
 #include "Logger.hpp"
 #include "Worker.hpp"
-
-#define SHUTDOWN_DELAY 200000
 
 class Worker;
 

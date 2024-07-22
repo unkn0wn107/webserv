@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 17:48:56 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:41:27 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,8 +29,6 @@
 #include "Logger.hpp"
 #include "VirtualServer.hpp"
 
-#define BUFFER_SIZE 16384
-
 class VirtualServer;
 class CGIHandler;
 
@@ -40,8 +38,6 @@ class ConnectionHandler {
   std::string         getStatusString() const;
   int                 processConnection(struct epoll_event& event);
   void                setInternalServerError();
-  static const int    MAX_TRIES;
-  static const time_t TIMEOUT;
 
   ConnectionHandler(int                          clientSocket,
                     int                          epollSocket,

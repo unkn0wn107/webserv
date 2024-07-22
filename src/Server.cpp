@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/04 20:47:08 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:35:10 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -215,7 +215,7 @@ void Server::_setupServerSockets() {
       continue;
     }
 
-    if (set_non_blocking(sock) < 0) {
+    if (Utils::set_non_blocking(sock) < 0) {
       _log.error("(" + listenConfig.address + ":" + Utils::to_string(listenConfig.port) +
                  ") Failed to set socket to non-blocking");
       close(sock);

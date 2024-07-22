@@ -6,12 +6,14 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:32 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/05 03:04:49 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:35:02 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Utils.hpp"
 #include "Common.hpp"
+#include "Logger.hpp"
+#include "Server.hpp"
 
 template <typename T>
 T Utils::stoi(const std::string& str) {
@@ -86,16 +88,36 @@ template std::string Utils::to_string<float>(const float& num);
 template std::string Utils::to_string<double>(const double& num);
 template std::string Utils::to_string<long>(const long& num);
 
-void Utils::freeCharVector(std::vector<char*>& vec) {
-  for (size_t i = 0; i < vec.size(); i++)
-    delete[] vec[i];
-  vec.clear();
+int Utils::set_non_blocking(int sockfd) {
+  int flags, s;
+  flags = fcntl(sockfd, F_GETFL);
+  if (flags == -1) {
+    Logger::getInstance().error(std::string("SET_NON_BLOCKING: fcntl get: ") +
+                                strerror(errno));
+    return -1;
+  }
+  flags |= O_NONBLOCK;
+  s = fcntl(sockfd, F_SETFL, flags);
+  if (s == -1) {
+    Logger::getInstance().error(std::string("SET_NON_BLOCKING: fcntl set: ") +
+                                strerror(errno));
+    return -1;
+  }
+  return 0;
 }
 
-char* Utils::cstr(const std::string& str) {
-  char* result = new char[str.length() + 1];
-  if (result == NULL)
-    throw Exception("Failed to allocate memory");
-  std::strcpy(result, str.c_str());
-  return result;
+void Utils::signalHandler(int signum) {
+  Logger::getInstance().info("Signal received: " + Utils::to_string(signum) +
+                             "getting server instance");
+  Server::getInstance().stop(signum);
 }
+
+std::string Utils::generateSessionId(void) {
+  std::string sessionId;
+  std::string chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (int i = 0; i < 32; i++) {
+    sessionId += chars[rand() % chars.size()];
+  }
+  return sessionId;
+}
+

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 18:03:18 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:38:01 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,9 +18,6 @@
 #include "Common.hpp"
 #include "ConnectionHandler.hpp"
 #include "Utils.hpp"
-
-const int    ConnectionHandler::MAX_TRIES = 10;
-const time_t ConnectionHandler::TIMEOUT = 10;
 
 ConnectionHandler::ConnectionHandler(int                          clientSocket,
                                      int                          epollSocket,

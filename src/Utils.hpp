@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:04 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/03 02:20:10 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:35:20 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,8 +34,9 @@ class Utils {
   static std::size_t calculateByteLength(const std::string& input,
                                          const std::string& charset);
 
-  static void  freeCharVector(std::vector<char*>& vec);
-  static char* cstr(const std::string& str);
+  static int         set_non_blocking(int sockfd);
+  static void        signalHandler(int signum);
+  static std::string generateSessionId(void);
 };
 
 #endif

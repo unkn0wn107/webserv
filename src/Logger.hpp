@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:21:59 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/03 01:10:15 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:42:12 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,10 +21,6 @@
 #include <string>
 
 #include "Config.hpp"
-
-#define LOG_FILE_PATH "./logs/"
-#define LOG_FILE_NAME "webserv"
-#define LOG_FILE_EXT ".log"
 
 class Logger {
  public:

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:17 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/02 23:48:35 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:30:08 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,9 +38,6 @@ class ConfigManager {
    * @return The configuration object.
    */
   Config&               getConfig();
-  ServerConfig&         getServerConfig();
-  const LocationConfig& getLocationConfig() const;
-  ListenConfig&         getListenConfig();
   static void           printConfig();
 
   static void loadConfig(const std::string& filepath);

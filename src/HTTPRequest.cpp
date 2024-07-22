@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:10:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/06/28 11:03:30 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/07/22 18:35:42 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,7 +67,7 @@ void HTTPRequest::_parseSession() {
       sessionId = cookieHeader.substr(pos + 10, endPos - pos - 10);
   }
   if (sessionId.empty())
-    sessionId = generateSessionId();
+    sessionId = Utils::generateSessionId();
   setSessionId(sessionId);
 }
 

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/05 01:40:26 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 18:43:27 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,9 +35,6 @@
 #include "VirtualServer.hpp"
 
 class Server;
-
-#define MAX_EVENTS 1024
-#define WORKER_TIME_TO_STOP 2
 
 class Worker {
  public:
@@ -83,7 +80,6 @@ class Worker {
   pid_t                        _threadId;
 
   Worker(const Worker&);
-  Worker& operator=(const Worker&);
 };
 
 #endif

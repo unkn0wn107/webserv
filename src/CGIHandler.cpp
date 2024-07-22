@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGIHandler.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 20:17:16 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 01:08:08 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,7 +52,7 @@ CGIHandler::~CGIHandler() {
   if (_inpipefd[1] != -1)
     close(_inpipefd[1]);
   if (_outpipefd[0] != -1)
-    close(_outpipefd[0]);
+    delEvent();
   if (_outpipefd[1] != -1)
     close(_outpipefd[1]);
 }

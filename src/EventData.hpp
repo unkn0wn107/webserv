@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EventData.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/04 19:31:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/05 21:33:12 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 00:03:03 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,11 +22,16 @@ struct EventData {
   ConnectionHandler* handler;
   pid_t              threadId;
   bool               isListening;
+  bool               recordTime;
+  time_t             startTime;
+  bool               opened;
 
   EventData(int                fd,
             ConnectionHandler* ptr,
             pid_t              threadId = -1,
-            bool               isListening = false);
+            bool               isListening = false,
+            bool               recordTime = true,
+            bool               opened = true);
 };
 
 #endif

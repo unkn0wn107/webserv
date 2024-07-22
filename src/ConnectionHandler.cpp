@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 23:02:56 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 01:19:45 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -252,12 +252,11 @@ void ConnectionHandler::_processExecutingState() {
 
 int ConnectionHandler::processConnection(struct epoll_event& event) {
   _step++;
-  if ((time(NULL) - _startTime) > TIMEOUT) {
-    if (_cgiHandler)
-      _cgiHandler->delEvent();
-    HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, _clientSocket);
-    _setConnectionStatus(CLOSED);
-  }
+  // if ((time(NULL) - _startTime) > TIMEOUT) {
+  //   _cgiHandler->delEvent();
+  //   HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, _clientSocket);
+  //   _setConnectionStatus(CLOSED);
+  // }
   try {
     if (_connectionStatus == CACHE_WAITING) {
       CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(
@@ -320,6 +319,8 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       break;
 
     case CLOSED:
+      EventData* eventData = static_cast<EventData*>(event.data.ptr);
+      eventData->opened = false;
       _handleClosedConnection();
       return 1;  // Done
   }
@@ -344,9 +345,6 @@ void ConnectionHandler::_handleClosedConnection() {
     _log.info("Request : " + host + " - " + method + " " + uri + " " + protocol);
     _log.info("Response : " + status + " sent with no Content-Length");
   }
-  epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, NULL);
-  close(_clientSocket);
-  _clientSocket = -1;
 }
 
 void ConnectionHandler::_cleanupCGIHandler() {

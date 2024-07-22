@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 18:35:10 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 01:12:33 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,8 @@ Server::Server()
       _listenSockets(),
       _listenEventData(),
       _activeWorkers(0),
-      _events() {
+      _events(),
+      _requestTimes() {
   _setupEpoll();
   _setupServerSockets();
   CacheHandler::init(_events);
@@ -95,17 +96,51 @@ void Server::start() {
   _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) + ")");
   struct epoll_event events[MAX_EVENTS];
   while (_running) {
-    int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
+    _checkRequestLife();
+    int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, 100);
     if (nfds == 0) {
-      _log.info("SERVER: epoll_wait: 0 events");
       continue;
     }
     if (nfds < 0) {
       usleep(1000);
       continue;
     }
+    if (nfds > 0) {
+      _log.info("SERVER: epoll_wait: " + Utils::to_string(nfds) + " events");
+    }
     for (int i = 0; i < nfds && _running; i++)
+    {
+      EventData* eventData = static_cast<EventData*>(events[i].data.ptr);
+      if (!eventData->isListening && eventData->recordTime) {
+        eventData->startTime = time(NULL);
+        _requestTimes.push_back(eventData);
+        eventData->recordTime = false;
+      }
       _events.push(events[i]);
+    }
+  }
+}
+
+void Server::_checkRequestLife() {
+  for (std::list<EventData*>::iterator it = _requestTimes.begin(); it != _requestTimes.end(); ) {
+    if ((time(NULL) - (*it)->startTime) > TIMEOUT) {
+      _log.warning("SERVER: Request timed out (" + Utils::to_string((*it)->fd) + ")");
+      HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, (*it)->fd);
+      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, (*it)->fd, NULL);
+      close((*it)->fd);
+      delete (*it)->handler;
+      delete *it;
+      it = _requestTimes.erase(it);
+    }
+    else if (!(*it)->opened) {
+      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, (*it)->fd, NULL);
+      close((*it)->fd);
+      delete (*it)->handler;
+      delete *it;
+      it = _requestTimes.erase(it);
+    } else {
+      ++it;
+    }
   }
 }
 
@@ -224,7 +259,7 @@ void Server::_setupServerSockets() {
 
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
-    EventData* eventData = new EventData(sock, NULL, -1, true);
+    EventData* eventData = new EventData(sock, NULL, -1, true, true);
     event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {

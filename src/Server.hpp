@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 18:43:10 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 00:17:05 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 #include <memory>
 #include <set>
+#include <list>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -46,10 +47,12 @@ class Server {
   EventQueue                                  _events;
   bool                                        _running;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
+  std::list<EventData*>                       _requestTimes;
 
   void _setupServerSockets();
   void _setupWorkers();
   void _setupEpoll();
+  void _checkRequestLife();
 
  public:
   Server();

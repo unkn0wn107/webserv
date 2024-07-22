@@ -92,7 +92,6 @@ void Worker::_runEventLoop() {
 }
 
 void Worker::_launchEventProcessing(EventData* eventData, struct epoll_event& event) {
-  int handlerStatus = 0;
   if (!eventData->handler) {
     _log.warning("WORKER (" + Utils::to_string(_threadId) +
                  "): Handler is NULL for event fd: " + Utils::to_string(event.data.fd) +
@@ -100,13 +99,9 @@ void Worker::_launchEventProcessing(EventData* eventData, struct epoll_event& ev
     return;
   }
   try {
-    handlerStatus = eventData->handler->processConnection(event);
+    eventData->handler->processConnection(event);
   } catch (std::exception& e) {
     _log.error("WORKER (" + Utils::to_string(_threadId) + "): Exception: " + e.what());
-  }
-  if (handlerStatus == 1) {  // Done
-    delete eventData->handler;
-    delete eventData;
   }
 }
 
@@ -143,9 +138,7 @@ void Worker::_acceptNewConnection(int fd) {
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
       _log.error("WORKER (" + Utils::to_string(_threadId) +
                  "): Failed \"epoll_ctl\" on new socket " + Utils::to_string(new_socket));
-      close(new_socket);
-      delete handler;
-      delete eventData;
+      eventData->opened = false;
       // continue;
     }
   }

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 18:38:01 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 23:02:56 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -139,7 +139,7 @@ void ConnectionHandler::_sendResponse() {
       return;
     }
     _response->setCookie("sessionid", _request->getSessionId());
-    if (_response->sendResponse(_clientSocket, _sndbuf) == 1)
+    if (_response->sendResponse(_clientSocket, _sndbuf) != 0)
       _setConnectionStatus(CLOSED);
   } catch (const Exception& e) {
     _setConnectionStatus(CLOSED);
@@ -253,7 +253,8 @@ void ConnectionHandler::_processExecutingState() {
 int ConnectionHandler::processConnection(struct epoll_event& event) {
   _step++;
   if ((time(NULL) - _startTime) > TIMEOUT) {
-    _cgiHandler->delEvent();
+    if (_cgiHandler)
+      _cgiHandler->delEvent();
     HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, _clientSocket);
     _setConnectionStatus(CLOSED);
   }

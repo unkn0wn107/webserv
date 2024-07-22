@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 18:24:09 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 20:17:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,10 @@ CGIHandler::~CGIHandler() {
   kill(_pid, SIGKILL);
   waitpid(_pid, NULL, 0);
   if (_inpipefd[0] != -1)
+  {
+    delEvent();
     close(_inpipefd[0]);
+  }
   if (_inpipefd[1] != -1)
     close(_inpipefd[1]);
   if (_outpipefd[0] != -1)
@@ -245,7 +248,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       _processOutput.append(buffer, count);
       _processOutputSize += count;
       if (count < (ssize_t)sizeof(buffer) || count == 0) {
-        
+        delEvent();
         _state = PROCESS_OUTPUT;
       } else
         return EXECUTING;

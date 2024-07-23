@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/23 02:08:54 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 02:17:48 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,8 +28,8 @@
 #include "Common.hpp"
 #include "ConnectionHandler.hpp"
 #include "EventData.hpp"
-#include "EventQueue.hpp"
 #include "Logger.hpp"
+#include "SPMCQueue.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
 #include "VirtualServer.hpp"
@@ -41,7 +41,7 @@ class Worker {
   Worker(Server&                      server,
          int                          epollSocket,
          std::map<int, ListenConfig>& listenSockets,
-         EventQueue&                  events,
+         SPMCQueue<struct epoll_event>& events,
          pthread_mutex_t&             requestTimesMutex);
   ~Worker();
 
@@ -68,8 +68,8 @@ class Worker {
       const ListenConfig& listenConfig);
   void _launchEventProcessing(EventData* eventData, struct epoll_event& event);
 
-  Server&                      _server;
-  EventQueue&                  _events;
+  Server&                        _server;
+  SPMCQueue<struct epoll_event>& _events;
   Thread                       _thread;
   std::map<int, EventData*>    _eventsData;
   const Config&                _config;

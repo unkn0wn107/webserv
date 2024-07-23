@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 02:09:20 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 02:18:52 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@
 #include "CacheHandler.hpp"
 #include "Common.hpp"
 #include "ConfigManager.hpp"
-#include "EventQueue.hpp"
+#include "SPMCQueue.hpp"
 #include "Server.hpp"
 #include "Utils.hpp"
 
@@ -121,7 +121,7 @@ void Server::start() {
         eventData->recordTime = false;
       }
       pthread_mutex_unlock(&_requestTimesMutex);
-      _events.push(events[i]);
+      _events.enqueue(events[i]);
     }
   }
 }

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/24 15:10:25 by  mchenava         #+#    #+#             */
-/*   Updated: 2024/07/02 23:38:18 by agaley           ###   ########.fr   */
+/*   Updated: 2024/07/23 00:22:18 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -150,26 +150,6 @@ std::string VirtualServer::getServerName() const {
 
 std::string VirtualServer::getRoot() const {
   return _serverConfig.root;
-}
-
-void VirtualServer::storeSessionData(const std::string& sessionId,
-                                     const std::string& key,
-                                     const std::string& value) {
-  _sessionStore[sessionId][key] = value;
-}
-
-std::string VirtualServer::getSessionData(const std::string& sessionId,
-                                          const std::string& key) {
-  return _sessionStore[sessionId][key];
-}
-
-void VirtualServer::deleteSessionData(const std::string& sessionId,
-                                      const std::string& key) {
-  _sessionStore[sessionId].erase(key);
-}
-
-void VirtualServer::clearSessionData(const std::string& sessionId) {
-  _sessionStore[sessionId].clear();
 }
 
 VirtualServer::~VirtualServer() {

@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/07/22 18:45:13 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/07/22 23:16:54 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -35,7 +35,7 @@ SRC = $(SRC_DIR)/Server.cpp \
 		$(SRC_DIR)/Config.cpp $(SRC_DIR)/ConfigManager.cpp $(SRC_DIR)/ConfigParser.cpp \
 		$(SRC_DIR)/FileManager.cpp \
 		$(SRC_DIR)/ConnectionHandler.cpp $(SRC_DIR)/CacheHandler.cpp \
-		$(SRC_DIR)/Worker.cpp $(SRC_DIR)/EventQueue.cpp $(SRC_DIR)/EventData.cpp \
+		$(SRC_DIR)/Worker.cpp $(SRC_DIR)/EventData.cpp \
 		$(SRC_DIR)/HTTPRequest.cpp $(SRC_DIR)/HTTPResponse.cpp $(SRC_DIR)/URI.cpp \
 		$(SRC_DIR)/CGIHandler.cpp $(SRC_DIR)/VirtualServer.cpp \
 		$(SRC_DIR)/Exception.cpp $(SRC_DIR)/HTTPMethods.cpp \

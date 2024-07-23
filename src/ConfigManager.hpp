@@ -37,8 +37,8 @@ class ConfigManager {
    * Retrieve all config.
    * @return The configuration object.
    */
-  Config&               getConfig();
-  static void           printConfig();
+  Config&     getConfig();
+  static void printConfig();
 
   static void loadConfig(const std::string& filepath);
 

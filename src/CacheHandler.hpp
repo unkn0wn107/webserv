@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/18 13:46:13 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 23:20:59 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,9 +21,9 @@
 
 #include "Common.hpp"
 #include "EventData.hpp"
-#include "EventQueue.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
+#include "SPMCQueue.hpp"
 
 struct EventData;
 
@@ -31,7 +31,7 @@ class CacheHandler {
  public:
   static const time_t MAX_AGE;
 
-  static CacheHandler& init(EventQueue& eventQueue);
+  static CacheHandler& init(SPMCQueue<struct epoll_event>& eventQueue);
   static CacheHandler& getInstance();
   static void          deleteInstance();
 
@@ -54,19 +54,19 @@ class CacheHandler {
   void        deleteCache(const std::string& key);
 
  private:
-  CacheHandler(EventQueue& eventQueue);
+  CacheHandler(SPMCQueue<struct epoll_event>& eventQueue);
   ~CacheHandler();
   CacheHandler(const CacheHandler&);
   CacheHandler& operator=(const CacheHandler&);
 
   typedef std::map<std::string, CacheEntry> CacheMap;
 
-  static CacheHandler* _instance;
-  Logger&              _log;
-  EventQueue&          _eventQueue;
-  CacheMap             _cache;
-  time_t               _maxAge;
-  pthread_mutex_t      _mutex;
+  static CacheHandler*           _instance;
+  Logger&                        _log;
+  SPMCQueue<struct epoll_event>& _eventQueue;
+  CacheMap                       _cache;
+  time_t                         _maxAge;
+  pthread_mutex_t                _mutex;
 
   unsigned long _hash(const std::string& str) const;
 };

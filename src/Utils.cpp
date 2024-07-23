@@ -120,4 +120,3 @@ std::string Utils::generateSessionId(void) {
   }
   return sessionId;
 }
-

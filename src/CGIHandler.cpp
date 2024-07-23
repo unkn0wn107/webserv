@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGIHandler.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 01:08:08 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 02:12:47 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,10 +44,9 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
 CGIHandler::~CGIHandler() {
   kill(_pid, SIGKILL);
   waitpid(_pid, NULL, 0);
-  if (_inpipefd[0] != -1)
-  {
+  if (_outpipefd[0] != -1) {
     delEvent();
-    close(_inpipefd[0]);
+    close(_outpipefd[0]);
   }
   if (_inpipefd[1] != -1)
     close(_inpipefd[1]);

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 01:51:20 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 02:15:21 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,8 +26,8 @@
 #include "Common.hpp"
 #include "Config.hpp"
 #include "EventData.hpp"
-#include "EventQueue.hpp"
 #include "Logger.hpp"
+#include "SPMCQueue.hpp"
 #include "Worker.hpp"
 
 class Worker;
@@ -45,7 +45,7 @@ class Server {
   pthread_mutex_t                             _requestTimesMutex;
   int                                         _epollSocket;
   int                                         _activeWorkers;
-  EventQueue                                  _events;
+  SPMCQueue<struct epoll_event>               _events;
   bool                                        _running;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
   std::list<EventData*>                       _requestTimes;

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/18 13:46:07 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/22 23:21:10 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ CacheHandler::CacheEntry::~CacheEntry() {
   delete response;
 }
 
-CacheHandler& CacheHandler::init(EventQueue& eventQueue) {
+CacheHandler& CacheHandler::init(SPMCQueue<struct epoll_event>& eventQueue) {
   _instance = new CacheHandler(eventQueue);
   return *_instance;
 }
@@ -53,7 +53,7 @@ void CacheHandler::deleteInstance() {
   _instance = NULL;
 }
 
-CacheHandler::CacheHandler(EventQueue& eventQueue)
+CacheHandler::CacheHandler(SPMCQueue<struct epoll_event>& eventQueue)
     : _log(Logger::getInstance()), _eventQueue(eventQueue), _cache(), _maxAge(MAX_AGE) {
   pthread_mutex_init(&_mutex, NULL);
 }
@@ -113,7 +113,7 @@ void CacheHandler::storeResponse(const std::string& key, const HTTPResponse& res
     struct epoll_event event;
     event.data.ptr = *it;
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    _eventQueue.push(event);
+    _eventQueue.enqueue(event);
   }
   entry.waitingEventsData.clear();
   pthread_mutex_unlock(&_mutex);

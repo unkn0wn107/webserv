@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 02:07:00 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 02:24:08 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,10 +23,10 @@
 #include "CacheHandler.hpp"
 #include "Common.hpp"
 #include "Config.hpp"
-#include "EventQueue.hpp"
 #include "HTTPRequest.hpp"
 #include "HTTPResponse.hpp"
 #include "Logger.hpp"
+#include "SPMCQueue.hpp"
 #include "VirtualServer.hpp"
 
 class VirtualServer;
@@ -34,10 +34,10 @@ class CGIHandler;
 
 class ConnectionHandler {
  public:
-  ConnectionStatus    getConnectionStatus() const;
-  std::string         getStatusString() const;
-  int                 processConnection(struct epoll_event& event);
-  void                setInternalServerError();
+  ConnectionStatus getConnectionStatus() const;
+  std::string      getStatusString() const;
+  int              processConnection(struct epoll_event& event);
+  void             setInternalServerError();
 
   ConnectionHandler(int                          clientSocket,
                     int                          epollSocket,
@@ -88,7 +88,6 @@ class ConnectionHandler {
   CGIHandler*                 _cgiHandler;
   CGIState                    _cgiState;
   int                         _step;
-  pthread_mutex_t             _requestTimesMutex;
 
   void             _receiveRequest(struct epoll_event& event);
   void             _processRequest(struct epoll_event& event);

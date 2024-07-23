@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 00:17:05 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 01:51:20 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,7 @@ class Server {
   std::map<int, ListenConfig>                 _listenSockets;
   std::set<EventData*>                        _listenEventData;
   pthread_mutex_t                             _mutex;
+  pthread_mutex_t                             _requestTimesMutex;
   int                                         _epollSocket;
   int                                         _activeWorkers;
   EventQueue                                  _events;

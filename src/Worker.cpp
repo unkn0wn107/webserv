@@ -18,7 +18,8 @@
 Worker::Worker(Server&                      server,
                int                          epollSocket,
                std::map<int, ListenConfig>& listenSockets,
-               EventQueue&                  events)
+               EventQueue&                  events,
+               pthread_mutex_t&             requestTimesMutex)
     : _server(server),
       _events(events),
       _config(ConfigManager::getInstance().getConfig()),
@@ -26,7 +27,8 @@ Worker::Worker(Server&                      server,
       _epollSocket(epollSocket),
       _listenSockets(listenSockets),
       _load(0),
-      _shouldStop(false) {}
+      _shouldStop(false),
+      _requestTimesMutex(requestTimesMutex) {}
 
 Worker::~Worker() {}
 
@@ -132,7 +134,7 @@ void Worker::_acceptNewConnection(int fd) {
         _setupAssociatedVirtualServers(listenConfig);
     ConnectionHandler* handler = new ConnectionHandler(
         new_socket, _epollSocket, virtualServers, listenConfig);
-    EventData* eventData = new EventData(new_socket, handler, _threadId);
+    EventData* eventData = new EventData(new_socket, handler, _requestTimesMutex, _threadId);
     event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {

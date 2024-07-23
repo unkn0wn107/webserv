@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/04 19:31:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 00:03:03 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 02:10:14 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@ class ConnectionHandler;
 struct EventData {
   int                fd;
   ConnectionHandler* handler;
+  pthread_mutex_t&   requestTimesMutex;
   pid_t              threadId;
   bool               isListening;
   bool               recordTime;
@@ -28,6 +29,7 @@ struct EventData {
 
   EventData(int                fd,
             ConnectionHandler* ptr,
+            pthread_mutex_t&   requestTimesMutex,
             pid_t              threadId = -1,
             bool               isListening = false,
             bool               recordTime = true,

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:01 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 14:50:28 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 19:34:31 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,31 +34,26 @@ class Worker;
 
 class Server {
  private:
-  static int                                  _callCount;
   static Server*                              _instance;
   Config&                                     _config;
   Logger&                                     _log;
-  std::vector<Worker*>                        _workers;
+  Worker*                        _worker;
   std::map<int, ListenConfig>                 _listenSockets;
   std::set<EventData*>                        _listenEventData;
-  pthread_mutex_t                             _mutex;
   int                                         _epollSocket;
-  int                                         _activeWorkers;
   EventQueue                                  _events;
   bool                                        _running;
   std::map<int, std::vector<VirtualServer*> > _virtualServers;
   std::list<EventData*>                       _requestTimes;
 
   void _setupServerSockets();
-  void _setupWorkers();
   void _setupEpoll();
   void _checkRequestLife();
-  bool _isRunning();
+  void _clearRequests();
 
  public:
   Server();
   static Server& getInstance();
-  void           workerFinished();
   ~Server();
 
   void start();

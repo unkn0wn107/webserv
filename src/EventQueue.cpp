@@ -12,7 +12,6 @@
 
 #include "EventQueue.hpp"
 #include <errno.h>
-#include <pthread.h>
 #include <queue>
 #include "Utils.hpp"
 

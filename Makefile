@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/07/23 14:56:27 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/07/23 18:44:11 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@ NAME = webserv
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
-DEBUGFLAGS = -gdwarf-3 #-fsanitize=address
+DEBUGFLAGS = -gdwarf-3 #-fsanitize=thread
 
 SRC_DIR = src
 OBJ_DIR = .obj
@@ -125,7 +125,7 @@ valgrind-full:
 	export BUILD_TYPE=debug
 	docker compose up --build -d webserv-dev
 	docker compose exec -it webserv-dev make debug
-	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./webserv"
+	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes -s ./webserv"
 
 helgrind:
 	export BUILD_TYPE=debug

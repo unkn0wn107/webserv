@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 15:48:25 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 19:20:31 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -229,7 +229,7 @@ void ConnectionHandler::_processRequest(struct epoll_event& event) {
       }
     }
     _response = new HTTPResponse(HTTPResponse::OK, location);
-    _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket, location);
+    _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket, location, static_cast<EventData*>(event.data.ptr));
     _cgiState = REGISTER_SCRIPT_FD;
     _setConnectionStatus(EXECUTING);
   } else {
@@ -321,7 +321,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
     case CLOSED:
       EventData* eventData = static_cast<EventData*>(event.data.ptr);
       _handleClosedConnection();
-      eventData->setOpened(false);
+      eventData->opened = false;
       return 1;  // Done
   }
   return 0;

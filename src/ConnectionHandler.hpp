@@ -6,14 +6,13 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:25 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 18:41:27 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 16:29:51 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CONNECTION_HANDLER_H
 #define CONNECTION_HANDLER_H
 
-#include <pthread.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <ctime>

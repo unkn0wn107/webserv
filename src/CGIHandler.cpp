@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGIHandler.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 01:08:08 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 18:35:21 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,11 +17,12 @@ Logger& CGIHandler::_log = Logger::getInstance();
 CGIHandler::CGIHandler(HTTPRequest&          request,
                        HTTPResponse&         response,
                        int                   epollSocket,
-                       const LocationConfig& location)
+                       const LocationConfig& location,
+                       EventData* eventData)
     : _cacheHandler(CacheHandler::getInstance()),
       _state(REGISTER_SCRIPT_FD),
       _epollSocket(epollSocket),
-      _eventData(NULL),
+      _eventData(eventData),
       _request(request),
       _response(response),
       _location(location),

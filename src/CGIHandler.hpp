@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:09 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 18:38:46 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 18:35:31 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,8 @@ class CGIHandler {
   CGIHandler(HTTPRequest&          request,
              HTTPResponse&         response,
              int                   epollSocket,
-             const LocationConfig& location);
+             const LocationConfig& location,
+             EventData* eventData);
   ~CGIHandler();
 
   int      getCgifd();

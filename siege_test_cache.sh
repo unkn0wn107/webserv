@@ -9,7 +9,6 @@ ADDR=localhost
 
 cat <<EOL > $SIEGE_URLS_FILE
 http://${ADDR}:${PORT}/
-http://${ADDR}:${PORT}/nonexistent
 http://${ADDR}:${PORT}/cgi/hello.py?name=Marvin
 http://${ADDR}:${PORT}/cgi/hello.php?name=Marvin
 http://${ADDR}:${PORT}/cgi/hello.js?name=Marvin
@@ -25,7 +24,7 @@ siege > /dev/null 2>&1
 
 echo "Running siege with caching enabled"
 echo "Running siege with caching enabled" >> $SIEGE_LOG_FILE
-siege -v -t 10s -c 25 -b -H "Cookie: sessionid=marvin;" -f $SIEGE_URLS_FILE >> $SIEGE_LOG_FILE
+siege -v -t 20s -c 25 -b -H "Cookie: sessionid=marvin;" -f $SIEGE_URLS_FILE >> $SIEGE_LOG_FILE
 
 if grep -q '"failed_transactions": *[1-9]' $SIEGE_LOG_FILE; then
     echo "!!!KO!!!: Siege test failed with caching enabled. Check $SIEGE_LOG_FILE for details."

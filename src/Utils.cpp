@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:13:32 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/22 18:35:02 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 18:41:01 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -107,8 +107,6 @@ int Utils::set_non_blocking(int sockfd) {
 }
 
 void Utils::signalHandler(int signum) {
-  Logger::getInstance().info("Signal received: " + Utils::to_string(signum) +
-                             "getting server instance");
   Server::getInstance().stop(signum);
 }
 

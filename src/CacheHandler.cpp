@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 15:45:00 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 19:55:07 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,12 +40,9 @@ CacheHandler::CacheEntry::~CacheEntry() {
   delete response;
 }
 
-CacheHandler& CacheHandler::init(EventQueue& eventQueue) {
-  _instance = new CacheHandler(eventQueue);
-  return *_instance;
-}
-
 CacheHandler& CacheHandler::getInstance() {
+  if (!_instance)
+    _instance = new CacheHandler();
   return *_instance;
 }
 
@@ -54,36 +51,26 @@ void CacheHandler::deleteInstance() {
   _instance = NULL;
 }
 
-pthread_mutex_t CacheHandler::mutex()
-{
-  return _instance->_mutex;
-} 
-
-CacheHandler::CacheHandler(EventQueue& eventQueue)
-    : _log(Logger::getInstance()), _eventQueue(eventQueue), _cache(), _maxAge(MAX_AGE) {
-  pthread_mutex_init(&_mutex, NULL);
+CacheHandler::CacheHandler()
+    : _log(Logger::getInstance()), _cache(), _maxAge(MAX_AGE) {
 }
 
 CacheHandler::~CacheHandler() {
-  pthread_mutex_destroy(&_mutex);
 }
 
 CacheStatus CacheHandler::getCacheStatus(const std::string& key,
                                                      EventData*         eventData) {
-  pthread_mutex_lock(&_mutex);
   CacheMap::iterator it = _cache.find(key);
 
   if (it == _cache.end()) {
     _cache[key] = CacheEntry();
     _cache[key].status = CACHE_CURRENTLY_BUILDING;
-    pthread_mutex_unlock(&_mutex);
     return CACHE_NOT_FOUND;
   }
 
   if (it->second.status == CACHE_CURRENTLY_BUILDING) {
     if (eventData)
       it->second.waitingEventsData.push_back(eventData);
-    pthread_mutex_unlock(&_mutex);
     return CACHE_CURRENTLY_BUILDING;
   }
 
@@ -92,30 +79,24 @@ CacheStatus CacheHandler::getCacheStatus(const std::string& key,
       delete it->second.response;
     _cache[key] = CacheEntry();
     _cache[key].status = CACHE_CURRENTLY_BUILDING;
-    pthread_mutex_unlock(&_mutex);
     return CACHE_NOT_FOUND;
   }
 
-  pthread_mutex_unlock(&_mutex);
   return CACHE_FOUND;
 }
 
 HTTPResponse *CacheHandler::getResponse(const std::string& key) {
-  pthread_mutex_lock(&_mutex);
   CacheMap::iterator it = _cache.find(key);
 
   if (it == _cache.end()) {
-    pthread_mutex_lock(&_mutex);
-    return NULL;
+      return NULL;
   }
 
   HTTPResponse *response = it->second.response;
-  pthread_mutex_unlock(&_mutex);
   return response;
 }
 
 void CacheHandler::storeResponse(const std::string& key, const HTTPResponse& response) {
-  pthread_mutex_lock(&_mutex);
   CacheEntry& entry = _cache[key];
   if (entry.response)
     delete entry.response;
@@ -127,14 +108,12 @@ void CacheHandler::storeResponse(const std::string& key, const HTTPResponse& res
     struct epoll_event event;
     event.data.ptr = *it;
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    _eventQueue.push(event);
+    (*it)->handler->processConnection(event);
   }
   entry.waitingEventsData.clear();
-  pthread_mutex_unlock(&_mutex);
 }
 
 void CacheHandler::deleteCache(const std::string& key) {
-  pthread_mutex_lock(&_mutex);
   CacheMap::iterator it = _cache.find(key);
 
   if (it != _cache.end()) {
@@ -142,7 +121,6 @@ void CacheHandler::deleteCache(const std::string& key) {
     _cache.erase(it);
   }
 
-  pthread_mutex_unlock(&_mutex);
 }
 
 std::string CacheHandler::generateKey(const HTTPRequest& request) const {

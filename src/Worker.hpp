@@ -6,14 +6,13 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/23 14:40:51 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 19:35:41 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef WORKER_HPP
 #define WORKER_HPP
 
-#include <pthread.h>
 #include <sys/epoll.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -44,43 +43,22 @@ class Worker {
          EventQueue&                  events);
   ~Worker();
 
-  void  start();
-  void  stop();
-  pid_t getThreadId() const;
-  int   getLoad() const;
+  void                        processEvent(struct epoll_event &event);
 
  private:
-  class Thread {
-   public:
-    Thread();
-    ~Thread();
-    bool create(void* (*start_routine)(void*), void* arg);
-
-   private:
-    pthread_t _thread;
-  };
-
-  static void*                _workerRoutine(void* arg);
-  void                        _runEventLoop();
   void                        _acceptNewConnection(int fd);
   std::vector<VirtualServer*> _setupAssociatedVirtualServers(
       const ListenConfig& listenConfig);
   void _launchEventProcessing(EventData* eventData, struct epoll_event& event);
-  bool                         _shouldRun();
 
 
   Server&                      _server;
   EventQueue&                  _events;
-  Thread                       _thread;
   std::map<int, EventData*>    _eventsData;
   const Config&                _config;
   Logger&                      _log;
   int                          _epollSocket;
   std::map<int, ListenConfig>& _listenSockets;
-  int                          _load;
-  bool                         _shouldStop;
-  pid_t                        _threadId;
-  pthread_mutex_t              _runMutex;
 
   Worker(const Worker&);
 };

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/23 02:08:54 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/22 18:43:27 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,8 +41,7 @@ class Worker {
   Worker(Server&                      server,
          int                          epollSocket,
          std::map<int, ListenConfig>& listenSockets,
-         EventQueue&                  events,
-         pthread_mutex_t&             requestTimesMutex);
+         EventQueue&                  events);
   ~Worker();
 
   void  start();
@@ -79,7 +78,6 @@ class Worker {
   int                          _load;
   bool                         _shouldStop;
   pid_t                        _threadId;
-  pthread_mutex_t&              _requestTimesMutex;
 
   Worker(const Worker&);
 };

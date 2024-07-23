@@ -6,7 +6,7 @@
 /*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 01:19:45 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 10:30:42 by  mchenava        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -320,8 +320,8 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
 
     case CLOSED:
       EventData* eventData = static_cast<EventData*>(event.data.ptr);
-      eventData->opened = false;
       _handleClosedConnection();
+      eventData->opened = false;
       return 1;  // Done
   }
   return 0;

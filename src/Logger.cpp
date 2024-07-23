@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/24 13:32:08 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/05 22:36:38 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 14:45:15 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,10 +41,12 @@ void Logger::deleteInstance() {
 }
 
 Logger::~Logger() {
+  pthread_mutex_lock(&_mutex);
   if (_progLogFile->is_open()) {
     _progLogFile->close();
   }
   delete _progLogFile;
+  pthread_mutex_unlock(&_mutex);
   pthread_mutex_destroy(&_mutex);
 }
 

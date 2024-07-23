@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/22 12:06:51 by mchenava          #+#    #+#             */
-/*   Updated: 2024/07/22 18:43:27 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 14:40:51 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,6 +66,8 @@ class Worker {
   std::vector<VirtualServer*> _setupAssociatedVirtualServers(
       const ListenConfig& listenConfig);
   void _launchEventProcessing(EventData* eventData, struct epoll_event& event);
+  bool                         _shouldRun();
+
 
   Server&                      _server;
   EventQueue&                  _events;
@@ -78,6 +80,7 @@ class Worker {
   int                          _load;
   bool                         _shouldStop;
   pid_t                        _threadId;
+  pthread_mutex_t              _runMutex;
 
   Worker(const Worker&);
 };

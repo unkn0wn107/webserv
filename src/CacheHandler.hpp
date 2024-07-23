@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:58 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/18 13:46:13 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 15:44:58 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,9 +49,11 @@ class CacheHandler {
 
   std::string generateKey(const HTTPRequest& request) const;
   std::string generateKey(const std::string& requestString) const;
-  CacheEntry  getCacheEntry(const std::string& key, EventData* eventData);
+  CacheStatus getCacheStatus(const std::string& key, EventData* eventData);
+  HTTPResponse *getResponse(const std::string& key);
   void        storeResponse(const std::string& key, const HTTPResponse& response);
   void        deleteCache(const std::string& key);
+  static      pthread_mutex_t mutex();
 
  private:
   CacheHandler(EventQueue& eventQueue);

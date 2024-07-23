@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/24 23:54:38 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/18 13:46:07 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/23 15:45:00 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,11 +18,12 @@ CacheHandler* CacheHandler::_instance = NULL;
 CacheHandler::CacheEntry::CacheEntry()
     : response(NULL), timestamp(0), status(CACHE_NOT_FOUND), waitingEventsData() {}
 
-CacheHandler::CacheEntry::CacheEntry(const CacheEntry& other)
-    : response(other.response ? new HTTPResponse(*other.response) : NULL),
-      timestamp(other.timestamp),
-      status(other.status),
-      waitingEventsData(other.waitingEventsData) {}
+CacheHandler::CacheEntry::CacheEntry(const CacheEntry& other) {
+  timestamp = other.timestamp;
+  status = other.status;
+  waitingEventsData = other.waitingEventsData;
+  response = other.response ? new HTTPResponse(*other.response) : NULL;
+}
 
 CacheHandler::CacheEntry& CacheHandler::CacheEntry::operator=(const CacheEntry& other) {
   if (this != &other) {
@@ -53,6 +54,11 @@ void CacheHandler::deleteInstance() {
   _instance = NULL;
 }
 
+pthread_mutex_t CacheHandler::mutex()
+{
+  return _instance->_mutex;
+} 
+
 CacheHandler::CacheHandler(EventQueue& eventQueue)
     : _log(Logger::getInstance()), _eventQueue(eventQueue), _cache(), _maxAge(MAX_AGE) {
   pthread_mutex_init(&_mutex, NULL);
@@ -62,7 +68,7 @@ CacheHandler::~CacheHandler() {
   pthread_mutex_destroy(&_mutex);
 }
 
-CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key,
+CacheStatus CacheHandler::getCacheStatus(const std::string& key,
                                                      EventData*         eventData) {
   pthread_mutex_lock(&_mutex);
   CacheMap::iterator it = _cache.find(key);
@@ -70,34 +76,42 @@ CacheHandler::CacheEntry CacheHandler::getCacheEntry(const std::string& key,
   if (it == _cache.end()) {
     _cache[key] = CacheEntry();
     _cache[key].status = CACHE_CURRENTLY_BUILDING;
-    CacheEntry cacheEntry(_cache[key]);
     pthread_mutex_unlock(&_mutex);
-    cacheEntry.status = CACHE_NOT_FOUND;
-    return cacheEntry;
+    return CACHE_NOT_FOUND;
   }
 
-  CacheEntry& entry = it->second;
-
-  if (entry.status == CACHE_CURRENTLY_BUILDING) {
+  if (it->second.status == CACHE_CURRENTLY_BUILDING) {
     if (eventData)
       it->second.waitingEventsData.push_back(eventData);
     pthread_mutex_unlock(&_mutex);
-    return entry;
+    return CACHE_CURRENTLY_BUILDING;
   }
 
-  if (entry.timestamp + _maxAge <= time(NULL)) {
-    if (entry.response)
-      delete entry.response;
+  if (it->second.timestamp + _maxAge <= time(NULL)) {
+    if (it->second.response)
+      delete it->second.response;
     _cache[key] = CacheEntry();
     _cache[key].status = CACHE_CURRENTLY_BUILDING;
-    CacheEntry cacheEntry(_cache[key]);
     pthread_mutex_unlock(&_mutex);
-    cacheEntry.status = CACHE_NOT_FOUND;
-    return cacheEntry;
+    return CACHE_NOT_FOUND;
   }
 
   pthread_mutex_unlock(&_mutex);
-  return entry;
+  return CACHE_FOUND;
+}
+
+HTTPResponse *CacheHandler::getResponse(const std::string& key) {
+  pthread_mutex_lock(&_mutex);
+  CacheMap::iterator it = _cache.find(key);
+
+  if (it == _cache.end()) {
+    pthread_mutex_lock(&_mutex);
+    return NULL;
+  }
+
+  HTTPResponse *response = it->second.response;
+  pthread_mutex_unlock(&_mutex);
+  return response;
 }
 
 void CacheHandler::storeResponse(const std::string& key, const HTTPResponse& response) {

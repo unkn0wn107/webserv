@@ -6,7 +6,7 @@
 #    By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/12/15 15:51:13 by agaley            #+#    #+#              #
-#    Updated: 2024/07/22 18:45:13 by agaley           ###   ########lyon.fr    #
+#    Updated: 2024/07/23 14:56:27 by agaley           ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -131,7 +131,7 @@ helgrind:
 	export BUILD_TYPE=debug
 	docker compose up --build -d webserv-dev
 	docker compose exec -it webserv-dev make debug
-	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --tool=helgrind ./webserv"
+	docker compose exec -it webserv-dev bash -c "ulimit -n 1024 && valgrind --tool=helgrind -s ./webserv"
 
 logs:
 	docker compose logs -f

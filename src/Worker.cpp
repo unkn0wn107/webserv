@@ -26,9 +26,13 @@ Worker::Worker(Server&                      server,
       _epollSocket(epollSocket),
       _listenSockets(listenSockets),
       _load(0),
-      _shouldStop(false) {}
+      _shouldStop(false) {
+  pthread_mutex_init(&_runMutex, NULL);
+}
 
-Worker::~Worker() {}
+Worker::~Worker() {
+  pthread_mutex_destroy(&_runMutex);
+}
 
 Worker::Thread::Thread() : _thread(0) {}
 
@@ -48,7 +52,9 @@ void Worker::start() {
 }
 
 void Worker::stop() {
+  pthread_mutex_lock(&_runMutex);
   _shouldStop = true;
+  pthread_mutex_unlock(&_runMutex);
 }
 
 pid_t Worker::getThreadId() const {
@@ -57,6 +63,13 @@ pid_t Worker::getThreadId() const {
 
 int Worker::getLoad() const {
   return _load;
+}
+
+bool Worker::_shouldRun(){
+  pthread_mutex_lock(&_runMutex);
+  bool run = _shouldStop;
+  pthread_mutex_unlock(&_runMutex);
+  return !run;
 }
 
 void* Worker::_workerRoutine(void* arg) {
@@ -70,7 +83,7 @@ void* Worker::_workerRoutine(void* arg) {
 }
 
 void Worker::_runEventLoop() {
-  while (!_shouldStop) {
+  while (_shouldRun()) {
     struct epoll_event event;
 
     if (!_events.try_pop(event)) {
@@ -78,8 +91,8 @@ void Worker::_runEventLoop() {
       continue;
     }
     EventData* eventData = static_cast<EventData*>(event.data.ptr);
-    if (eventData && eventData->isListening && (event.events & EPOLLIN)) {
-      _acceptNewConnection(eventData->fd);
+    if (eventData && eventData->getIsListening() && (event.events & EPOLLIN)) {
+      _acceptNewConnection(eventData->getFd());
     } else if (eventData && event.events)
       _launchEventProcessing(eventData, event);
     else {
@@ -92,14 +105,14 @@ void Worker::_runEventLoop() {
 }
 
 void Worker::_launchEventProcessing(EventData* eventData, struct epoll_event& event) {
-  if (!eventData->handler) {
+  if (!eventData->getHandler()) {
     _log.warning("WORKER (" + Utils::to_string(_threadId) +
                  "): Handler is NULL for event fd: " + Utils::to_string(event.data.fd) +
-                 " -> " + Utils::to_string(eventData->fd));
+                 " -> " + Utils::to_string(eventData->getFd()));
     return;
   }
   try {
-    eventData->handler->processConnection(event);
+    eventData->getHandler()->processConnection(event);
   } catch (std::exception& e) {
     _log.error("WORKER (" + Utils::to_string(_threadId) + "): Exception: " + e.what());
   }
@@ -112,7 +125,7 @@ void Worker::_acceptNewConnection(int fd) {
   struct epoll_event      event;
 
   memset(&address, 0, sizeof(address));
-  while (!_shouldStop) {
+  while (_shouldRun()) {
     new_socket = accept(fd, (struct sockaddr*)&address,
                         &addrlen);  // creer un nouveau sockect d'echange d'event
     if (new_socket < 0) {
@@ -138,7 +151,7 @@ void Worker::_acceptNewConnection(int fd) {
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, new_socket, &event) < 0) {
       _log.error("WORKER (" + Utils::to_string(_threadId) +
                  "): Failed \"epoll_ctl\" on new socket " + Utils::to_string(new_socket));
-      eventData->opened = false;
+      eventData->setOpened(false);
       // continue;
     }
   }

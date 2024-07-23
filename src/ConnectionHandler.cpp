@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By:  mchenava < mchenava@student.42lyon.fr>    +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 10:30:42 by  mchenava        ###   ########.fr       */
+/*   Updated: 2024/07/23 15:48:25 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -217,13 +217,13 @@ void ConnectionHandler::_processRequest(struct epoll_event& event) {
   const LocationConfig& location = vserv->getLocationConfig(uriPath);
   if (location.cgi && CGIHandler::isScript(*_request, location) && _cgiState == NONE) {
     if (_request->getHeader("Cache-Control") != "no-cache") {
-      CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(
+      CacheStatus cacheStatus = _cacheHandler.getCacheStatus(
           _cacheHandler.generateKey(*_request), static_cast<EventData*>(event.data.ptr));
-      if (cacheStatus.status == CACHE_FOUND) {
-        _response = new HTTPResponse(*cacheStatus.response, location);
+      if (cacheStatus == CACHE_FOUND) {
+        _response = new HTTPResponse(*_cacheHandler.getResponse(_cacheHandler.generateKey(*_request)));
         _setConnectionStatus(SENDING);
         return;
-      } else if (cacheStatus.status == CACHE_CURRENTLY_BUILDING) {
+      } else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
         _setConnectionStatus(CACHE_WAITING);
         return;
       }
@@ -259,12 +259,12 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
   // }
   try {
     if (_connectionStatus == CACHE_WAITING) {
-      CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(
+      CacheStatus cacheStatus = _cacheHandler.getCacheStatus(
           _cacheHandler.generateKey(*_request), static_cast<EventData*>(event.data.ptr));
-      if (cacheStatus.status == CACHE_FOUND) {
-        _response = new HTTPResponse(*cacheStatus.response);
+      if (cacheStatus == CACHE_FOUND) {
+        _response = new HTTPResponse(*_cacheHandler.getResponse(_cacheHandler.generateKey(*_request)));
         _setConnectionStatus(SENDING);
-      } else if (cacheStatus.status == CACHE_CURRENTLY_BUILDING) {
+      } else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
         _setConnectionStatus(CACHE_WAITING);
       }
     }
@@ -321,7 +321,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
     case CLOSED:
       EventData* eventData = static_cast<EventData*>(event.data.ptr);
       _handleClosedConnection();
-      eventData->opened = false;
+      eventData->setOpened(false);
       return 1;  // Done
   }
   return 0;

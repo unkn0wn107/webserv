@@ -51,6 +51,7 @@ void Worker::_launchEventProcessing(EventData* eventData, struct epoll_event& ev
     return;
   }
   try {
+    _log.info("WORKER: Launching event processing for fd: " + Utils::to_string(eventData->fd));
     eventData->handler->processConnection(event);
   } catch (std::exception& e) {
     _log.error("WORKER: Exception: " + std::string(e.what()));

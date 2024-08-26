@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:05 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 18:35:21 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/24 19:32:36 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,12 +17,10 @@ Logger& CGIHandler::_log = Logger::getInstance();
 CGIHandler::CGIHandler(HTTPRequest&          request,
                        HTTPResponse&         response,
                        int                   epollSocket,
-                       const LocationConfig& location,
-                       EventData* eventData)
+                       const LocationConfig& location)
     : _cacheHandler(CacheHandler::getInstance()),
       _state(REGISTER_SCRIPT_FD),
       _epollSocket(epollSocket),
-      _eventData(eventData),
       _request(request),
       _response(response),
       _location(location),
@@ -46,10 +44,7 @@ CGIHandler::~CGIHandler() {
   kill(_pid, SIGKILL);
   waitpid(_pid, NULL, 0);
   if (_inpipefd[0] != -1)
-  {
-    delEvent();
     close(_inpipefd[0]);
-  }
   if (_inpipefd[1] != -1)
     close(_inpipefd[1]);
   if (_outpipefd[0] != -1)
@@ -76,8 +71,12 @@ int CGIHandler::getCgifd() {
   return _outpipefd[0];
 }
 
-CGIState CGIHandler::getCgiState() {
+CGIState CGIHandler::getState() {
   return _state;
+}
+
+void CGIHandler::setState(CGIState state) {
+  _state = state;
 }
 
 void CGIHandler::_checkIfProcessingPossible() {
@@ -190,8 +189,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
         close(_outpipefd[1]);
         _outpipefd[1] = -1;
         _runStartTime = std::time(NULL);
-        _state = SCRIPT_RUNNING;
-        _createEvent();
         return EXECUTING;
       } else if (_pid == 0)
         _state = RUN_SCRIPT;
@@ -295,15 +292,6 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
     return SENDING;
   }
   return EXECUTING;
-}
-
-void CGIHandler::_createEvent() {
-  struct epoll_event event;
-  event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-  event.data.ptr = _eventData;
-  if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _outpipefd[0], &event) == -1) {
-    _log.error(std::string("CGI_HANDLER: create epoll_ctl: ") + strerror(errno));
-  }
 }
 
 void CGIHandler::delEvent() {

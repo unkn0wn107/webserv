@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/08/27 01:27:36 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/08/27 01:43:17 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -320,37 +320,63 @@ ssize_t HTTPResponse::_send(int socket, size_t sndbuf) {
   return _responseBufferPos;
 }
 
-ssize_t HTTPResponse::_sendfile(int clientSocket, FILE* file, ssize_t sndbuf) {
+ssize_t HTTPResponse::_sendfile(int clientSocket, FILE* file, size_t sndbuf) {
   ssize_t bytesSent;
+  size_t remaining = _fileSize - _responseFilePos;
+
+  if (sndbuf > remaining)
+    sndbuf = remaining;
+
   bytesSent = sendfile(clientSocket, fileno(file), &_responseFilePos, sndbuf);
   if (bytesSent == -1) {
     _log.error("SENDFILE: failed sendfile, client probably closed the connection");
     return -1;
   }
+  _responseFilePos += bytesSent;
   return bytesSent;
 }
 
 int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
   buildResponse();
-  if (_send(clientSocket, sndbuf) == -1)
+  _log.info("Sending response: Status " + Utils::to_string(_statusCode) + ", Buffer size: " + Utils::to_string(_responseBufferSize) + ", File: " + (_file.empty() ? "None" : _file));
+
+  if (_send(clientSocket, sndbuf) == -1) {
+    _log.error("Failed to send response buffer");
     return -1;
-  if (_responseBufferPos == _responseBufferSize && _file.empty())
-    return 1;
-  if (_file.empty())
-    return 0;
-  _toSend = fopen(_file.c_str(), "r");
-  if (!_toSend) {
-    sendResponse(500, clientSocket);
-    throw Exception("(fopen) Error opening file : " + _file + " : " +
-                    std::string(strerror(errno)));
   }
-  if (_responseBufferPos == _responseBufferSize && _sendfile(clientSocket, _toSend, sndbuf) == -1) {
+
+  if (_responseBufferPos == _responseBufferSize && _file.empty()) {
+    _log.info("Response sent completely (no file)");
+    return 1;
+  }
+
+  if (!_file.empty()) {
+    _toSend = fopen(_file.c_str(), "r");
+    if (!_toSend) {
+      _log.error("Failed to open file: " + _file);
+      sendResponse(500, clientSocket);
+      throw Exception("(fopen) Error opening file : " + _file + " : " +
+                      std::string(strerror(errno)));
+    }
+
+    _log.info("Sending file: " + _file + ", Size: " + Utils::to_string(_fileSize));
+    if (_responseBufferPos == _responseBufferSize && _sendfile(clientSocket, _toSend, sndbuf) == -1) {
+      _log.error("Failed to send file");
+      fclose(_toSend);
+      return -1;
+    }
+
     fclose(_toSend);
-    return -1;
+    
+    if (static_cast<size_t>(_responseFilePos) == _fileSize) {
+      _log.info("File sent completely");
+      return 1;
+    } else {
+      _log.info("Partial file sent: " + Utils::to_string(_responseFilePos) + " / " + Utils::to_string(_fileSize));
+    }
   }
-  fclose(_toSend);
-  if (static_cast<size_t>(_responseFilePos) == _fileSize)
-    return 1;
+
+  _log.info("Response partially sent");
   return 0;
 }
 

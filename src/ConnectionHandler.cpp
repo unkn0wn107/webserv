@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 19:20:31 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/24 19:55:49 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,52 +84,58 @@ void ConnectionHandler::_setConnectionStatus(ConnectionStatus status) {
 }
 
 void ConnectionHandler::_receiveRequest(struct epoll_event& event) {
-  bool        headersEnd = false;
-  ssize_t     bytes;
-  std::string headers;
-  size_t      contentLength = 0;
-  bool        contentLengthFound = false;
-  size_t      headersEndPos = 0;
+  ssize_t bytes;
+  char buffer[_rcvbuf];
 
   if (_count > MAX_TRIES || (time(NULL) - _startTime) > TIMEOUT) {
     _setConnectionStatus(CLOSED);
     return;
   }
 
-  char* buffer = new char[_rcvbuf];
   bytes = recv(_clientSocket, buffer, _rcvbuf, 0);
-  if (bytes < 0) {
-    _log.warning("CONNECTION_HANDLER: recv failed");
+  if (bytes <= 0) {
+    if (bytes == 0 || (bytes == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+      _setConnectionStatus(CLOSED);
+    }
     return;
   }
+
   _readn += bytes;
   _requestString.append(buffer, bytes);
-  delete[] buffer;
-  headersEndPos = _requestString.find("\r\n\r\n");
-  if (!headersEnd && headersEndPos != 0 && headersEndPos != std::string::npos) {
-    headersEnd = true;
-    size_t clPos = _requestString.find("Content-Length:");
-    if (clPos != std::string::npos) {
-      size_t      clEnd = _requestString.find("\r\n", clPos);
-      std::string clValue = _requestString.substr(clPos + 15, clEnd - (clPos + 15));
-      contentLength = Utils::stoi<size_t>(clValue);
-      contentLengthFound = true;
-    }
-    _request = new HTTPRequest(_requestString);
+  _log.info("CONNECTION_HANDLER: _requestString: " + _requestString);
+  // Check if we've received the complete headers
+  size_t headersEndPos = _requestString.find("\r\n\r\n");
+  if (headersEndPos == std::string::npos) {
+    return; // Headers not complete, wait for more data
   }
 
-  if (headersEnd) {
-    if (_request->getMethod() == "GET" || _request->getMethod() == "HEAD")
-      _processRequest(event);
-    else if (!contentLengthFound) {
-      HTTPResponse::sendResponse(HTTPResponse::LENGTH_REQUIRED, _clientSocket);
-      _setConnectionStatus(CLOSED);
-    } else if (_readn - headersEndPos - 4 == contentLength) {
-      std::string body = _requestString.c_str() + headersEndPos + 4;
-      _request->setBody(body);
-      _processRequest(event);
-    }
+  // If we haven't parsed the request yet, do it now
+  if (!_request)
+    _request = new HTTPRequest(_requestString.substr(0, headersEndPos));
+
+  std::string method = _request->getMethod();
+  if (method == "GET" || method == "HEAD" || method == "DELETE") {
+    epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, &event);
+    _processRequest(event);
+    return;
   }
+
+  std::string contentLengthStr = _request->getHeader("Content-Length");
+  if (contentLengthStr.empty()) {
+    HTTPResponse::sendResponse(HTTPResponse::LENGTH_REQUIRED, _clientSocket);
+    _setConnectionStatus(CLOSED);
+    return;
+  }
+
+  size_t contentLength = Utils::stoi<size_t>(contentLengthStr);
+  size_t bodyLength = _readn - (headersEndPos + 4); // +4 for "\r\n\r\n"
+
+  if (bodyLength >= contentLength) {
+    epoll_ctl(_epollSocket, EPOLL_CTL_DEL, _clientSocket, &event);
+    _request->setBody(_requestString.substr(headersEndPos + 4, contentLength));
+    _processRequest(event);
+  }
+  // If bodyLength < contentLength, we need to wait for more data
 }
 
 void ConnectionHandler::_sendResponse() {
@@ -229,7 +235,7 @@ void ConnectionHandler::_processRequest(struct epoll_event& event) {
       }
     }
     _response = new HTTPResponse(HTTPResponse::OK, location);
-    _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket, location, static_cast<EventData*>(event.data.ptr));
+    _cgiHandler = new CGIHandler(*_request, *_response, _epollSocket, location);
     _cgiState = REGISTER_SCRIPT_FD;
     _setConnectionStatus(EXECUTING);
   } else {
@@ -247,16 +253,11 @@ void ConnectionHandler::_processExecutingState() {
   }
   ConnectionStatus returnStatus = _cgiHandler->handleCGIRequest();
   _setConnectionStatus(returnStatus);
-  _cgiState = _cgiHandler->getCgiState();
+  _cgiState = _cgiHandler->getState();
 }
 
 int ConnectionHandler::processConnection(struct epoll_event& event) {
   _step++;
-  // if ((time(NULL) - _startTime) > TIMEOUT) {
-  //   _cgiHandler->delEvent();
-  //   HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, _clientSocket);
-  //   _setConnectionStatus(CLOSED);
-  // }
   try {
     if (_connectionStatus == CACHE_WAITING) {
       CacheStatus cacheStatus = _cacheHandler.getCacheStatus(
@@ -264,9 +265,10 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       if (cacheStatus == CACHE_FOUND) {
         _response = new HTTPResponse(*_cacheHandler.getResponse(_cacheHandler.generateKey(*_request)));
         _setConnectionStatus(SENDING);
-      } else if (cacheStatus == CACHE_CURRENTLY_BUILDING) {
-        _setConnectionStatus(CACHE_WAITING);
       }
+      // else if (cacheStatus.status == CACHE_CURRENTLY_BUILDING) {
+      //   _setConnectionStatus(CACHE_WAITING);
+      // }
     }
     if (_connectionStatus == READING)
       _receiveRequest(event);
@@ -281,6 +283,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
                            " Exception caught: " + e.what()));
   }
   switch (_connectionStatus) {
+
     case READING:
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
@@ -292,12 +295,23 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       break;
 
     case EXECUTING:
-      if (!_cgiHandler) {
+      if (!_cgiHandler)
         throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                         "): CGIHandler is NULL");
-      }
+      if (_cgiHandler->getCgifd() == -1)
+        throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                        "): CGIHandler file descriptor is -1");
+      int op;
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-      if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _cgiHandler->getCgifd(), &event) == -1) {
+      if (_cgiState == REGISTER_SCRIPT_FD) {
+        _cgiHandler->setState(SCRIPT_RUNNING);
+        op = EPOLL_CTL_ADD;
+      }
+      else if (_cgiState == PROCESS_OUTPUT || _cgiState == CGI_ERROR)
+        op = EPOLL_CTL_DEL;
+      else
+        op = EPOLL_CTL_MOD;
+      if (epoll_ctl(_epollSocket, op, _cgiHandler->getCgifd(), &event) == -1) {
         _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
                                "): epoll_ctl: ") +
                    strerror(errno));
@@ -311,10 +325,12 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
     case SENDING:
       event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-        _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                               "): epoll_ctl: ") +
-                   strerror(errno));
-        close(_clientSocket);
+        if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, _clientSocket, &event) == -1) {
+          _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
+                                "): epoll_ctl: ") +
+                    strerror(errno));
+          close(_clientSocket);
+        }
       }
       break;
 

@@ -1,5 +1,4 @@
 http://localhost:8080/
-http://localhost:8080/nonexistent
 http://localhost:8080/cgi/hello.py?name=Marvin
 http://localhost:8080/cgi/hello.php?name=Marvin
 http://localhost:8080/cgi/hello.js?name=Marvin

@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/28 15:34:02 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 19:56:53 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/07/24 19:25:25 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,20 +84,21 @@ void Server::start() {
 
 void Server::_checkRequestLife() {
   for (std::list<EventData*>::iterator it = _requestTimes.begin(); it != _requestTimes.end(); ) {
-    if ((time(NULL) - (*it)->startTime) > TIMEOUT) {
-      _log.warning("SERVER: Request timed out (" + Utils::to_string((*it)->fd) + ")");
-      HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, (*it)->fd);
-      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, (*it)->fd, NULL);
-      close((*it)->fd);
-      delete (*it)->handler;
-      delete *it;
+    EventData* data = *it;
+    if ((time(NULL) - data->startTime) > TIMEOUT) {
+      _log.warning("SERVER: Request timed out (" + Utils::to_string(data->fd) + ")");
+      HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, data->fd);
+      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, data->fd, NULL);
+      close(data->fd);
+      delete data->handler;
+      delete data;
       it = _requestTimes.erase(it);
     }
-    else if (!(*it)->opened) {
-      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, (*it)->fd, NULL);
-      close((*it)->fd);
-      delete (*it)->handler;
-      delete *it;
+    else if (!data->opened) {
+      epoll_ctl(_epollSocket, EPOLL_CTL_DEL, data->fd, NULL);
+      close(data->fd);
+      delete data->handler;
+      delete data;
       it = _requestTimes.erase(it);
     } else {
       ++it;
@@ -217,7 +218,7 @@ void Server::_setupServerSockets() {
 
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
-    EventData* eventData = new EventData(sock, NULL, -1, true, true);
+    EventData* eventData = new EventData(sock, NULL, true);
     event.data.ptr = eventData;
     event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(_epollSocket, EPOLL_CTL_ADD, sock, &event) == -1) {

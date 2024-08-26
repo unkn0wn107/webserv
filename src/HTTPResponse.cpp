@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:07 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/23 19:47:29 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/08/27 01:27:36 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -344,7 +344,7 @@ int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
     throw Exception("(fopen) Error opening file : " + _file + " : " +
                     std::string(strerror(errno)));
   }
-  if (_sendfile(clientSocket, _toSend, sndbuf) == -1) {
+  if (_responseBufferPos == _responseBufferSize && _sendfile(clientSocket, _toSend, sndbuf) == -1) {
     fclose(_toSend);
     return -1;
   }

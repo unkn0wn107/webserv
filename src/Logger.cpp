@@ -22,6 +22,8 @@
 
 Logger* Logger::_instance = NULL;
 
+pthread_mutex_t Logger::_mutex;
+
 Logger::Logger() : _progLogFile(new std::ofstream()) {
   pthread_mutex_init(&_mutex, NULL);
 }
@@ -35,6 +37,8 @@ Logger& Logger::getInstance() {
 
 void Logger::deleteInstance() {
   if (_instance != NULL) {
+    pthread_mutex_lock(&_mutex);
+    pthread_mutex_unlock(&_mutex);
     delete _instance;
     _instance = NULL;
   }

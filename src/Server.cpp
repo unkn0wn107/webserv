@@ -55,6 +55,9 @@ Server::~Server() {
   }
   _listenSockets.clear();
   _listenEventData.clear();
+  pthread_mutex_lock(&_mutex);
+  _running = false;
+  pthread_mutex_unlock(&_mutex);
   pthread_mutex_destroy(&_mutex);
   CacheHandler::deleteInstance();
   ConfigManager::deleteInstance();
@@ -81,8 +84,18 @@ void Server::workerFinished() {
   pthread_mutex_unlock(&_mutex);
 }
 
+bool Server::_shouldRun()
+{
+  pthread_mutex_lock(&_mutex);
+  bool ret = _running;
+  pthread_mutex_unlock(&_mutex);
+  return ret;
+}
+
 void Server::start() {
+  pthread_mutex_lock(&_mutex);
   _running = true;
+  pthread_mutex_unlock(&_mutex);
   for (size_t i = 0; i < _workers.size(); i++) {
     try {
       _workers[i]->start();
@@ -97,7 +110,7 @@ void Server::start() {
   _log.info("SERVER: All workers started (" + Utils::to_string(_activeWorkers) +
             ")");
   struct epoll_event events[MAX_EVENTS];
-  while (_running) {
+  while (_shouldRun()) {
     int nfds = epoll_wait(_epollSocket, events, MAX_EVENTS, -1);
     if (nfds == 0) {
       _log.info("SERVER: epoll_wait: 0 events");
@@ -107,7 +120,7 @@ void Server::start() {
       usleep(1000);
       continue;
     }
-    for (int i = 0; i < nfds && _running; i++)
+    for (int i = 0; i < nfds && _shouldRun(); i++)
       _events.push(events[i]);
   }
 }
@@ -122,7 +135,9 @@ void Server::stop(int signum) {
       _workers[i]->stop();
     }
     _log.info("SERVER: workers stopped");
+    pthread_mutex_lock(&_mutex);
     _running = false;
+    pthread_mutex_unlock(&_mutex);
   }
 }
 

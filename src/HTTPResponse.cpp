@@ -371,7 +371,7 @@ int HTTPResponse::sendResponse(int statusCode, int clientSocket) {
   std::string body = defaultErrorPage(statusCode);
   headers += "Content-Length: " + Utils::to_string(body.length()) + "\r\n\r\n";
   std::string response = statusLine + headers + body;
-  if (send(clientSocket, response.c_str(), response.length(), 0) == -1) {
+  if (send(clientSocket, response.c_str(), response.length(), 0) != 0) {
     return -1;
   }
   return 0;

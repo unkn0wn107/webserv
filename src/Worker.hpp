@@ -70,6 +70,7 @@ class Worker {
       const ListenConfig& listenConfig);
   void                        _launchEventProcessing(
       EventData* eventData, struct epoll_event& event);
+  bool                        _shouldRun();
 
   Server&                             _server;
   EventQueue&                         _events;
@@ -82,6 +83,7 @@ class Worker {
   int                                 _load;
   bool                                _shouldStop;
   pid_t                               _threadId;
+  pthread_mutex_t                     _mutex;
 
   Worker(const Worker&);
   Worker& operator=(const Worker&);

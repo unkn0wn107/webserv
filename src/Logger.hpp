@@ -44,7 +44,7 @@ class Logger {
 
   static Logger* _instance;
 
-  mutable pthread_mutex_t _mutex;
+  static pthread_mutex_t _mutex;
   Config                  _config;
   std::ofstream*          _progLogFile;
   std::string             _progLogFileName;

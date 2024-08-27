@@ -52,6 +52,7 @@ class Server {
   void _setupServerSockets();
   void _setupWorkers();
   void _setupEpoll();
+  bool _shouldRun();
 
  public:
   Server();

@@ -94,7 +94,6 @@ class ConnectionHandler {
   time_t                      _startTime;
   CGIHandler*                 _cgiHandler;
   CGIState                    _cgiState;
-  int                         _step;
   EventQueue&                 _events;
 
   void             _receiveRequest(struct epoll_event& event);

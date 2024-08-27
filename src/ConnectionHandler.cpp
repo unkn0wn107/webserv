@@ -44,7 +44,6 @@ ConnectionHandler::ConnectionHandler(
       _startTime(time(NULL)),
       _cgiHandler(NULL),
       _cgiState(NONE),
-      _step(0),
       _events(events)
 {
 }
@@ -252,8 +251,7 @@ void ConnectionHandler::_processRequest(struct epoll_event& event) {
 
 void ConnectionHandler::_processExecutingState() {
   if (_cgiState == NONE) {
-    _log.error("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-               "): CGIHandler is NULL or in invalid state");
+    _log.error("CONNECTION_HANDLER: CGIHandler is NULL or in invalid state");
     _setConnectionStatus(SENDING);
     return;
   }
@@ -263,7 +261,6 @@ void ConnectionHandler::_processExecutingState() {
 }
 
 int ConnectionHandler::processConnection(struct epoll_event& event) {
-  _step++;
   if ((time(NULL) - _startTime) > TIMEOUT)
   {
     HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, _clientSocket);
@@ -287,16 +284,14 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       _sendResponse();
   } catch (const Exception& e) {
     _setConnectionStatus(CLOSED);
-    _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                           "): " + " Status: " + getStatusString() +
+    _log.error(std::string("CONNECTION_HANDLER Status: " + getStatusString() +
                            " Exception caught: " + e.what()));
   }
   switch (_connectionStatus) {
     case READING:
       event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-        _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                               "): epoll_ctl: ") +
+        _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
                    strerror(errno));
         close(_clientSocket);
       }
@@ -304,8 +299,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
 
     case EXECUTING:
       if (!_cgiHandler) {
-        throw Exception("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                       "): CGIHandler is NULL");
+        throw Exception("CONNECTION_HANDLER: CGIHandler is NULL");
       }
         _events.push(event);
       break;
@@ -316,8 +310,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
     case SENDING:
       event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
       if (epoll_ctl(_epollSocket, EPOLL_CTL_MOD, _clientSocket, &event) == -1) {
-        _log.error(std::string("CONNECTION_HANDLER(" + Utils::to_string(_step) +
-                               "): epoll_ctl: ") +
+        _log.error(std::string("CONNECTION_HANDLER: epoll_ctl: ") +
                    strerror(errno));
         close(_clientSocket);
       }

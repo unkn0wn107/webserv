@@ -96,7 +96,7 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
       return new HTTPResponse(HTTPResponse::METHOD_NOT_ALLOWED, location);
     }
 
-    if (method != "GET" && method != "HEAD") {
+    if (method != "GET" && method != "HEAD" && method != "DELETE") {
       if (!body.empty() && contentLength == -1) {
         _log.warning("CheckRequest: Content length not provided");
         return new HTTPResponse(HTTPResponse::LENGTH_REQUIRED, location);

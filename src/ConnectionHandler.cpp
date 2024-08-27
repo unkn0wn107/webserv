@@ -6,7 +6,7 @@
 /*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/10 13:29:04 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/08/27 17:20:41 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -127,7 +127,7 @@ void ConnectionHandler::_receiveRequest(struct epoll_event& event) {
   }
     
   if (headersEnd){
-    if (_request->getMethod() == "GET" || _request->getMethod() == "HEAD")
+    if (_request->getMethod() == "GET" || _request->getMethod() == "HEAD" || _request->getMethod() == "DELETE")
       _processRequest(event);
     else if (!contentLengthFound) {
       HTTPResponse::sendResponse(HTTPResponse::LENGTH_REQUIRED, _clientSocket);

@@ -165,6 +165,7 @@ HTTPResponse* HTTPMethods::_handleDeleteRequest(HTTPRequest& request) {
     response->addHeader("Content-Type", "text/html");
     response->addHeader("Content-Length", Utils::to_string(path.size() + 66));
     response->setBody("<html><body>File deleted.</body></html>");
+    response->addHeader("Content-Length", "39");
     return response;
   } else {
     if (errno == ENOENT) {

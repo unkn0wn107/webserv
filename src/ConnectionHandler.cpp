@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/08/27 17:20:41 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/08/27 19:06:37 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,7 +125,7 @@ void ConnectionHandler::_receiveRequest(struct epoll_event& event) {
     }
     _request = new HTTPRequest(_requestString);
   }
-    
+
   if (headersEnd){
     if (_request->getMethod() == "GET" || _request->getMethod() == "HEAD" || _request->getMethod() == "DELETE")
       _processRequest(event);
@@ -264,6 +264,9 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
   if ((time(NULL) - _startTime) > TIMEOUT)
   {
     HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, _clientSocket);
+    const LocationConfig location;
+    _response->setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
+    _cacheHandler.storeResponse(_cacheHandler.generateKey(*_request), *_response);
     _setConnectionStatus(CLOSED);
   }
   try {
@@ -301,7 +304,7 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
       if (!_cgiHandler) {
         throw Exception("CONNECTION_HANDLER: CGIHandler is NULL");
       }
-        _events.push(event);
+      _events.push(event);
       break;
 
     case CACHE_WAITING:

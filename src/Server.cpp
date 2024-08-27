@@ -262,6 +262,6 @@ void Server::_setupServerSockets() {
       continue;
     }
     _listenSockets[sock] = listenConfig;
-    // _listenEventData.insert(eventData);
+    _listenEventData.insert(eventData);
   }
 }

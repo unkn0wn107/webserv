@@ -111,21 +111,23 @@ void Worker::_runEventLoop() {
 void Worker::_launchEventProcessing(EventData*          eventData,
                                     struct epoll_event& event) {
   int handlerStatus = 0;
-  if (!eventData->getHandler()) {
+  ConnectionHandler* handler = eventData->getHandler();
+  if (!handler) {
     _log.warning("WORKER (" + Utils::to_string(_threadId) +
                  "): Handler is NULL for event fd: " + Utils::to_string(event.data.fd) +
                  " -> " + Utils::to_string(eventData->getFd()));
     return;
   }
   try {
-    handlerStatus = eventData->getHandler()->processConnection(event);
+    handlerStatus = handler->processConnection(event);
   } catch (std::exception& e) {
     _log.error("WORKER (" + Utils::to_string(_threadId) +
                "): Exception: " + e.what());
   }
   if (handlerStatus == 1) {  // Done
-    delete eventData->getHandler();
-    delete eventData;
+    delete handler;
+    if (eventData)
+      delete eventData;
   }
 }
 

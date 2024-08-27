@@ -15,14 +15,23 @@
 
 EventData::EventData(int newFd, ConnectionHandler* ptr, pid_t newThreadId, bool newIsListening, bool newRecordTime, bool newOpened) {
         pthread_mutex_init(&mutex, NULL);
-        setFd(newFd);
-        setHandler(ptr);
-        setThreadId(newThreadId);
-        setIsListening(newIsListening);
-        setRecordTime(newRecordTime);
-        setStartTime(0);
-        setOpened(newOpened);
+        pthread_mutex_lock(&mutex);
+        fd = newFd;
+        handler = ptr;
+        threadId = newThreadId;
+        isListening = newIsListening;
+        recordTime = newRecordTime;
+        startTime = 0;
+        opened = newOpened;
+        pthread_mutex_unlock(&mutex);
     }
+
+EventData::~EventData() {
+    pthread_mutex_lock(&mutex);
+    handler = NULL;
+    pthread_mutex_unlock(&mutex);
+    pthread_mutex_destroy(&mutex);
+}
 
 int                EventData::getFd(){
     pthread_mutex_lock(&mutex);
@@ -68,41 +77,23 @@ bool               EventData::getOpened(){
 }
 
 void               EventData::setFd(int newFd){
-    pthread_mutex_lock(&mutex);
     fd = newFd;
-    pthread_mutex_unlock(&mutex);
 }
 void               EventData::setHandler(ConnectionHandler* newHandler){
-    pthread_mutex_lock(&mutex);
     handler = newHandler;
-    pthread_mutex_unlock(&mutex);
 }
 void               EventData::setThreadId(pid_t id){
-    pthread_mutex_lock(&mutex);
     threadId = id;
-    pthread_mutex_unlock(&mutex);
 }
 void               EventData::setIsListening(bool newIsListening){
-    pthread_mutex_lock(&mutex);
     isListening = newIsListening;
-    pthread_mutex_unlock(&mutex);
 }
 void               EventData::setRecordTime(bool record){
-    pthread_mutex_lock(&mutex);
     recordTime = record;
-    pthread_mutex_unlock(&mutex);
 }
 void               EventData::setStartTime(time_t time){
-    pthread_mutex_lock(&mutex);
     startTime = time;
-    pthread_mutex_unlock(&mutex);
 }
 void               EventData::setOpened(bool newOpened){
-    pthread_mutex_lock(&mutex);
     opened = newOpened;
-    pthread_mutex_unlock(&mutex);
-}
-
-EventData::~EventData() {
-    pthread_mutex_destroy(&mutex);
 }

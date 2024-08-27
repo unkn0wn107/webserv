@@ -354,7 +354,7 @@ int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
     throw Exception("(fopen) Error opening file : " + _file + " : " +
                     std::string(strerror(errno)));
   }
-  if (_sendfile(clientSocket, _toSend, sndbuf) == -1) {
+  if (_responseBufferPos == _responseBufferSize && _sendfile(clientSocket, _toSend, sndbuf) == -1) {
     fclose(_toSend);
     return -1;
   }

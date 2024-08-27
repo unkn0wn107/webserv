@@ -40,6 +40,7 @@ Server::Server()
 }
 
 Server::~Server() {
+  pthread_mutex_lock(&_mutex);
   for (size_t i = 0; i < _workers.size(); i++) {
     delete _workers[i];
   }
@@ -55,7 +56,6 @@ Server::~Server() {
   }
   _listenSockets.clear();
   _listenEventData.clear();
-  pthread_mutex_lock(&_mutex);
   _running = false;
   pthread_mutex_unlock(&_mutex);
   pthread_mutex_destroy(&_mutex);
@@ -93,9 +93,7 @@ bool Server::_shouldRun()
 }
 
 void Server::start() {
-  pthread_mutex_lock(&_mutex);
   _running = true;
-  pthread_mutex_unlock(&_mutex);
   for (size_t i = 0; i < _workers.size(); i++) {
     try {
       _workers[i]->start();
@@ -264,6 +262,6 @@ void Server::_setupServerSockets() {
       continue;
     }
     _listenSockets[sock] = listenConfig;
-    _listenEventData.insert(eventData);
+    // _listenEventData.insert(eventData);
   }
 }

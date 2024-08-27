@@ -13,12 +13,7 @@ test_get_compare() {
     echo ""
     curl -i -s "http://$HOST_REF$URL" > response_ref.txt
     curl -i -s "http://$HOST_TEST$URL" > response_test.txt
-    if ! diff response_ref.txt response_test.txt > /dev/null; then
-        echo "!!! FAIL !!! GET $URL on $HOST_TEST differs from $HOST_REF"
-        diff --color=auto response_ref.txt response_test.txt
-    else
-        echo "PASS: GET $URL on $HOST_TEST matches $HOST_REF"
-    fi
+    diff --color=auto response_ref.txt response_test.txt
     rm response_ref.txt response_test.txt
     echo ""
     echo ""
@@ -34,12 +29,7 @@ test_post_compare() {
     echo ""
     curl -i -s -d $DATA -X POST "http://$HOST_REF$URL" > response_ref.txt
     curl -i -s -d $DATA -X POST "http://$HOST_TEST$URL" > response_test.txt
-    if ! diff response_ref.txt response_test.txt > /dev/null; then
-        echo "!!! FAIL !!! POST $URL on $HOST_TEST differs from $HOST_REF"
-        diff --color=auto response_ref.txt response_test.txt
-    else
-        echo "PASS: POST $URL on $HOST_TEST matches $HOST_REF"
-    fi
+    diff --color=auto response_ref.txt response_test.txt
     rm response_ref.txt response_test.txt
     echo ""
     echo ""
@@ -48,7 +38,12 @@ test_post_compare() {
 echo ""
 # Run comparisons
 test_get_compare "/" $HOST1 $HOST2
-test_post_compare "/submit" $HOST1 $HOST2 "name=example&value=test"
+test_get_compare "/blabla/" $HOST1 $HOST2
+test_get_compare "/upload/" $HOST1 $HOST2
+test_get_compare "/redirect/" $HOST1 $HOST2
+test_post_compare "/redirect/" $HOST1 $HOST2
+test_post_compare "/submit/" $HOST1 $HOST2
+test_post_compare "/submit/" $HOST1 $HOST2 "name=example&value=test"
 
 # Uncomment to test IPv6 comparisons
 # test_get_compare "/" $HOST1 $HOST_IPV6

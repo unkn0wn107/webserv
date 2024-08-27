@@ -114,9 +114,10 @@ HTTPResponse* HTTPMethods::_handleGetRequest(HTTPRequest& request) {
 HTTPResponse* HTTPMethods::_handlePostRequest(HTTPRequest& request) {
   std::string           uriPath = request.getURIComponents().path;
   const LocationConfig& location = _server.getLocationConfig(uriPath);
-  if (location.upload == false) {
+  if (!FileManager::doesFileExists(_getPath(uriPath, location)))
+    return new HTTPResponse(HTTPResponse::NOT_FOUND, location);
+  if (location.upload == false)
     return new HTTPResponse(HTTPResponse::FORBIDDEN, location);
-  }
   std::string path = _getPath(uriPath, location);
   std::string contentType;
   contentType = request.getHeader("Content-Type");

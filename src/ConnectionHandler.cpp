@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
+/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/08/27 19:06:37 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/08/27 21:13:16 by agaley           ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -215,7 +215,7 @@ void ConnectionHandler::_processRequest(struct epoll_event& event) {
   if (vserv == NULL) {
     _setConnectionStatus(CLOSED);
     _log.error("CONNECTION_HANDLER: No virtual server selected");
-    HTTPResponse::sendResponse(500, _clientSocket);
+    HTTPResponse::sendResponse(HTTPResponse::INTERNAL_SERVER_ERROR, _clientSocket);
     return;
   }
   if ((_response = vserv->checkRequest(*_request)) != NULL) {

@@ -350,7 +350,7 @@ int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
     return 0;
   _toSend = fopen(_file.c_str(), "r");
   if (!_toSend) {
-    sendResponse(500, clientSocket);
+    sendResponse(HTTPResponse::INTERNAL_SERVER_ERROR, clientSocket);
     throw Exception("(fopen) Error opening file : " + _file + " : " +
                     std::string(strerror(errno)));
   }

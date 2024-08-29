@@ -6,7 +6,7 @@
 /*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:11:21 by agaley            #+#    #+#             */
-/*   Updated: 2024/08/29 13:26:34 by mchenava         ###   ########.fr       */
+/*   Updated: 2024/08/29 14:52:32 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,6 +98,7 @@ void ConnectionHandler::_receiveRequest(struct epoll_event& event) {
   bool        contentLengthFound = false;
   size_t      headersEndPos = 0;
 
+  _count++;
   if (_count > MAX_TRIES || (time(NULL) - _startTime) > TIMEOUT) {
     _setConnectionStatus(CLOSED);
     return;
@@ -109,6 +110,7 @@ void ConnectionHandler::_receiveRequest(struct epoll_event& event) {
     _log.warning("CONNECTION_HANDLER: recv failed");
     return;
   }
+  _count = 0;
   _readn += bytes;
   _requestString.append(buffer, bytes);
   delete[] buffer;
@@ -131,6 +133,9 @@ void ConnectionHandler::_receiveRequest(struct epoll_event& event) {
       _processRequest(event);
     else if (!contentLengthFound) {
       HTTPResponse::sendResponse(HTTPResponse::LENGTH_REQUIRED, _clientSocket);
+      LocationConfig location;
+      _response = new HTTPResponse(HTTPResponse::LENGTH_REQUIRED, location);
+      _cacheHandler.storeResponse(_cacheHandler.generateKey(*_request), *_response);
       _setConnectionStatus(CLOSED);
     }
     else if (_readn - headersEndPos - 4 == contentLength) {
@@ -212,24 +217,26 @@ std::string ConnectionHandler::_extractHost(const std::string& requestHeader) {
 
 void ConnectionHandler::_processRequest(struct epoll_event& event) {
   VirtualServer* vserv = _selectVirtualServer(_request->getHost());
+  std::string           uriPath = _request->getURIComponents().path;
+  const LocationConfig& location = vserv->getLocationConfig(uriPath);
   if (vserv == NULL) {
     _setConnectionStatus(CLOSED);
     _log.error("CONNECTION_HANDLER: No virtual server selected");
-    HTTPResponse::sendResponse(500, _clientSocket);
+    HTTPResponse::sendResponse(HTTPResponse::INTERNAL_SERVER_ERROR, _clientSocket);
     return;
   }
-  if ((_response = vserv->checkRequest(*_request)) != NULL) {
-    _log.error("CONNECTION_HANDLER: Request failed");
+  _response = vserv->checkRequest(*_request);
+  if (_response->getStatusCode() != HTTPResponse::OK) {
+    _log.warning("CONNECTION_HANDLER: Request failed");
     _setConnectionStatus(SENDING);
     return;
   }
-  std::string           uriPath = _request->getURIComponents().path;
-  const LocationConfig& location = vserv->getLocationConfig(uriPath);
   if (location.cgi && CGIHandler::isScript(*_request, location) &&
       _cgiState == NONE) {
     if (_request->getHeader("Cache-Control") != "no-cache") {
       CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(_cacheHandler.generateKey(*_request), static_cast<EventData *>(event.data.ptr));
       if (cacheStatus.status == CACHE_FOUND) {
+        delete _response;
         _response = new HTTPResponse(*cacheStatus.response, location);
         _setConnectionStatus(SENDING);
         return;
@@ -238,12 +245,12 @@ void ConnectionHandler::_processRequest(struct epoll_event& event) {
         return;
       }
     }
-    _response = new HTTPResponse(HTTPResponse::OK, location);
     _cgiHandler =
         new CGIHandler(*_request, *_response, _epollSocket, location);
     _cgiState = REGISTER_SCRIPT_FD;
     _setConnectionStatus(EXECUTING);
   } else {
+      delete _response;
     _response = vserv->handleRequest(*_request);
     _setConnectionStatus(SENDING);
   }
@@ -265,14 +272,15 @@ int ConnectionHandler::processConnection(struct epoll_event& event) {
   {
     HTTPResponse::sendResponse(HTTPResponse::GATEWAY_TIMEOUT, _clientSocket);
     const LocationConfig location;
-    _response->setStatusCode(HTTPResponse::GATEWAY_TIMEOUT);
+    _response = new HTTPResponse(HTTPResponse::GATEWAY_TIMEOUT, location);
     _cacheHandler.storeResponse(_cacheHandler.generateKey(*_request), *_response);
     _setConnectionStatus(CLOSED);
   }
   try {
     if (_connectionStatus == CACHE_WAITING) {
-    CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(_cacheHandler.generateKey(*_request), static_cast<EventData *>(event.data.ptr));
+      CacheHandler::CacheEntry cacheStatus = _cacheHandler.getCacheEntry(_cacheHandler.generateKey(*_request), static_cast<EventData *>(event.data.ptr));
       if (cacheStatus.status == CACHE_FOUND) {
+        delete _response;
         _response = new HTTPResponse(*cacheStatus.response);
         _setConnectionStatus(SENDING);
       } else if (cacheStatus.status == CACHE_CURRENTLY_BUILDING) {

@@ -202,7 +202,7 @@ class CGIHandler {
    * @return A map containing the parsed headers.
    */
   std::map<std::string, std::string> _parseOutputHeaders(
-      const std::string& headerPart);
+      const std::string& headerPart, HTTPResponse& response);
 
   /**
    * Processes the CGI request.

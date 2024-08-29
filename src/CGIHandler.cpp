@@ -40,6 +40,8 @@ CGIHandler::CGIHandler(HTTPRequest&          request,
   _outpipefd[1] = -1;
   _inpipefd[0] = -1;
   _inpipefd[1] = -1;
+  _log.info("CGI_HANDLER: CGIHandler created");
+  _log.info("CGI_HANDLER: Response status code: " + Utils::to_string(_response.getStatusCode()));
 }
 
 CGIHandler::~CGIHandler() {
@@ -123,14 +125,14 @@ void CGIHandler::_runScript() {
       exit(EXIT_FAILURE);
     }
     close(_inpipefd[0]);
-    std::size_t totalWritten = 0; 
+    std::size_t totalWritten = 0;
     int         trys = 0;
 
     while (totalWritten < postData.size()) {
       ssize_t written =
           write(_inpipefd[1], postData.c_str() + totalWritten,
                 postData.size() - totalWritten);
-      
+
       if (written == -1) {
           if (trys > 5) {
             close(_inpipefd[1]);
@@ -242,7 +244,7 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       if (count == -1) {
         _log.warning("CGI: read failed");
         return EXECUTING;
-      } 
+      }
       _processOutput.append(buffer, count);
       _processOutputSize += count;
       if (count < (ssize_t)sizeof(buffer) || count == 0)
@@ -276,11 +278,10 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
       std::string headerPart = normalizedOutput.substr(0, headerEndPos);
       std::string bodyContent = normalizedOutput.substr(
           headerEndPos + 4);  // +4 to skip the "\r\n\r\n"
-
+      _log.info("CGI: Parsing headers for response: " + Utils::to_string(_response.getStatusCode()));
       std::map<std::string, std::string> headers =
-          _parseOutputHeaders(headerPart);
-      headers["Content-Length"] = Utils::to_string(bodyContent.size());
-      _response.setHeaders(headers);
+          _parseOutputHeaders(headerPart, _response);
+      _response.addHeader("Content-Length", Utils::to_string(bodyContent.size()));
       _response.addHeader(
             "Cache-Control",
             "public, max-age=" + Utils::to_string(CacheHandler::MAX_AGE));
@@ -295,13 +296,14 @@ ConnectionStatus CGIHandler::handleCGIRequest() {
   if (_state == CGI_ERROR){
     if (_response.getStatusCode() == HTTPResponse::OK)
           _response.setStatusCode(HTTPResponse::INTERNAL_SERVER_ERROR);
+    _cacheHandler.storeResponse(_cacheHandler.generateKey(_request), _response);
     return SENDING;
   }
   return EXECUTING;
 }
 
 std::map<std::string, std::string> CGIHandler::_parseOutputHeaders(
-    const std::string& headerPart) {
+    const std::string& headerPart, HTTPResponse& response) {
   std::map<std::string, std::string> headers;
   std::istringstream                 headerStream(headerPart);
   std::string                        line;
@@ -318,7 +320,7 @@ std::map<std::string, std::string> CGIHandler::_parseOutputHeaders(
     if (value.empty()) {
       throw ExecutorError("CGI: Invalid response: empty header value");
     }
-    headers[key] = value;
+    response.addHeader(key, value);
   }
   return headers;
 }

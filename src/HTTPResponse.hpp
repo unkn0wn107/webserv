@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTPResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: agaley <agaley@student.42lyon.fr>          +#+  +:+       +#+        */
+/*   By: mchenava <mchenava@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/30 16:12:10 by agaley            #+#    #+#             */
-/*   Updated: 2024/07/18 03:36:44 by agaley           ###   ########lyon.fr   */
+/*   Updated: 2024/08/29 14:55:21 by mchenava         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -130,6 +130,7 @@ class HTTPResponse {
   off_t                              _responseFilePos;
   size_t                             _fileSize;
   FILE*                              _toSend;
+  int                                _count;
   static std::pair<int, std::string> _defaultErrorPages[];
 
   void    _errorResponse();

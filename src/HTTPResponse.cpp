@@ -204,7 +204,9 @@ HTTPResponse::HTTPResponse(const HTTPResponse& other)
       _responseBufferSize(other._responseBufferSize),
       _responseBufferPos(other._responseBufferPos),
       _responseFilePos(other._responseFilePos),
-      _fileSize(other._fileSize) {}
+      _fileSize(other._fileSize),
+      _count(other._count) {
+      }
 
 HTTPResponse::~HTTPResponse() {
   _headers.clear();
@@ -226,7 +228,8 @@ HTTPResponse::HTTPResponse(const HTTPResponse& other, const LocationConfig& conf
       _responseBufferSize(other._responseBufferSize),
       _responseBufferPos(other._responseBufferPos),
       _responseFilePos(other._responseFilePos),
-      _fileSize(other._fileSize) {
+      _fileSize(other._fileSize),
+      _count(other._count) {
 }
 
 // Doesn't carry const config
@@ -240,6 +243,11 @@ HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
     _file = other._file;
     _protocol = other._protocol;
     _errorPages = other._errorPages;
+    _responseBufferSize = other._responseBufferSize;
+    _responseBufferPos = other._responseBufferPos;
+    _responseFilePos = other._responseFilePos;
+    _fileSize = other._fileSize;
+    _count = other._count;
   }
   return *this;
 }
@@ -248,7 +256,7 @@ HTTPResponse::HTTPResponse(int statusCode, const LocationConfig& config)
     : _log(Logger::getInstance()),
       _statusCode(statusCode),
       _statusMessage(getStatusMessage(statusCode)),
-      _headers(std::map<std::string, std::string>()),
+      _headers(),
       _body(""),
       _file(""),
       _protocol("HTTP/1.1"),
@@ -257,7 +265,8 @@ HTTPResponse::HTTPResponse(int statusCode, const LocationConfig& config)
       _responseBufferSize(0),
       _responseBufferPos(0),
       _responseFilePos(0),
-      _fileSize(0) {
+      _fileSize(0),
+      _count(0) {
   if (statusCode < 100 || statusCode > 599) {
     throw std::invalid_argument("Invalid status code");
   }
@@ -342,15 +351,24 @@ ssize_t HTTPResponse::_sendfile(int clientSocket, FILE* file, ssize_t sndbuf) {
 
 int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
   buildResponse();
+  _count++;
+  if (_count > 100)
+  {
+    sendResponse(HTTPResponse::INTERNAL_SERVER_ERROR, clientSocket);
+    throw Exception("(sendResponse) Error sending response");
+  }
   if (_send(clientSocket, sndbuf) == -1)
     return -1;
   if (_responseBufferPos == _responseBufferSize && _file.empty())
     return 1;
   if (_file.empty())
+  {
+    _count = 0;
     return 0;
+  }
   _toSend = fopen(_file.c_str(), "r");
   if (!_toSend) {
-    sendResponse(500, clientSocket);
+    sendResponse(HTTPResponse::INTERNAL_SERVER_ERROR, clientSocket);
     throw Exception("(fopen) Error opening file : " + _file + " : " +
                     std::string(strerror(errno)));
   }
@@ -361,6 +379,7 @@ int HTTPResponse::sendResponse(int clientSocket, ssize_t sndbuf) {
   fclose(_toSend);
   if (static_cast<size_t>(_responseFilePos) == _fileSize)
     return 1;
+  _count = 0;
   return 0;
 }
 
@@ -414,6 +433,7 @@ void HTTPResponse::setFile(const std::string& path) {
 }
 
 void HTTPResponse::setHeaders(const std::map<std::string, std::string>& hdrs) {
+  _headers.clear();
   _headers = hdrs;
 }
 

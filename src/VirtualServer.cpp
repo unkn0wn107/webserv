@@ -124,8 +124,7 @@ HTTPResponse* VirtualServer::checkRequest(HTTPRequest& request) {
     if (location.returnCode >= 300 && location.returnCode < 400) {
       return new HTTPResponse(location.returnCode, location);
     }
-
-    return NULL;  // Successful case with no specific response needed
+    return new HTTPResponse(HTTPResponse::OK, location);;  // Successful case with no specific response needed
   } catch (const std::exception& e) {
     _log.warning("CheckRequest: Location not found for URI: " + uri);
     // Define a default location config for error handling

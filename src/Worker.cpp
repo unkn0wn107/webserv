@@ -169,7 +169,6 @@ void Worker::_acceptNewConnection(int fd) {
       close(new_socket);
       delete handler;
       delete eventData;
-      // continue;
     }
   }
 }

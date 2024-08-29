@@ -1,5 +1,14 @@
 # webserv
-Simple http/1.1 (bis) server implemented in c++ for 42 school cursus
+C++ epoll-based multi-threaded http/1.1 server with cgi and caching
+
+## Option 1 : Local run
+```
+make
+./webserv local.conf
+```
+
+## Option 2 : Docker run
+`make run`
 
 ## RFC : [Résumé des différents documents de la RFC](doc/RFC.md)
 
@@ -16,3 +25,6 @@ Simple http/1.1 (bis) server implemented in c++ for 42 school cursus
 3. Usage - manual
  - Format all files : `find . -name "*.cpp" -o -name "*.h" -o -name "*.hpp" -o -name "*.tpp" | xargs clang-format -i`
  - Static analysis : `find . -name "*.cpp" -o -name "*.h" -o -name "*.hpp" -o -name "*.tpp" | xargs clang-tidy -config=.clang-tidy`
+
+
+42Lyon

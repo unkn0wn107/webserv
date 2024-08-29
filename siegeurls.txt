@@ -1,8 +1,5 @@
 http://localhost:8080/
-http://localhost:8080/nonexistent
-http://localhost:8080/cgi/hello.py?name=Marvin
-http://localhost:8080/cgi/hello.php?name=Marvin
-http://localhost:8080/cgi/hello.js?name=Marvin
-http://localhost:8080/cgi/post.py POST {"name": "Marvin"}
-http://localhost:8080/cgi/post.php POST {"name": "Marvin"}
-http://localhost:8080/cgi/post.js POST {"name": "Marvin"}
+http://localhost:8090/
+http://localhost:8091/
+http://localhost:8092/
+http://localhost:8093/
